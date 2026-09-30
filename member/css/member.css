@@ -1,0 +1,70 @@
+* {
+    box-sizing: border-box;
+}
+
+body {
+    margin: 0;
+    font-family: Arial, sans-serif;
+    background-color: #f5f5f5;
+}
+
+.register-container {
+    width: 400px;
+    margin: 60px auto;
+    padding: 30px;
+
+    background-color: white;
+
+    border: 1px solid #ddd;
+    border-radius: 8px;
+}
+
+.register-container h1 {
+    margin-bottom: 10px;
+}
+
+.form-group {
+    margin-bottom: 18px;
+}
+
+.form-group label {
+    display: block;
+    margin-bottom: 6px;
+}
+
+.form-group input {
+    width: 100%;
+    padding: 10px;
+
+    border: 1px solid #ccc;
+    border-radius: 4px;
+
+    font-size: 16px;
+}
+
+.form-group input:focus {
+    outline: none;
+    border-color: #333;
+}
+
+button {
+    width: 100%;
+    padding: 12px;
+
+    border: black 1px dotted;
+    border-radius: 4px;
+
+    cursor: pointer;
+
+    font-size: 16px;
+}
+
+.error-message {
+    display: block;
+
+    margin-top: 5px;
+
+    font-size: 14px;
+    color: red;
+}
+
