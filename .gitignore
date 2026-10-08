@@ -1,0 +1,15 @@
+# IntelliJ
+.idea/
+*.iml
+
+# Maven
+**/target/
+
+# Node.js
+**/node_modules/
+**/dist/
+
+# Local environment
+.env
+.env.*
+!.env.example
