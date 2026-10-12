@@ -1,0 +1,42 @@
+﻿<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="theme-color" content="#f7f4ef">
+    <title>忘記密碼 | PhoneCase</title>
+    <link rel="stylesheet" href="./css/login.css">
+    <link rel="stylesheet" href="./css/forget.css">
+    <script src="./js/forget.js" defer></script>
+</head>
+<body>
+    <a class="skip-link" href="#forgetForm">跳至密碼重設表單</a>
+    <header class="site-header">
+        <a class="brand" href="../index.html" aria-label="PhoneCase 首頁"><span class="brand-mark" aria-hidden="true">P<span>·</span></span>PhoneCase<span class="brand-dot">.</span></a>
+        <a class="home-link" href="./login.html"><span aria-hidden="true">←</span> 返回登入</a>
+    </header>
+    <main class="login-layout forget-layout">
+        <section class="form-panel" aria-labelledby="forgetHeading">
+            <div class="form-content">
+                <span class="eyebrow">RESET YOUR PASSWORD</span>
+                <h1 id="forgetHeading">忘記密碼<span class="welcome-dot">。</span></h1>
+                <p class="form-intro">別擔心，先輸入註冊時使用的電子郵件，<br class="desktop-break">再送出密碼重設申請。</p>
+                <form id="forgetForm" action="#" method="post">
+                    <div class="form-group">
+                        <label for="email">註冊電子郵件</label>
+                        <input type="email" id="email" name="email" autocomplete="email" inputmode="email" autocapitalize="none" spellcheck="false" placeholder="example@email.com" required aria-describedby="emailHint emailError">
+                        <p class="field-hint" id="emailHint">請填寫建立會員帳號時的電子郵件。</p>
+                        <p class="field-error" id="emailError" hidden></p>
+                    </div>
+                    <button class="login-button" id="resetButton" type="submit" disabled><span>送出重設申請</span><span aria-hidden="true">→</span></button>
+                    <p class="form-status" id="resetStatus" role="status" aria-live="polite" hidden></p>
+                    <noscript><p class="form-status">請啟用 JavaScript 以使用此表單。</p></noscript>
+                </form>
+                <div class="register-prompt"><span>想起密碼了？</span><a href="./login.html">返回登入 <span aria-hidden="true">↗</span></a></div>
+                <p class="signup-prompt">還沒有帳號？ <a href="./register.html">註冊會員</a></p>
+            </div>
+        </section>
+    </main>
+    <footer class="site-footer"><p>&copy; 2026 PhoneCase. 保留所有權利。</p><span>YOUR CASE. YOUR STYLE.</span></footer>
+</body>
+</html>
