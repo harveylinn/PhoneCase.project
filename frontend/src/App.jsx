@@ -1,7 +1,7 @@
 import { Link, Route, Routes } from 'react-router-dom';
-import ProductList from './pages/ProductList.jsx';
-import ProductDetail from './pages/ProductDetail.jsx';
-import AdminProducts from './pages/AdminProducts.jsx';
+import ProductList from './pages/products/ProductList.jsx';
+import ProductDetail from './pages/products/ProductDetail.jsx';
+import AdminProducts from './pages/products/AdminProducts.jsx';
 
 function Header() {
   return (
