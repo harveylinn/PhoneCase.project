@@ -1,12 +1,12 @@
 import { BrowserRouter, Routes, Route } from "react-router";
-import Register from "./pages/member/register.tsx";
+import RegisterPage from "./pages/member/RegisterPage";
 
 export default App;
 function App() {
   return (
     <BrowserRouter>
       <Routes>
-        <Route path="/register" element={<Register />} />
+        <Route path="/register" element={<RegisterPage />} />
       </Routes>
     </BrowserRouter>
   );
