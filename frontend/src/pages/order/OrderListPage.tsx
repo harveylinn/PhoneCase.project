@@ -1,6 +1,9 @@
 import { useState } from 'react'
 
-// 訂單狀態
+// =============================
+// 1. 訂單狀態
+// =============================
+
 export type OrderStatus =
   | '待付款'
   | '待出貨'
@@ -8,7 +11,10 @@ export type OrderStatus =
   | '已完成'
   | '已取消'
 
-// 訂單資料格式
+// =============================
+// 2. 訂單資料格式
+// =============================
+
 export type Order = {
   id: string
   date: string
@@ -19,21 +25,24 @@ export type Order = {
   shippingFee: number
   status: OrderStatus
 
-  // 新增：收件人資料
   receiverName?: string
   receiverPhone?: string
   receiverAddress?: string
 
-  // 新增：配送與付款方式
   shippingMethod?: 'HOME' | 'CVS'
   paymentMethod?: 'CREDIT_CARD' | 'COD'
 
-  // 新增：超商門市
   storeName?: string
   storeLocation?: string
+
+  cancelReason?: string
+  cancelledAt?: string
 }
 
-// 原本的測試訂單
+// =============================
+// 3. 模擬訂單資料
+// =============================
+
 export const demoOrders: Order[] = [
   {
     id: 'ORD001',
@@ -87,12 +96,19 @@ export const demoOrders: Order[] = [
   }
 ]
 
-// App.tsx 傳進來的功能
+// =============================
+// 4. App.tsx 傳進來的功能
+// =============================
+
 type Props = {
   orders: Order[]
   onViewDetail: (orderId: string) => void
   onCancelOrder: (orderId: string) => void
 }
+
+// =============================
+// 5. 我的訂單頁面
+// =============================
 
 function OrderListPage({
   orders,
@@ -100,11 +116,17 @@ function OrderListPage({
   onCancelOrder
 }: Props) {
 
+  // 目前選擇的訂單狀態
   const [filter, setFilter] = useState('全部')
 
+  // 搜尋關鍵字
+  const [searchKeyword, setSearchKeyword] = useState('')
+
+  // 目前展開的訂單
   const [expandedOrderId, setExpandedOrderId] =
     useState<string | null>(null)
 
+  // 訂單狀態選項
   const statusOptions = [
     '全部',
     '待付款',
@@ -114,10 +136,33 @@ function OrderListPage({
     '已取消'
   ]
 
-  const filteredOrders = orders.filter(
-    (order) =>
+  // =============================
+  // 6. 搜尋 + 訂單狀態篩選
+  // =============================
+
+  const filteredOrders = orders.filter((order) => {
+
+    // 檢查訂單狀態
+    const matchStatus =
       filter === '全部' || order.status === filter
-  )
+
+    // 移除搜尋文字前後的空白
+    const keyword = searchKeyword.trim().toLowerCase()
+
+    // 搜尋訂單編號、商品名稱、手機型號
+    const matchKeyword =
+      order.id.toLowerCase().includes(keyword) ||
+      order.productName.toLowerCase().includes(keyword) ||
+      order.model.toLowerCase().includes(keyword)
+
+    // 兩個條件都符合才顯示
+    return matchStatus && matchKeyword
+
+  })
+
+  // =============================
+  // 7. 畫面
+  // =============================
 
   return (
 
@@ -137,20 +182,73 @@ function OrderListPage({
         我的訂單
       </h1>
 
-      <p style={{ textAlign: 'center', color: '#888' }}>
+      <p
+        style={{
+          textAlign: 'center',
+          color: '#888'
+        }}
+      >
         查看訂單紀錄與配送狀態
       </p>
 
       <hr />
 
-      {/* 訂單狀態篩選 */}
+      {/* =============================
+          搜尋訂單
+      ============================= */}
+
+      <h2>搜尋訂單</h2>
 
       <div
         style={{
           display: 'flex',
-          flexWrap: 'wrap',
           gap: '10px',
-          margin: '25px 0'
+          marginBottom: '25px'
+        }}
+      >
+
+        <input
+          type="text"
+          placeholder="搜尋訂單編號、商品名稱或手機型號"
+          value={searchKeyword}
+          onChange={(e) => setSearchKeyword(e.target.value)}
+          style={{
+            flex: 1,
+            minWidth: 0,
+            padding: '14px',
+            fontSize: '15px',
+            border: '1px solid #ddd',
+            borderRadius: '8px'
+          }}
+        />
+
+        <button
+          type="button"
+          onClick={() => setSearchKeyword('')}
+          style={{
+            padding: '12px 20px',
+            border: 'none',
+            borderRadius: '8px',
+            background: '#eee',
+            color: '#333',
+            cursor: 'pointer'
+          }}
+        >
+          清除
+        </button>
+
+      </div>
+
+      {/* =============================
+          訂單狀態篩選
+      ============================= */}
+
+      <div
+        style={{
+          display: 'flex',
+          gap: '10px',
+          flexWrap: 'wrap',
+          marginBottom: '25px'
         }}
       >
 
@@ -167,8 +265,10 @@ function OrderListPage({
               padding: '10px 16px',
               borderRadius: '8px',
               border: '1px solid #ddd',
-              background: filter === status ? '#333' : '#eee',
-              color: filter === status ? 'white' : '#333',
+              background:
+                filter === status ? '#333' : '#eee',
+              color:
+                filter === status ? 'white' : '#333',
               cursor: 'pointer'
             }}
           >
@@ -179,17 +279,40 @@ function OrderListPage({
 
       </div>
 
-      {/* 沒有訂單 */}
+      {/* 顯示搜尋結果數量 */}
+
+      <p style={{ color: '#777' }}>
+        共找到 {filteredOrders.length} 筆訂單
+      </p>
+
+      {/* =============================
+          沒有符合條件的訂單
+      ============================= */}
 
       {filteredOrders.length === 0 && (
 
-        <p style={{ textAlign: 'center', padding: '40px' }}>
-          目前沒有符合條件的訂單
-        </p>
+        <div
+          style={{
+            padding: '50px',
+            textAlign: 'center',
+            background: '#f8f9fa',
+            borderRadius: '12px'
+          }}
+        >
+
+          <h3>找不到符合條件的訂單</h3>
+
+          <p style={{ color: '#888' }}>
+            請嘗試其他搜尋關鍵字或訂單狀態
+          </p>
+
+        </div>
 
       )}
 
-      {/* 訂單列表 */}
+      {/* =============================
+          訂單列表
+      ============================= */}
 
       {filteredOrders.map((order) => (
 
@@ -203,7 +326,7 @@ function OrderListPage({
           }}
         >
 
-          {/* 訂單基本資料 */}
+          {/* 訂單編號與狀態 */}
 
           <div
             style={{
@@ -211,21 +334,29 @@ function OrderListPage({
               background: '#f8f9fa',
               display: 'flex',
               justifyContent: 'space-between',
-              gap: '12px',
-              flexWrap: 'wrap'
+              flexWrap: 'wrap',
+              gap: '12px'
             }}
           >
 
             <div>
-              <strong>訂單編號：{order.id}</strong>
-              <p>訂購日期：{order.date}</p>
+
+              <strong>
+                訂單編號：{order.id}
+              </strong>
+
+              <p style={{ color: '#777' }}>
+                訂購日期：{order.date}
+              </p>
+
             </div>
 
             <strong
               style={{
-                color: order.status === '已取消'
-                  ? '#999'
-                  : '#2980b9'
+                color:
+                  order.status === '已取消'
+                    ? '#999'
+                    : '#2980b9'
               }}
             >
               {order.status}
@@ -233,7 +364,7 @@ function OrderListPage({
 
           </div>
 
-          {/* 商品資訊 */}
+          {/* 商品資料 */}
 
           <div
             style={{
@@ -260,22 +391,34 @@ function OrderListPage({
               📱
             </div>
 
-            <div style={{ flex: 1, minWidth: '140px' }}>
+            <div
+              style={{
+                flex: 1,
+                minWidth: '140px'
+              }}
+            >
+
               <h3>{order.productName}</h3>
+
               <p>適用型號：{order.model}</p>
+
               <p>數量：{order.quantity}</p>
+
             </div>
 
             <div>
+
               <p>訂單總金額</p>
+
               <strong
                 style={{
-                  color: '#e53935',
-                  fontSize: '22px'
+                  fontSize: '22px',
+                  color: '#e53935'
                 }}
               >
                 NT$ {order.total.toLocaleString()}
               </strong>
+
             </div>
 
           </div>
@@ -292,6 +435,8 @@ function OrderListPage({
               borderTop: '1px solid #eee'
             }}
           >
+
+            {/* 展開資訊 */}
 
             <button
               type="button"
@@ -313,20 +458,24 @@ function OrderListPage({
                 : '展開資訊'}
             </button>
 
+            {/* 查看明細 */}
+
             <button
               type="button"
               onClick={() => onViewDetail(order.id)}
               style={{
                 padding: '10px 20px',
-                background: '#333',
-                color: 'white',
                 border: 'none',
                 borderRadius: '8px',
+                background: '#333',
+                color: 'white',
                 cursor: 'pointer'
               }}
             >
               查看訂單明細
             </button>
+
+            {/* 取消訂單 */}
 
             {(order.status === '待付款' ||
               order.status === '待出貨') && (
@@ -336,10 +485,10 @@ function OrderListPage({
                 onClick={() => onCancelOrder(order.id)}
                 style={{
                   padding: '10px 20px',
-                  background: 'white',
-                  color: '#e53935',
                   border: '1px solid #e53935',
                   borderRadius: '8px',
+                  background: 'white',
+                  color: '#e53935',
                   cursor: 'pointer'
                 }}
               >
@@ -350,26 +499,42 @@ function OrderListPage({
 
           </div>
 
-          {/* 展開資訊 */}
+          {/* 展開詳細資訊 */}
 
           {expandedOrderId === order.id && (
 
             <div
               style={{
                 padding: '20px',
-                background: '#fafafa'
+                background: '#fafafa',
+                borderTop: '1px solid #eee'
               }}
             >
 
               <p>訂單編號：{order.id}</p>
+
               <p>訂購日期：{order.date}</p>
+
               <p>訂單狀態：{order.status}</p>
+
               <p>商品名稱：{order.productName}</p>
+
+              <p>手機型號：{order.model}</p>
+
               <p>商品數量：{order.quantity}</p>
 
               <p>
-                總金額：NT$ {order.total.toLocaleString()}
+                訂單總金額：
+                NT$ {order.total.toLocaleString()}
               </p>
+
+              {order.cancelReason && (
+
+                <p>
+                  取消原因：{order.cancelReason}
+                </p>
+
+              )}
 
             </div>
 
