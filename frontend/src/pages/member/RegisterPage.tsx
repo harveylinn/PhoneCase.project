@@ -1,24 +1,54 @@
-import { useState, type FormEvent } from "react";
+import { useState,type SubmitEvent} from "react";
 import "../../styles/member/register.css";
 
 export default function RegisterPage() {
   const [account, setAccount] = useState("");
-  const [email, setEamil] = useState("");
+  const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [confirmPassword, setConfirmPassword] = useState("");
   const [passwordError, setPasswordError] = useState("");
   const [confirmPasswordError, setConfirmPasswordError] = useState("");
+  const [resultMessage, setResultMessage] = useState("");
+  const [name,setName] = useState("");
+  const [tel, setTel] = useState("");
 
   function handleClear() {
     setAccount("");
-    setEamil("");
+    setEmail("");
     setPassword("");
     setConfirmPassword("");
     setShowPassword(false);
+    setPasswordError("");
+    setConfirmPasswordError("");
+    setResultMessage("");
   }
 
-  function handleSubmit(event: FormEvent<HTML>)
+  function handleSubmit(event: SubmitEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setResultMessage("");
+
+    const nextPasswordError = 
+      password.length < 8 ? "密碼至少需要8字元。" : "";
+
+    const nextConfirmPasswordError =
+      confirmPassword === "" 
+        ? "請再次輸入密碼"
+        :confirmPassword !== password
+          ? "兩次輸入的密碼不一致"
+          : "";
+    setPasswordError(nextPasswordError);
+    setConfirmPasswordError(nextConfirmPasswordError);
+
+    if(nextPasswordError || nextConfirmPasswordError) {
+      return;
+    }
+
+    setResultMessage("密碼驗證通過，目前尚未送出註冊。")
+
+    
+
+  }
 
   return (
     <>
@@ -48,7 +78,7 @@ export default function RegisterPage() {
           <p className="form-intro">
             歡迎加入！請填寫以下資料，所有欄位皆為必填。
           </p>
-          <form id="registerForm" onSubmit={(event) => event.preventDefault()}>
+          <form id="registerForm" onSubmit={handleSubmit} noValidate>
             <fieldset id="registerFields">
               <legend className="sr-only">會員註冊資料</legend>
               <div className="form-grid">
@@ -173,6 +203,8 @@ export default function RegisterPage() {
                     autoComplete="name"
                     required
                     aria-describedby="nameError"
+                    value={name}
+                    onChange={(event) => setName(event.target.value)}
                   />
                   <span className="error-message" id="nameError" hidden></span>
                 </div>
@@ -186,6 +218,8 @@ export default function RegisterPage() {
                     autoComplete="tel"
                     required
                     aria-describedby="telHint telError"
+                    value={tel}
+                    onChange={(event) =>setTel(event.target.value)}
                   />
                   <span className="field-hint" id="telHint">
                     7–15 位數字，可包含國碼及連字號。
@@ -203,7 +237,7 @@ export default function RegisterPage() {
                     required
                     aria-describedby="emailError"
                     value={email}
-                    onChange={(event) => setEamil(event.target.value)}
+                    onChange={(event) => setEmail(event.target.value)}
                   />
                   <span className="error-message" id="emailError" hidden></span>
                 </div>
@@ -213,7 +247,6 @@ export default function RegisterPage() {
                   className="submit-button"
                   type="submit"
                   id="submitBtn"
-                  disabled
                 >
                   <span id="submitLabel">建立帳號</span>
                   <span aria-hidden="true">→</span>
@@ -232,8 +265,10 @@ export default function RegisterPage() {
               id="result"
               role="status"
               aria-live="polite"
-              hidden
-            ></p>
+              hidden={!resultMessage}
+            >
+              {resultMessage}
+            </p>
           </form>
           <p className="login-prompt">
             已經有帳號了？{" "}
