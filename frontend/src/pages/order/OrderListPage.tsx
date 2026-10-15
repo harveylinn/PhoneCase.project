@@ -1,8 +1,8 @@
 import { useState } from 'react'
 
-// =============================
+// ===================================
 // 1. 訂單狀態
-// =============================
+// ===================================
 
 export type OrderStatus =
   | '待付款'
@@ -11,9 +11,9 @@ export type OrderStatus =
   | '已完成'
   | '已取消'
 
-// =============================
+// ===================================
 // 2. 訂單資料格式
-// =============================
+// ===================================
 
 export type Order = {
   id: string
@@ -25,23 +25,29 @@ export type Order = {
   shippingFee: number
   status: OrderStatus
 
+  // 收件人資料
   receiverName?: string
   receiverPhone?: string
   receiverAddress?: string
 
+  // 配送與付款方式
   shippingMethod?: 'HOME' | 'CVS'
   paymentMethod?: 'CREDIT_CARD' | 'COD'
 
+  // 綠界超商資料
+  storeChain?: 'UNIMART' | 'FAMI'
+  storeId?: string
   storeName?: string
   storeLocation?: string
 
+  // 取消訂單
   cancelReason?: string
   cancelledAt?: string
 }
 
-// =============================
+// ===================================
 // 3. 模擬訂單資料
-// =============================
+// ===================================
 
 export const demoOrders: Order[] = [
   {
@@ -96,9 +102,9 @@ export const demoOrders: Order[] = [
   }
 ]
 
-// =============================
+// ===================================
 // 4. App.tsx 傳進來的功能
-// =============================
+// ===================================
 
 type Props = {
   orders: Order[]
@@ -106,9 +112,9 @@ type Props = {
   onCancelOrder: (orderId: string) => void
 }
 
-// =============================
+// ===================================
 // 5. 我的訂單頁面
-// =============================
+// ===================================
 
 function OrderListPage({
   orders,
@@ -116,7 +122,7 @@ function OrderListPage({
   onCancelOrder
 }: Props) {
 
-  // 目前選擇的訂單狀態
+  // 訂單狀態篩選
   const [filter, setFilter] = useState('全部')
 
   // 搜尋關鍵字
@@ -126,7 +132,7 @@ function OrderListPage({
   const [expandedOrderId, setExpandedOrderId] =
     useState<string | null>(null)
 
-  // 訂單狀態選項
+  // 狀態選項
   const statusOptions = [
     '全部',
     '待付款',
@@ -136,33 +142,30 @@ function OrderListPage({
     '已取消'
   ]
 
-  // =============================
-  // 6. 搜尋 + 訂單狀態篩選
-  // =============================
+  // ===================================
+  // 6. 搜尋與篩選
+  // ===================================
 
   const filteredOrders = orders.filter((order) => {
 
-    // 檢查訂單狀態
     const matchStatus =
       filter === '全部' || order.status === filter
 
-    // 移除搜尋文字前後的空白
     const keyword = searchKeyword.trim().toLowerCase()
 
-    // 搜尋訂單編號、商品名稱、手機型號
     const matchKeyword =
       order.id.toLowerCase().includes(keyword) ||
       order.productName.toLowerCase().includes(keyword) ||
-      order.model.toLowerCase().includes(keyword)
+      order.model.toLowerCase().includes(keyword) ||
+      (order.storeName ?? '').toLowerCase().includes(keyword) ||
+      (order.storeId ?? '').toLowerCase().includes(keyword)
 
-    // 兩個條件都符合才顯示
     return matchStatus && matchKeyword
-
   })
 
-  // =============================
+  // ===================================
   // 7. 畫面
-  // =============================
+  // ===================================
 
   return (
 
@@ -193,9 +196,9 @@ function OrderListPage({
 
       <hr />
 
-      {/* =============================
-          搜尋訂單
-      ============================= */}
+      {/* ================================= */}
+      {/* 搜尋訂單 */}
+      {/* ================================= */}
 
       <h2>搜尋訂單</h2>
 
@@ -209,7 +212,7 @@ function OrderListPage({
 
         <input
           type="text"
-          placeholder="搜尋訂單編號、商品名稱或手機型號"
+          placeholder="搜尋訂單編號、商品名稱、型號或門市"
           value={searchKeyword}
           onChange={(e) => setSearchKeyword(e.target.value)}
           style={{
@@ -239,9 +242,9 @@ function OrderListPage({
 
       </div>
 
-      {/* =============================
-          訂單狀態篩選
-      ============================= */}
+      {/* ================================= */}
+      {/* 訂單狀態篩選 */}
+      {/* ================================= */}
 
       <div
         style={{
@@ -279,15 +282,13 @@ function OrderListPage({
 
       </div>
 
-      {/* 顯示搜尋結果數量 */}
-
       <p style={{ color: '#777' }}>
         共找到 {filteredOrders.length} 筆訂單
       </p>
 
-      {/* =============================
-          沒有符合條件的訂單
-      ============================= */}
+      {/* ================================= */}
+      {/* 沒有訂單 */}
+      {/* ================================= */}
 
       {filteredOrders.length === 0 && (
 
@@ -310,9 +311,9 @@ function OrderListPage({
 
       )}
 
-      {/* =============================
-          訂單列表
-      ============================= */}
+      {/* ================================= */}
+      {/* 訂單列表 */}
+      {/* ================================= */}
 
       {filteredOrders.map((order) => (
 
@@ -364,7 +365,9 @@ function OrderListPage({
 
           </div>
 
-          {/* 商品資料 */}
+          {/* ================================= */}
+          {/* 商品資訊 */}
+          {/* ================================= */}
 
           <div
             style={{
@@ -423,7 +426,9 @@ function OrderListPage({
 
           </div>
 
+          {/* ================================= */}
           {/* 操作按鈕 */}
+          {/* ================================= */}
 
           <div
             style={{
@@ -436,16 +441,16 @@ function OrderListPage({
             }}
           >
 
-            {/* 展開資訊 */}
-
             <button
               type="button"
               onClick={() => {
+
                 setExpandedOrderId(
                   expandedOrderId === order.id
                     ? null
                     : order.id
                 )
+
               }}
               style={{
                 padding: '10px 20px',
@@ -457,8 +462,6 @@ function OrderListPage({
                 ? '收起資訊'
                 : '展開資訊'}
             </button>
-
-            {/* 查看明細 */}
 
             <button
               type="button"
@@ -474,8 +477,6 @@ function OrderListPage({
             >
               查看訂單明細
             </button>
-
-            {/* 取消訂單 */}
 
             {(order.status === '待付款' ||
               order.status === '待出貨') && (
@@ -499,7 +500,9 @@ function OrderListPage({
 
           </div>
 
-          {/* 展開詳細資訊 */}
+          {/* ================================= */}
+          {/* 展開訂單資訊 */}
+          {/* ================================= */}
 
           {expandedOrderId === order.id && (
 
@@ -511,11 +514,17 @@ function OrderListPage({
               }}
             >
 
+              <h3>訂單詳細資訊</h3>
+
               <p>訂單編號：{order.id}</p>
 
               <p>訂購日期：{order.date}</p>
 
               <p>訂單狀態：{order.status}</p>
+
+              <hr />
+
+              <h3>商品資料</h3>
 
               <p>商品名稱：{order.productName}</p>
 
@@ -524,15 +533,137 @@ function OrderListPage({
               <p>商品數量：{order.quantity}</p>
 
               <p>
+                運費：NT$ {order.shippingFee}
+              </p>
+
+              <p>
                 訂單總金額：
                 NT$ {order.total.toLocaleString()}
               </p>
 
-              {order.cancelReason && (
+              <hr />
+
+              {/* 收件人資料 */}
+
+              <h3>收件人資料</h3>
+
+              <p>
+                收件人：{order.receiverName || '未提供'}
+              </p>
+
+              <p>
+                聯絡電話：{order.receiverPhone || '未提供'}
+              </p>
+
+              <hr />
+
+              {/* 配送方式 */}
+
+              <h3>配送資訊</h3>
+
+              <p>
+                配送方式：
+                {order.shippingMethod === 'CVS'
+                  ? '超商取貨'
+                  : order.shippingMethod === 'HOME'
+                    ? '宅配到府'
+                    : '未提供'}
+              </p>
+
+              {/* 宅配地址 */}
+
+              {order.shippingMethod === 'HOME' && (
 
                 <p>
-                  取消原因：{order.cancelReason}
+                  收件地址：
+                  {order.receiverAddress || '未提供'}
                 </p>
+
+              )}
+
+              {/* ================================= */}
+              {/* 綠界超商門市資訊 */}
+              {/* ================================= */}
+
+              {order.shippingMethod === 'CVS' && (
+
+                <div
+                  style={{
+                    padding: '20px',
+                    background: '#eaf7ea',
+                    borderRadius: '10px',
+                    marginTop: '15px'
+                  }}
+                >
+
+                  <h3>🏪 超商取貨資訊</h3>
+
+                  <p>
+                    超商品牌：
+                    {order.storeChain === 'UNIMART'
+                      ? '7-ELEVEN'
+                      : order.storeChain === 'FAMI'
+                        ? '全家便利商店'
+                        : '未提供'}
+                  </p>
+
+                  <p>
+                    門市代碼：
+                    {order.storeId || '未提供'}
+                  </p>
+
+                  <p>
+                    門市名稱：
+                    {order.storeName || '未提供'}
+                  </p>
+
+                  <p>
+                    門市地址：
+                    {order.storeLocation || '未提供'}
+                  </p>
+
+                </div>
+
+              )}
+
+              <hr />
+
+              {/* 付款方式 */}
+
+              <h3>付款資訊</h3>
+
+              <p>
+                付款方式：
+                {order.paymentMethod === 'CREDIT_CARD'
+                  ? '信用卡付款'
+                  : order.paymentMethod === 'COD'
+                    ? '貨到／超商取貨付款'
+                    : '未提供'}
+              </p>
+
+              {/* 取消資訊 */}
+
+              {order.cancelReason && (
+
+                <div>
+
+                  <hr />
+
+                  <h3>取消資訊</h3>
+
+                  <p>
+                    取消原因：{order.cancelReason}
+                  </p>
+
+                  {order.cancelledAt && (
+
+                    <p>
+                      取消時間：{order.cancelledAt}
+                    </p>
+
+                  )}
+
+                </div>
 
               )}
 

@@ -1,169 +1,204 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import type { Order } from './OrderListPage'
 import './CheckoutPage.css'
 
-// 模擬超商門市
-const demoStores = [
-  {
-    id: '711-001',
-    chain: 'SEVEN',
-    city: '臺中市',
-    district: '南屯區',
-    name: '7-ELEVEN 示範南屯門市'
-  },
-  {
-    id: '711-002',
-    chain: 'SEVEN',
-    city: '臺中市',
-    district: '西屯區',
-    name: '7-ELEVEN 示範西屯門市'
-  },
-  {
-    id: '711-003',
-    chain: 'SEVEN',
-    city: '桃園市',
-    district: '中壢區',
-    name: '7-ELEVEN 示範中壢門市'
-  },
-  {
-    id: 'FM-001',
-    chain: 'FAMILY',
-    city: '臺中市',
-    district: '南屯區',
-    name: '全家 示範南屯店'
-  },
-  {
-    id: 'FM-002',
-    chain: 'FAMILY',
-    city: '臺中市',
-    district: '西屯區',
-    name: '全家 示範西屯店'
-  },
-  {
-    id: 'FM-003',
-    chain: 'FAMILY',
-    city: '桃園市',
-    district: '中壢區',
-    name: '全家 示範中壢店'
-  }
-]
+// ========================================
+// 1. 綠界物流設定
+// ========================================
 
+// Spring Boot 選店 API
+const ECPAY_MAP_URL =
+  'http://localhost:8080/api/logistics/ecpay/map'
+
+// Cloudflare HTTPS 網址
+const ECPAY_CALLBACK_ORIGIN =
+  'https://warner-greene-smooth-correct.trycloudflare.com'
+
+// 超商品牌
+type StoreChain = 'UNIMART' | 'FAMI'
+
+// 綠界回傳的門市資料
+type SelectedStore = {
+  id: string
+  name: string
+  address: string
+  chain: StoreChain
+}
+
+// App.tsx 傳入的功能
 type Props = {
   onCreateOrder: (order: Order) => void
 }
 
 function CheckoutPage({ onCreateOrder }: Props) {
 
-  // 收件人資料
+  // ========================================
+  // 2. 收件人資料
+  // ========================================
+
   const [receiverName, setReceiverName] = useState('')
   const [receiverPhone, setReceiverPhone] = useState('')
   const [receiverAddress, setReceiverAddress] = useState('')
 
-  // 配送方式與付款方式
+  // ========================================
+  // 3. 配送與付款方式
+  // ========================================
+
   const [shippingMethod, setShippingMethod] =
     useState<'HOME' | 'CVS'>('HOME')
 
   const [paymentMethod, setPaymentMethod] =
     useState<'CREDIT_CARD' | 'COD'>('CREDIT_CARD')
 
-  // 商品資料
+  // ========================================
+  // 4. 商品資料
+  // ========================================
+
   const [quantity, setQuantity] = useState(2)
 
   const productName = '透明防摔手機殼'
   const productModel = 'iPhone 17 Pro'
   const productPrice = 590
 
+  // 商品小計
   const productSubtotal = productPrice * quantity
+
+  // 運費
   const shippingFee = shippingMethod === 'HOME' ? 80 : 60
+
+  // 訂單總金額
   const grandTotal = productSubtotal + shippingFee
 
-  // 超商選店視窗
-  const [showStoreModal, setShowStoreModal] = useState(false)
+  // ========================================
+  // 5. 綠界超商選店
+  // ========================================
 
-  const [selectedStoreId, setSelectedStoreId] = useState('')
+  // 目前選擇的超商品牌
+  const [storeChain, setStoreChain] =
+    useState<StoreChain>('UNIMART')
 
-  const [draftChain, setDraftChain] = useState('SEVEN')
-  const [draftCity, setDraftCity] = useState('')
-  const [draftDistrict, setDraftDistrict] = useState('')
-  const [draftStoreId, setDraftStoreId] = useState('')
+  // 已選擇的超商門市
+  const [selectedStore, setSelectedStore] =
+    useState<SelectedStore | null>(null)
 
-  // 取得符合條件的門市
-  const chainStores = demoStores.filter(
-    (store) => store.chain === draftChain
-  )
+  // 記錄選店視窗
+  const storePopupRef = useRef<Window | null>(null)
 
-  const cities = [
-    ...new Set(chainStores.map((store) => store.city))
-  ]
+  // ========================================
+  // 6. 開啟綠界選店頁面
+  // ========================================
 
-  const districts = [
-    ...new Set(
-      chainStores
-        .filter((store) => store.city === draftCity)
-        .map((store) => store.district)
-    )
-  ]
+  function openEcpayStoreMap() {
 
-  const availableStores = chainStores.filter(
-    (store) =>
-      store.city === draftCity &&
-      store.district === draftDistrict
-  )
+    const url = `${ECPAY_MAP_URL}?store=${storeChain}`
 
-  const selectedStore = demoStores.find(
-    (store) => store.id === selectedStoreId
-  )
-
-  // 開啟選店視窗
-  function openStoreModal() {
-
-    const previousStore = demoStores.find(
-      (store) => store.id === selectedStoreId
+    const popup = window.open(
+      url,
+      'ecpayStoreMap',
+      'width=1000,height=750,scrollbars=yes'
     )
 
-    if (previousStore) {
-      setDraftChain(previousStore.chain)
-      setDraftCity(previousStore.city)
-      setDraftDistrict(previousStore.district)
-      setDraftStoreId(previousStore.id)
-    } else {
-      setDraftChain('SEVEN')
-      setDraftCity('')
-      setDraftDistrict('')
-      setDraftStoreId('')
-    }
-
-    setShowStoreModal(true)
-  }
-
-  // 確認門市
-  function confirmStore() {
-
-    if (!draftStoreId) {
-      alert('請先選擇取貨門市')
+    if (!popup) {
+      alert('無法開啟選店視窗，請允許瀏覽器彈出式視窗')
       return
     }
 
-    setSelectedStoreId(draftStoreId)
-    setShowStoreModal(false)
+    storePopupRef.current = popup
+
+    popup.focus()
   }
 
-  // =========================
-  // 建立測試訂單
-  // =========================
+  // ========================================
+  // 7. 接收綠界回傳的門市資料
+  // ========================================
+
+  useEffect(() => {
+
+    function handleStoreMessage(event: MessageEvent) {
+
+      // 檢查訊息來源
+      if (event.origin !== ECPAY_CALLBACK_ORIGIN) {
+        return
+      }
+
+      // 檢查是否為選店視窗
+      if (event.source !== storePopupRef.current) {
+        return
+      }
+
+      const data = event.data
+
+      if (
+        !data ||
+        data.type !== 'ECPAY_STORE_SELECTED'
+      ) {
+        return
+      }
+
+      const store = data.store
+
+      // 檢查門市資料
+      if (
+        !store ||
+        typeof store.id !== 'string' ||
+        typeof store.name !== 'string' ||
+        typeof store.address !== 'string' ||
+        !store.id.trim() ||
+        !store.name.trim()
+      ) {
+        return
+      }
+
+      // 判斷超商品牌
+      const chain: StoreChain =
+        store.chain === 'FAMI'
+          ? 'FAMI'
+          : store.chain === 'UNIMART'
+            ? 'UNIMART'
+            : storeChain
+
+      // 儲存門市資料
+      setSelectedStore({
+        id: store.id,
+        name: store.name,
+        address: store.address,
+        chain
+      })
+
+      setStoreChain(chain)
+
+      storePopupRef.current = null
+
+      alert('超商門市選擇成功！')
+    }
+
+    window.addEventListener('message', handleStoreMessage)
+
+    return () => {
+      window.removeEventListener('message', handleStoreMessage)
+    }
+
+  }, [storeChain])
+
+  // ========================================
+  // 8. 建立測試訂單
+  // ========================================
 
   function handleConfirmOrder() {
 
+    // 檢查收件人姓名
     if (!receiverName.trim()) {
       alert('請輸入收件人姓名')
       return
     }
 
+    // 檢查手機號碼
     if (!receiverPhone.trim()) {
       alert('請輸入聯絡電話')
       return
     }
 
+    // 宅配需要填寫地址
     if (
       shippingMethod === 'HOME' &&
       !receiverAddress.trim()
@@ -172,6 +207,7 @@ function CheckoutPage({ onCreateOrder }: Props) {
       return
     }
 
+    // 超商取貨需要選擇門市
     if (
       shippingMethod === 'CVS' &&
       !selectedStore
@@ -180,567 +216,470 @@ function CheckoutPage({ onCreateOrder }: Props) {
       return
     }
 
-    // 建立新訂單
+    // ========================================
+    // 9. 組合訂單資料
+    // ========================================
+
     const newOrder: Order = {
 
+      // 訂單基本資料
       id: `ORD-${Date.now()}`,
 
       date: new Date().toLocaleDateString('sv-SE'),
 
+      // 商品資料
       productName,
+
       model: productModel,
+
       quantity,
 
       total: grandTotal,
+
       shippingFee,
 
+      // 訂單狀態
       status:
         paymentMethod === 'CREDIT_CARD'
           ? '待付款'
           : '待出貨',
 
-      // 新增：儲存收件人資料
+      // 收件人資料
       receiverName: receiverName.trim(),
+
       receiverPhone: receiverPhone.trim(),
 
-      // 新增：宅配地址
+      // 宅配地址
       receiverAddress:
         shippingMethod === 'HOME'
           ? receiverAddress.trim()
           : undefined,
 
-      // 新增：配送與付款方式
+      // 配送方式
       shippingMethod,
+
+      // 付款方式
       paymentMethod,
 
-      // 新增：超商取貨門市
+      // ========================================
+      // 新增：綠界超商門市資料
+      // ========================================
+
+      // 超商品牌：UNIMART / FAMI
+      storeChain:
+        shippingMethod === 'CVS'
+          ? selectedStore?.chain
+          : undefined,
+
+      // 門市代碼
+      storeId:
+        shippingMethod === 'CVS'
+          ? selectedStore?.id
+          : undefined,
+
+      // 門市名稱
       storeName:
         shippingMethod === 'CVS'
           ? selectedStore?.name
           : undefined,
 
+      // 門市地址
       storeLocation:
-        shippingMethod === 'CVS' && selectedStore
-          ? selectedStore.city + selectedStore.district
+        shippingMethod === 'CVS'
+          ? selectedStore?.address
           : undefined
 
     }
 
-    // 把新訂單交給 App.tsx
+    // ========================================
+    // 10. 將訂單傳給 App.tsx
+    // ========================================
+
     onCreateOrder(newOrder)
 
     alert('測試訂單建立成功！')
   }
 
+  // ========================================
+  // 11. React 畫面
+  // ========================================
+
   return (
 
-    <>
+    <div className="checkout-page">
 
-      <div className="checkout-page">
+      <h1>確認訂單</h1>
 
-        <h1>確認訂單</h1>
+      <hr />
 
-        <hr />
+      {/* ================================= */}
+      {/* 商品資訊 */}
+      {/* ================================= */}
 
-        {/* 商品資訊 */}
+      <h2>商品資訊</h2>
 
-        <h2>商品資訊</h2>
+      <div className="checkout-product">
 
-        <div className="checkout-product">
-
-          <div className="product-image">
-            📱
-          </div>
-
-          <div className="product-info">
-
-            <h3>{productName}</h3>
-
-            <p>適用型號：{productModel}</p>
-            <p>顏色：透明</p>
-            <p>單價：NT$ {productPrice}</p>
-
-            <div style={{ marginTop: '15px' }}>
-
-              <span>數量：</span>
-
-              <button
-                type="button"
-                disabled={quantity <= 1}
-                onClick={() => setQuantity(quantity - 1)}
-              >
-                －
-              </button>
-
-              <span style={{ margin: '0 15px' }}>
-                {quantity}
-              </span>
-
-              <button
-                type="button"
-                onClick={() => setQuantity(quantity + 1)}
-              >
-                ＋
-              </button>
-
-            </div>
-
-          </div>
-
-          <div className="product-subtotal">
-            NT$ {productSubtotal.toLocaleString()}
-          </div>
-
+        <div className="product-image">
+          📱
         </div>
 
-        <hr />
+        <div className="product-info">
 
-        {/* 收件人資訊 */}
+          <h3>{productName}</h3>
 
-        <h2>收件人資料</h2>
+          <p>適用型號：{productModel}</p>
 
-        <p>收件人姓名</p>
+          <p>顏色：透明</p>
 
-        <input
-          type="text"
-          placeholder="請輸入姓名"
-          value={receiverName}
-          onChange={(e) => setReceiverName(e.target.value)}
-        />
+          <p>單價：NT$ {productPrice}</p>
 
-        <p>聯絡電話</p>
+          <div style={{ marginTop: '15px' }}>
 
-        <input
-          type="tel"
-          placeholder="請輸入手機號碼"
-          value={receiverPhone}
-          onChange={(e) => setReceiverPhone(e.target.value)}
-        />
-
-        <hr />
-
-        {/* 配送方式 */}
-
-        <h2>配送方式</h2>
-
-        <label>
-          <input
-            type="radio"
-            name="shipping"
-            checked={shippingMethod === 'HOME'}
-            onChange={() => setShippingMethod('HOME')}
-          />
-          宅配到府（NT$ 80）
-        </label>
-
-        <br />
-        <br />
-
-        <label>
-          <input
-            type="radio"
-            name="shipping"
-            checked={shippingMethod === 'CVS'}
-            onChange={() => setShippingMethod('CVS')}
-          />
-          超商取貨（NT$ 60）
-        </label>
-
-        <br />
-        <br />
-
-        {/* 宅配地址 */}
-
-        {shippingMethod === 'HOME' && (
-
-          <div>
-
-            <p>收件地址</p>
-
-            <input
-              type="text"
-              placeholder="請輸入完整收件地址"
-              value={receiverAddress}
-              onChange={(e) => setReceiverAddress(e.target.value)}
-            />
-
-          </div>
-
-        )}
-
-        {/* 超商取貨 */}
-
-        {shippingMethod === 'CVS' && (
-
-          <div
-            style={{
-              padding: '24px',
-              background: '#f8f9fa',
-              borderRadius: '12px'
-            }}
-          >
-
-            <h3>取貨門市</h3>
-
-            <p style={{ color: '#888', fontSize: '13px' }}>
-              目前使用模擬門市資料
-            </p>
-
-            {selectedStore ? (
-
-              <div>
-
-                <strong>已選擇取貨門市</strong>
-
-                <p>{selectedStore.name}</p>
-
-                <p>
-                  {selectedStore.city}
-                  {selectedStore.district}
-                </p>
-
-              </div>
-
-            ) : (
-
-              <p>尚未選擇取貨門市</p>
-
-            )}
+            <span>數量：</span>
 
             <button
               type="button"
-              onClick={openStoreModal}
+              disabled={quantity <= 1}
+              onClick={() => setQuantity(quantity - 1)}
             >
-              {selectedStore
-                ? '更換取貨門市'
-                : '選擇取貨門市'}
+              －
+            </button>
+
+            <span style={{ margin: '0 15px' }}>
+              {quantity}
+            </span>
+
+            <button
+              type="button"
+              onClick={() => setQuantity(quantity + 1)}
+            >
+              ＋
             </button>
 
           </div>
 
-        )}
-
-        <hr />
-
-        {/* 付款方式 */}
-
-        <h2>付款方式</h2>
-
-        <label>
-          <input
-            type="radio"
-            name="payment"
-            checked={paymentMethod === 'CREDIT_CARD'}
-            onChange={() => setPaymentMethod('CREDIT_CARD')}
-          />
-          信用卡付款
-        </label>
-
-        <br />
-        <br />
-
-        <label>
-          <input
-            type="radio"
-            name="payment"
-            checked={paymentMethod === 'COD'}
-            onChange={() => setPaymentMethod('COD')}
-          />
-          {shippingMethod === 'CVS'
-            ? '超商取貨付款'
-            : '貨到付款'}
-        </label>
-
-        <hr />
-
-        {/* 訂單金額 */}
-
-        <h2>訂單金額</h2>
-
-        <div className="checkout-summary">
-
-          <div className="summary-row">
-            <span>商品小計</span>
-            <span>
-              NT$ {productSubtotal.toLocaleString()}
-            </span>
-          </div>
-
-          <div className="summary-row">
-            <span>運費</span>
-            <span>NT$ {shippingFee}</span>
-          </div>
-
-          <hr />
-
-          <div className="summary-row summary-total">
-
-            <span>訂單總金額</span>
-
-            <strong>
-              NT$ {grandTotal.toLocaleString()}
-            </strong>
-
-          </div>
-
         </div>
 
-        <button
-          type="button"
-          onClick={handleConfirmOrder}
-          style={{
-            width: '100%',
-            padding: '16px',
-            fontSize: '18px'
-          }}
-        >
-          建立測試訂單
-        </button>
+        <div className="product-subtotal">
+          NT$ {productSubtotal.toLocaleString()}
+        </div>
 
       </div>
 
-      {/* 超商選店彈出視窗 */}
+      <hr />
 
-      {showStoreModal && (
+      {/* ================================= */}
+      {/* 收件人資料 */}
+      {/* ================================= */}
 
-        <div
-          style={{
-            position: 'fixed',
-            inset: 0,
-            background: 'rgba(0,0,0,0.55)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            zIndex: 9999,
-            padding: '16px',
-            boxSizing: 'border-box'
-          }}
-        >
+      <h2>收件人資料</h2>
 
-          <div
-            role="dialog"
-            aria-modal="true"
-            aria-label="選擇取貨門市"
-            style={{
-              width: '100%',
-              maxWidth: '500px',
-              maxHeight: '90vh',
-              overflowY: 'auto',
-              background: 'white',
-              color: '#333',
-              padding: '30px',
-              boxSizing: 'border-box',
-              borderRadius: '16px'
-            }}
-          >
+      <p>收件人姓名</p>
 
-            <div
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'space-between'
-              }}
-            >
+      <input
+        type="text"
+        placeholder="請輸入姓名"
+        value={receiverName}
+        onChange={(e) => setReceiverName(e.target.value)}
+      />
 
-              <h2>選擇取貨門市</h2>
+      <p>聯絡電話</p>
 
-              <button
-                type="button"
-                onClick={() => setShowStoreModal(false)}
-                style={{
-                  background: 'transparent',
-                  border: 'none',
-                  fontSize: '28px',
-                  cursor: 'pointer'
-                }}
-              >
-                ×
-              </button>
+      <input
+        type="tel"
+        placeholder="請輸入手機號碼"
+        value={receiverPhone}
+        onChange={(e) => setReceiverPhone(e.target.value)}
+      />
 
-            </div>
+      <hr />
 
-            <p style={{ color: '#888', fontSize: '13px' }}>
-              以下為示範門市，非真實取貨門市
-            </p>
+      {/* ================================= */}
+      {/* 配送方式 */}
+      {/* ================================= */}
 
-            <hr />
+      <h2>配送方式</h2>
 
-            {/* 選擇超商品牌 */}
+      <label>
 
-            <h3>超商品牌</h3>
+        <input
+          type="radio"
+          name="shipping"
+          checked={shippingMethod === 'HOME'}
+          onChange={() => setShippingMethod('HOME')}
+        />
 
-            <label>
+        宅配到府（NT$ 80）
 
-              <input
-                type="radio"
-                name="storeChain"
-                checked={draftChain === 'SEVEN'}
-                onChange={() => {
-                  setDraftChain('SEVEN')
-                  setDraftCity('')
-                  setDraftDistrict('')
-                  setDraftStoreId('')
-                }}
-              />
+      </label>
 
-              7-ELEVEN
+      <br />
+      <br />
 
-            </label>
+      <label>
 
-            <label style={{ marginLeft: '20px' }}>
+        <input
+          type="radio"
+          name="shipping"
+          checked={shippingMethod === 'CVS'}
+          onChange={() => setShippingMethod('CVS')}
+        />
 
-              <input
-                type="radio"
-                name="storeChain"
-                checked={draftChain === 'FAMILY'}
-                onChange={() => {
-                  setDraftChain('FAMILY')
-                  setDraftCity('')
-                  setDraftDistrict('')
-                  setDraftStoreId('')
-                }}
-              />
+        超商取貨（NT$ 60）
 
-              全家
+      </label>
 
-            </label>
+      <br />
+      <br />
 
-            <br />
-            <br />
+      {/* ================================= */}
+      {/* 宅配地址 */}
+      {/* ================================= */}
 
-            {/* 縣市 */}
+      {shippingMethod === 'HOME' && (
 
-            <p>縣市</p>
+        <div>
 
-            <select
-              value={draftCity}
-              onChange={(e) => {
-                setDraftCity(e.target.value)
-                setDraftDistrict('')
-                setDraftStoreId('')
-              }}
-              style={{
-                width: '100%',
-                padding: '12px',
-                marginBottom: '15px'
-              }}
-            >
+          <p>收件地址</p>
 
-              <option value="">請選擇縣市</option>
-
-              {cities.map((city) => (
-
-                <option key={city} value={city}>
-                  {city}
-                </option>
-
-              ))}
-
-            </select>
-
-            {/* 行政區 */}
-
-            <p>行政區</p>
-
-            <select
-              value={draftDistrict}
-              disabled={!draftCity}
-              onChange={(e) => {
-                setDraftDistrict(e.target.value)
-                setDraftStoreId('')
-              }}
-              style={{
-                width: '100%',
-                padding: '12px',
-                marginBottom: '15px'
-              }}
-            >
-
-              <option value="">請選擇行政區</option>
-
-              {districts.map((district) => (
-
-                <option key={district} value={district}>
-                  {district}
-                </option>
-
-              ))}
-
-            </select>
-
-            {/* 門市 */}
-
-            <p>取貨門市</p>
-
-            <select
-              value={draftStoreId}
-              disabled={!draftDistrict}
-              onChange={(e) => setDraftStoreId(e.target.value)}
-              style={{
-                width: '100%',
-                padding: '12px',
-                marginBottom: '20px'
-              }}
-            >
-
-              <option value="">請選擇門市</option>
-
-              {availableStores.map((store) => (
-
-                <option key={store.id} value={store.id}>
-                  {store.name}
-                </option>
-
-              ))}
-
-            </select>
-
-            {/* 按鈕 */}
-
-            <div
-              style={{
-                display: 'flex',
-                gap: '12px'
-              }}
-            >
-
-              <button
-                type="button"
-                onClick={() => setShowStoreModal(false)}
-                style={{
-                  flex: 1,
-                  padding: '14px',
-                  cursor: 'pointer'
-                }}
-              >
-                取消
-              </button>
-
-              <button
-                type="button"
-                onClick={confirmStore}
-                style={{
-                  flex: 1,
-                  padding: '14px',
-                  background: '#333',
-                  color: 'white',
-                  border: 'none',
-                  borderRadius: '8px',
-                  cursor: 'pointer'
-                }}
-              >
-                確認選擇
-              </button>
-
-            </div>
-
-          </div>
+          <input
+            type="text"
+            placeholder="請輸入完整收件地址"
+            value={receiverAddress}
+            onChange={(e) => setReceiverAddress(e.target.value)}
+          />
 
         </div>
 
       )}
 
-    </>
+      {/* ================================= */}
+      {/* 綠界超商取貨 */}
+      {/* ================================= */}
+
+      {shippingMethod === 'CVS' && (
+
+        <div
+          style={{
+            padding: '24px',
+            background: '#f8f9fa',
+            borderRadius: '12px'
+          }}
+        >
+
+          <h3>超商取貨門市</h3>
+
+          <p style={{ color: '#888', fontSize: '13px' }}>
+            綠界物流測試環境
+          </p>
+
+          {/* 選擇超商品牌 */}
+
+          <h4>選擇超商品牌</h4>
+
+          <label>
+
+            <input
+              type="radio"
+              name="storeChain"
+              checked={storeChain === 'UNIMART'}
+              onChange={() => {
+                setStoreChain('UNIMART')
+                setSelectedStore(null)
+              }}
+            />
+
+            7-ELEVEN
+
+          </label>
+
+          <label style={{ marginLeft: '20px' }}>
+
+            <input
+              type="radio"
+              name="storeChain"
+              checked={storeChain === 'FAMI'}
+              onChange={() => {
+                setStoreChain('FAMI')
+                setSelectedStore(null)
+              }}
+            />
+
+            全家便利商店
+
+          </label>
+
+          <br />
+          <br />
+
+          {/* 顯示已選門市 */}
+
+          {selectedStore ? (
+
+            <div
+              style={{
+                padding: '16px',
+                marginBottom: '16px',
+                background: '#eaf7ea',
+                borderRadius: '8px'
+              }}
+            >
+
+              <strong>✅ 已選擇取貨門市</strong>
+
+              <p>
+                超商：
+                {selectedStore.chain === 'UNIMART'
+                  ? '7-ELEVEN'
+                  : '全家便利商店'}
+              </p>
+
+              <p>
+                門市名稱：{selectedStore.name}
+              </p>
+
+              <p>
+                門市代碼：{selectedStore.id}
+              </p>
+
+              <p>
+                門市地址：{selectedStore.address || '未提供'}
+              </p>
+
+            </div>
+
+          ) : (
+
+            <p>尚未選擇取貨門市</p>
+
+          )}
+
+          {/* 開啟綠界選店 */}
+
+          <button
+            type="button"
+            onClick={openEcpayStoreMap}
+            style={{
+              padding: '12px 24px',
+              background: '#198754',
+              color: 'white',
+              border: 'none',
+              borderRadius: '8px',
+              cursor: 'pointer'
+            }}
+          >
+
+            {selectedStore
+              ? '更換取貨門市'
+              : '開啟綠界選店'}
+
+          </button>
+
+        </div>
+
+      )}
+
+      <hr />
+
+      {/* ================================= */}
+      {/* 付款方式 */}
+      {/* ================================= */}
+
+      <h2>付款方式</h2>
+
+      <label>
+
+        <input
+          type="radio"
+          name="payment"
+          checked={paymentMethod === 'CREDIT_CARD'}
+          onChange={() => setPaymentMethod('CREDIT_CARD')}
+        />
+
+        信用卡付款
+
+      </label>
+
+      <br />
+      <br />
+
+      <label>
+
+        <input
+          type="radio"
+          name="payment"
+          checked={paymentMethod === 'COD'}
+          onChange={() => setPaymentMethod('COD')}
+        />
+
+        {shippingMethod === 'CVS'
+          ? '超商取貨付款'
+          : '貨到付款'}
+
+      </label>
+
+      <hr />
+
+      {/* ================================= */}
+      {/* 訂單金額 */}
+      {/* ================================= */}
+
+      <h2>訂單金額</h2>
+
+      <div className="checkout-summary">
+
+        <div className="summary-row">
+
+          <span>商品小計</span>
+
+          <span>
+            NT$ {productSubtotal.toLocaleString()}
+          </span>
+
+        </div>
+
+        <div className="summary-row">
+
+          <span>運費</span>
+
+          <span>NT$ {shippingFee}</span>
+
+        </div>
+
+        <hr />
+
+        <div className="summary-row summary-total">
+
+          <span>訂單總金額</span>
+
+          <strong>
+            NT$ {grandTotal.toLocaleString()}
+          </strong>
+
+        </div>
+
+      </div>
+
+      {/* ================================= */}
+      {/* 建立訂單按鈕 */}
+      {/* ================================= */}
+
+      <button
+        type="button"
+        onClick={handleConfirmOrder}
+        style={{
+          width: '100%',
+          padding: '16px',
+          fontSize: '18px'
+        }}
+      >
+
+        建立測試訂單
+
+      </button>
+
+    </div>
 
   )
 }
