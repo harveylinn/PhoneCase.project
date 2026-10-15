@@ -1,0 +1,12 @@
+{
+    "java.compile.nullAnalysis.mode": "automatic",
+    "java.format.settings.url": ".vscode/java-formatter.xml",
+    "typescript.tsdk": "frontend/node_modules/typescript/lib",
+    "typescript.enablePromptUseWorkspaceTsdk": true,
+    "eslint.workingDirectories": [
+        {
+            "directory": "frontend",
+            "changeProcessCWD": true
+        }
+    ]
+}

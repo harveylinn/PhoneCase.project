@@ -1,4 +1,4 @@
-import { useState,type SubmitEvent} from "react";
+import { useState, type SubmitEvent } from "react";
 import "../../styles/member/register.css";
 
 export default function RegisterPage() {
@@ -7,11 +7,15 @@ export default function RegisterPage() {
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [confirmPassword, setConfirmPassword] = useState("");
+  const [resultMessage, setResultMessage] = useState("");
+  const [name, setName] = useState("");
+  const [tel, setTel] = useState("");
   const [passwordError, setPasswordError] = useState("");
   const [confirmPasswordError, setConfirmPasswordError] = useState("");
-  const [resultMessage, setResultMessage] = useState("");
-  const [name,setName] = useState("");
-  const [tel, setTel] = useState("");
+  const [accountError, setAccountError] = useState("");
+  const [nameError, setNameError] = useState("");
+  const [telError, setTelError] = useState("");
+  const [emailError, setEmailError] = useState("");
 
   function handleClear() {
     setAccount("");
@@ -19,35 +23,87 @@ export default function RegisterPage() {
     setPassword("");
     setConfirmPassword("");
     setShowPassword(false);
+    setResultMessage("");
+    setName("");
+    setTel("");
+    setAccountError("");
     setPasswordError("");
     setConfirmPasswordError("");
-    setResultMessage("");
+    setNameError("");
+    setTelError("");
+    setEmailError("");
   }
 
   function handleSubmit(event: SubmitEvent<HTMLFormElement>) {
     event.preventDefault();
     setResultMessage("");
+    //欄位資料驗證
+    const trimmedAccount = account.trim();
+    const trimmedName = name.trim();
+    const trimmedTel = tel.trim();
+    const trimmedEmail = email.trim();
 
-    const nextPasswordError = 
-      password.length < 8 ? "密碼至少需要8字元。" : "";
+    const nextAccountError = trimmedAccount === "" ? "請輸入帳號。" : "";
+
+    const nextPasswordError = password.length < 8 ? "密碼至少需要8字元。" : "";
 
     const nextConfirmPasswordError =
-      confirmPassword === "" 
+      confirmPassword === ""
         ? "請再次輸入密碼"
-        :confirmPassword !== password
+        : confirmPassword !== password
           ? "兩次輸入的密碼不一致"
           : "";
+
+    const nextNameError = trimmedName === "" ? "請輸入姓名" : "";
+
+    //檢查電話號碼格式
+    const telCharactersValid = /^\+?[0-9-]+$/.test(trimmedTel);
+    const telDigits = trimmedTel.replace(/\D/g, "");
+
+    const nextTelError =
+      trimmedTel === ""
+        ? "請輸入電話。"
+        : !telCharactersValid || telDigits.length < 7 || telDigits.length > 15
+          ? "請輸入有效電話。須包含7~15位數字。"
+          : "";
+
+    //檢查信箱欄位基本格式
+    const emailFormatValid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmedEmail);
+
+    const nextEmailError =
+      trimmedEmail === ""
+        ? "請輸入電子郵件。"
+        : !emailFormatValid
+          ? "請輸入有效的電子郵件格式。"
+          : "";
+    setAccountError(nextAccountError);
     setPasswordError(nextPasswordError);
     setConfirmPasswordError(nextConfirmPasswordError);
+    setNameError(nextNameError);
+    setTelError(nextTelError);
+    setEmailError(nextEmailError);
 
-    if(nextPasswordError || nextConfirmPasswordError) {
+    if (
+      nextAccountError ||
+      nextPasswordError ||
+      nextConfirmPasswordError ||
+      nextNameError ||
+      nextTelError ||
+      nextEmailError
+    ) {
       return;
     }
 
-    setResultMessage("密碼驗證通過，目前尚未送出註冊。")
+    //使用者註冊資料
+    const registerData = {
+      account: trimmedAccount,
+      password: password,
+      name: trimmedName,
+      phone: trimmedTel,
+      email: trimmedEmail,
+    };
 
-    
-
+    setResultMessage("驗證通過，註冊資料已準備完成，尚未送出。");
   }
 
   return (
@@ -56,21 +112,18 @@ export default function RegisterPage() {
         跳至註冊表單
       </a>
       <header className="site-header">
-        <a className="brand" href="../index.html" aria-label="PhoneCase 首頁">
-          <span className="brand-mark" aria-hidden="true">
+        <a className="brand" href="/index">
+          <span className="brand-mark">
             P<span>·</span>
           </span>
           PhoneCase<span className="brand-dot">.</span>
         </a>
-        <a className="back-link" href="./login.html">
-          <span aria-hidden="true">←</span> 返回登入
+        <a className="back-link" href="/login">
+          <span>←</span> 返回登入
         </a>
       </header>
       <main className="register-layout">
-        <section
-          className="register-container"
-          aria-labelledby="registerHeading"
-        >
+        <section className="register-container">
           <span className="eyebrow">JOIN PHONECASE</span>
           <h1 id="registerHeading">
             建立你的帳號<span>。</span>
@@ -91,15 +144,16 @@ export default function RegisterPage() {
                     placeholder="請輸入會員帳號"
                     autoComplete="username"
                     required
-                    aria-describedby="accountError"
                     value={account}
                     onChange={(event) => setAccount(event.target.value)}
                   />
                   <span
                     className="error-message"
                     id="accountError"
-                    hidden
-                  ></span>
+                    hidden={!accountError}
+                  >
+                    {accountError}
+                  </span>
                 </div>
                 <div className="form-group">
                   <label htmlFor="password">密碼</label>
@@ -112,7 +166,6 @@ export default function RegisterPage() {
                       autoComplete="new-password"
                       minLength={8}
                       required
-                      aria-describedby="passwordHint passwordError passwordCapsWarning"
                       value={password}
                       onChange={(event) => setPassword(event.target.value)}
                     />
@@ -120,9 +173,6 @@ export default function RegisterPage() {
                       className="password-toggle"
                       type="button"
                       id="passwordToggle"
-                      // aria-label={showPassword ? "隱藏密碼" : "顯示密碼"}
-                      aria-controls="password"
-                      aria-pressed={showPassword}
                       onClick={() => setShowPassword((prev) => !prev)}
                     >
                       {showPassword ? "隱藏密碼" : "顯示密碼"}
@@ -134,7 +184,6 @@ export default function RegisterPage() {
                   <span
                     className="caps-warning"
                     id="passwordCapsWarning"
-                    role="status"
                     hidden
                   >
                     大寫鎖定已開啟。
@@ -161,16 +210,11 @@ export default function RegisterPage() {
                       onChange={(event) =>
                         setConfirmPassword(event.target.value)
                       }
-                      aria-describedby="confirmPasswordError confirmPasswordCapsWarning"
-                      aria-invalid={Boolean(confirmPasswordError)}
                     />
                     <button
                       className="password-toggle"
                       type="button"
                       id="confirmPasswordToggle"
-                      aria-label="顯示確認密碼"
-                      aria-controls="confirmPassword"
-                      aria-pressed="false"
                       hidden
                     >
                       顯示
@@ -179,7 +223,6 @@ export default function RegisterPage() {
                   <span
                     className="caps-warning"
                     id="confirmPasswordCapsWarning"
-                    role="status"
                     hidden
                   >
                     大寫鎖定已開啟。
@@ -188,7 +231,6 @@ export default function RegisterPage() {
                     className="error-message"
                     id="confirmPasswordError"
                     hidden={!confirmPasswordError}
-                    aria-live="polite"
                   >
                     {confirmPasswordError}
                   </span>
@@ -202,11 +244,16 @@ export default function RegisterPage() {
                     placeholder="請輸入姓名"
                     autoComplete="name"
                     required
-                    aria-describedby="nameError"
                     value={name}
                     onChange={(event) => setName(event.target.value)}
                   />
-                  <span className="error-message" id="nameError" hidden></span>
+                  <span
+                    className="error-message"
+                    id="nameError"
+                    hidden={!nameError}
+                  >
+                    {nameError}
+                  </span>
                 </div>
                 <div className="form-group">
                   <label htmlFor="tel">電話</label>
@@ -217,14 +264,19 @@ export default function RegisterPage() {
                     placeholder="例：0912345678"
                     autoComplete="tel"
                     required
-                    aria-describedby="telHint telError"
                     value={tel}
-                    onChange={(event) =>setTel(event.target.value)}
+                    onChange={(event) => setTel(event.target.value)}
                   />
                   <span className="field-hint" id="telHint">
                     7–15 位數字，可包含國碼及連字號。
                   </span>
-                  <span className="error-message" id="telError" hidden></span>
+                  <span
+                    className="error-message"
+                    id="telError"
+                    hidden={!telError}
+                  >
+                    {telError}
+                  </span>
                 </div>
                 <div className="form-group full-width">
                   <label htmlFor="email">電子郵件</label>
@@ -235,21 +287,22 @@ export default function RegisterPage() {
                     placeholder="example@email.com"
                     autoComplete="email"
                     required
-                    aria-describedby="emailError"
                     value={email}
                     onChange={(event) => setEmail(event.target.value)}
                   />
-                  <span className="error-message" id="emailError" hidden></span>
+                  <span
+                    className="error-message"
+                    id="emailError"
+                    hidden={!emailError}
+                  >
+                    {emailError}
+                  </span>
                 </div>
               </div>
               <div className="form-actions">
-                <button
-                  className="submit-button"
-                  type="submit"
-                  id="submitBtn"
-                >
+                <button className="submit-button" type="submit" id="submitBtn">
                   <span id="submitLabel">建立帳號</span>
-                  <span aria-hidden="true">→</span>
+                  <span>→</span>
                 </button>
                 <button
                   className="reset-button"
@@ -260,20 +313,14 @@ export default function RegisterPage() {
                 </button>
               </div>
             </fieldset>
-            <p
-              className="form-result"
-              id="result"
-              role="status"
-              aria-live="polite"
-              hidden={!resultMessage}
-            >
+            <p className="form-result" id="result" hidden={!resultMessage}>
               {resultMessage}
             </p>
           </form>
           <p className="login-prompt">
             已經有帳號了？{" "}
-            <a href="./login.html">
-              前往登入 <span aria-hidden="true">↗</span>
+            <a href="/login">
+              前往登入 <span>↗</span>
             </a>
           </p>
         </section>
