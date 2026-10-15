@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link, useParams, useSearchParams } from 'react-router-dom';
-import { getProduct } from '../services/productApi.js';
-import { styleLabel } from '../components/ProductCard.jsx';
+import { getProduct } from '../../services/productApi.js';
+import { styleLabel } from '../../components/ProductCard.jsx';
 
 export default function ProductDetail() {
   const { id } = useParams();
@@ -9,6 +9,8 @@ export default function ProductDetail() {
   const [product, setProduct] = useState(null);
   const [error, setError] = useState('');
   const [variantId, setVariantId] = useState(searchParams.get('variantId') ?? '');
+  const [selectedBrand, setSelectedBrand] = useState('');
+  const [modelKeyword, setModelKeyword] = useState('');
   const [imageIndex, setImageIndex] = useState(0);
 
   useEffect(() => {
@@ -17,12 +19,17 @@ export default function ProductDetail() {
 
   const variants = product?.variants ?? [];
   const selectedVariant = variants.find(item => String(item.id) === String(variantId)) ?? variants[0];
+  const brands = [...new Set(variants.map(item => item.brand).filter(Boolean))];
+  const brandVariants = variants.filter(item => item.brand === selectedBrand);
+  const modelVariants = [...new Map(brandVariants.map(item => [item.model, item])).values()]
+    .filter(item => item.model.toLowerCase().includes(modelKeyword.toLowerCase()));
   const images = selectedVariant?.images ?? [];
   const selectedImage = images[imageIndex] ?? images[0];
 
   useEffect(() => {
     if (selectedVariant) {
       setVariantId(String(selectedVariant.id));
+      setSelectedBrand(selectedVariant.brand);
       setImageIndex(0);
     }
   }, [selectedVariant?.id]);
@@ -54,10 +61,25 @@ export default function ProductDetail() {
           <h1>{styleLabel(product.name)}</h1>
           <p className="detail-description">{product.description}</p>
           <div className="detail-info">
-            <label htmlFor="variantSelect"><strong>選擇手機型號</strong></label>
-            <select id="variantSelect" value={selectedVariant.id} onChange={event => { setVariantId(event.target.value); setImageIndex(0); }}>
-              {variants.map(variant => <option key={variant.id} value={variant.id}>{variant.brand} {variant.model}｜{variant.color}</option>)}
-            </select>
+            <div className="device-choice">
+              <strong>選擇手機品牌</strong>
+              <div className="detail-brand-buttons" role="group" aria-label="選擇手機品牌">
+                {brands.map(brand => <button key={brand} type="button" className={`detail-brand-button ${selectedBrand === brand ? 'is-selected' : ''}`} onClick={() => {
+                  const firstVariant = variants.find(item => item.brand === brand);
+                  setSelectedBrand(brand);
+                  if (firstVariant) setVariantId(String(firstVariant.id));
+                  setImageIndex(0);
+                }}>{brand}</button>)}
+              </div>
+            </div>
+            <div className="device-choice">
+              <strong>選擇手機型號</strong>
+              <input className="model-search" value={modelKeyword} onChange={event => setModelKeyword(event.target.value)} placeholder="搜尋手機型號，例如 Pro、S26" aria-label="搜尋手機型號" />
+              <div className="detail-model-list" role="group" aria-label="選擇手機型號">
+                {modelVariants.map(variant => <button key={variant.id} type="button" className={`detail-model-button ${String(selectedVariant.id) === String(variant.id) ? 'is-selected' : ''}`} onClick={() => { setVariantId(String(variant.id)); setImageIndex(0); }}>{variant.model}</button>)}
+                {modelVariants.length === 0 && <span className="model-empty">找不到符合的手機型號</span>}
+              </div>
+            </div>
             <div className="detail-price-row"><strong>價格</strong><span>NT$ {Number(selectedVariant.price).toLocaleString()}</span></div>
             <div><strong>顏色</strong><span>{selectedVariant.color}</span></div>
           </div>
