@@ -8,5 +8,6 @@
             "directory": "frontend",
             "changeProcessCWD": true
         }
-    ]
+    ],
+    "java.configuration.updateBuildConfiguration": "interactive"
 }
