@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
-import ProductCard, { styleLabels, styleLabel } from '../components/ProductCard.jsx';
-import { getProducts } from '../services/productApi.js';
+import ProductCard, { styleLabels, styleLabel } from '../../components/ProductCard.jsx';
+import { getProducts } from '../../services/productApi.js';
 
 const styles = ['', ...Object.keys(styleLabels)];
 
