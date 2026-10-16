@@ -2,6 +2,9 @@ import { Link, Route, Routes } from 'react-router-dom';
 import ProductList from './pages/products/ProductList.jsx';
 import ProductDetail from './pages/products/ProductDetail.jsx';
 import AdminProducts from './pages/products/AdminProducts.jsx';
+import RegisterPage from "./pages/member/RegisterPage";
+import LoginPage from "./pages/member/LoginPage";
+import ProfilePage from "./pages/member/ProfilePage";
 
 function Header() {
   return (
@@ -25,6 +28,9 @@ export default function App() {
         <Route path="/admin" element={<AdminProducts />} />
         <Route path="/products/:id" element={<ProductDetail />} />
         <Route path="*" element={<ProductList />} />
+        <Route path="/register" element={<RegisterPage />} />
+        <Route path="/login" element={<LoginPage />} />
+        <Route path="/profile" element={<ProfilePage />} />
       </Routes>
     </>
   );
