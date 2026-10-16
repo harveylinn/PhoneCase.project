@@ -1,8 +1,8 @@
-package com.example.phonecase.service;
+package com.phonecase.backend.service;
 
-import com.example.phonecase.dto.ProductRequest;
-import com.example.phonecase.entity.Product;
-import com.example.phonecase.repository.ProductRepository;
+import com.phonecase.backend.dto.ProductRequest;
+import com.phonecase.backend.entity.Product;
+import com.phonecase.backend.repository.ProductRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.server.ResponseStatusException;

@@ -1,6 +1,6 @@
-package com.example.phonecase.repository;
+package com.phonecase.backend.repository;
 
-import com.example.phonecase.entity.ProductImage;
+import com.phonecase.backend.entity.ProductImage;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 import java.util.List;

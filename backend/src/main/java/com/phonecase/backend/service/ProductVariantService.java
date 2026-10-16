@@ -1,12 +1,12 @@
-package com.example.phonecase.service;
+package com.phonecase.backend.service;
 
-import com.example.phonecase.dto.ProductVariantRequest;
-import com.example.phonecase.entity.ProductVariant;
-import com.example.phonecase.repository.ProductRepository;
-import com.example.phonecase.repository.ProductVariantRepository;
+import com.phonecase.backend.dto.ProductVariantRequest;
+import com.phonecase.backend.entity.ProductVariant;
+import com.phonecase.backend.repository.ProductRepository;
+import com.phonecase.backend.repository.ProductVariantRepository;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
-import com.example.phonecase.entity.Product;
+import com.phonecase.backend.entity.Product;
 import org.springframework.web.server.ResponseStatusException;
 
 @Service

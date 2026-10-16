@@ -1,5 +1,5 @@
 
-package com.example.phonecase.config;
+package com.phonecase.backend.config;
 
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Configuration;
