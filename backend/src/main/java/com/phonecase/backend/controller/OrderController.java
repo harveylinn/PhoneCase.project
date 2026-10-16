@@ -3,6 +3,7 @@ package com.phonecase.backend.controller;
 import com.phonecase.backend.dto.CreateOrderRequest;
 import com.phonecase.backend.order.entity.OrderEntity;
 import com.phonecase.backend.order.service.OrderService;
+import com.phonecase.backend.order.service.OrderQueryService;
 
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpSession;
@@ -11,6 +12,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.server.ResponseStatusException;
 
+import java.util.List;
 import java.util.Map;
 
 @RestController
@@ -22,31 +24,31 @@ import java.util.Map;
 public class OrderController {
 
     private final OrderService orderService;
+    private final OrderQueryService orderQueryService;
 
-    public OrderController(OrderService orderService) {
+    public OrderController(
+            OrderService orderService,
+            OrderQueryService orderQueryService
+    ) {
         this.orderService = orderService;
+        this.orderQueryService = orderQueryService;
     }
 
-    // =========================================
-    // 保留原本的測試 API
-    // =========================================
+    // =====================================
+    // 1. 原本的測試 API
+    // =====================================
 
     @GetMapping("/test")
     public String test() {
         return "訂單 API 測試成功";
     }
 
-    // =========================================
-    // 建立訂單
-    // =========================================
+    // =====================================
+    // 2. 從 Session 取得會員 ID
+    // =====================================
 
-    @PostMapping
-    public Map<String, Object> createOrder(
-            @RequestBody CreateOrderRequest orderData,
-            HttpServletRequest request
-    ) {
+    private Long getMemberId(HttpServletRequest request) {
 
-        // 從登入 Session 取得會員 ID
         HttpSession session = request.getSession(false);
 
         if (session == null) {
@@ -56,22 +58,34 @@ public class OrderController {
             );
         }
 
-        Object memberIdValue = session.getAttribute("memberId");
+        Object value = session.getAttribute("memberId");
 
-        if (!(memberIdValue instanceof Number)) {
+        if (!(value instanceof Number)) {
             throw new ResponseStatusException(
                     HttpStatus.UNAUTHORIZED,
                     "找不到會員登入資訊"
             );
         }
 
-        Long memberId = ((Number) memberIdValue).longValue();
+        return ((Number) value).longValue();
+    }
 
-        // 呼叫 Service，真正儲存到資料庫
+    // =====================================
+    // 3. 建立訂單
+    // POST /api/orders
+    // =====================================
+
+    @PostMapping
+    public Map<String, Object> createOrder(
+            @RequestBody CreateOrderRequest orderData,
+            HttpServletRequest request
+    ) {
+
+        Long memberId = getMemberId(request);
+
         OrderEntity savedOrder =
                 orderService.createOrder(orderData, memberId);
 
-        // 回傳建立成功的訂單資訊
         return Map.of(
                 "success", true,
                 "message", "訂單建立成功",
@@ -82,4 +96,42 @@ public class OrderController {
         );
     }
 
+    // =====================================
+    // 4. 查詢我的訂單（新增）
+    // GET /api/orders
+    // =====================================
+
+    @GetMapping
+    public List<OrderQueryService.OrderView> getOrders(
+            HttpServletRequest request
+    ) {
+
+        Long memberId = getMemberId(request);
+
+        return orderQueryService.getOrders(memberId);
+    }
+
+    // =====================================
+    // 5. 取消訂單（新增）
+    // POST /api/orders/{orderNumber}/cancel
+    // =====================================
+
+    @PostMapping("/{orderNumber}/cancel")
+    public Map<String, Object> cancelOrder(
+            @PathVariable String orderNumber,
+            HttpServletRequest request
+    ) {
+
+        Long memberId = getMemberId(request);
+
+        orderQueryService.cancelOrder(
+                orderNumber,
+                memberId
+        );
+
+        return Map.of(
+                "success", true,
+                "message", "訂單已取消"
+        );
+    }
 }

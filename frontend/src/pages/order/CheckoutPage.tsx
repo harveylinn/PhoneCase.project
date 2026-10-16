@@ -1,23 +1,20 @@
 import { useEffect, useRef, useState } from 'react'
-import type { Order } from './OrderListPage'
+import type { Order, OrderStatus } from './OrderListPage'
+import { createOrder } from '../../api/orderApi'
 import './CheckoutPage.css'
 
 // ========================================
-// 1. 綠界物流設定
+// 綠界物流設定
 // ========================================
 
-// Spring Boot 選店 API
 const ECPAY_MAP_URL =
   'http://localhost:8080/api/logistics/ecpay/map'
 
-// Cloudflare HTTPS 網址
 const ECPAY_CALLBACK_ORIGIN =
   'https://warner-greene-smooth-correct.trycloudflare.com'
 
-// 超商品牌
 type StoreChain = 'UNIMART' | 'FAMI'
 
-// 綠界回傳的門市資料
 type SelectedStore = {
   id: string
   name: string
@@ -25,15 +22,40 @@ type SelectedStore = {
   chain: StoreChain
 }
 
-// App.tsx 傳入的功能
 type Props = {
   onCreateOrder: (order: Order) => void
+}
+
+// ========================================
+// 將後端訂單狀態轉成中文
+// ========================================
+
+function convertOrderStatus(status: string): OrderStatus {
+  switch (status) {
+    case 'PENDING_PAYMENT':
+      return '待付款'
+
+    case 'PENDING_SHIPMENT':
+      return '待出貨'
+
+    case 'SHIPPED':
+      return '已出貨'
+
+    case 'COMPLETED':
+      return '已完成'
+
+    case 'CANCELLED':
+      return '已取消'
+
+    default:
+      return '待付款'
+  }
 }
 
 function CheckoutPage({ onCreateOrder }: Props) {
 
   // ========================================
-  // 2. 收件人資料
+  // 收件人資料
   // ========================================
 
   const [receiverName, setReceiverName] = useState('')
@@ -41,7 +63,7 @@ function CheckoutPage({ onCreateOrder }: Props) {
   const [receiverAddress, setReceiverAddress] = useState('')
 
   // ========================================
-  // 3. 配送與付款方式
+  // 配送與付款
   // ========================================
 
   const [shippingMethod, setShippingMethod] =
@@ -51,7 +73,7 @@ function CheckoutPage({ onCreateOrder }: Props) {
     useState<'CREDIT_CARD' | 'COD'>('CREDIT_CARD')
 
   // ========================================
-  // 4. 商品資料
+  // 測試商品
   // ========================================
 
   const [quantity, setQuantity] = useState(2)
@@ -60,32 +82,32 @@ function CheckoutPage({ onCreateOrder }: Props) {
   const productModel = 'iPhone 17 Pro'
   const productPrice = 590
 
-  // 商品小計
   const productSubtotal = productPrice * quantity
 
-  // 運費
   const shippingFee = shippingMethod === 'HOME' ? 80 : 60
 
-  // 訂單總金額
   const grandTotal = productSubtotal + shippingFee
 
   // ========================================
-  // 5. 綠界超商選店
+  // 綠界超商選店
   // ========================================
 
-  // 目前選擇的超商品牌
   const [storeChain, setStoreChain] =
     useState<StoreChain>('UNIMART')
 
-  // 已選擇的超商門市
   const [selectedStore, setSelectedStore] =
     useState<SelectedStore | null>(null)
 
-  // 記錄選店視窗
   const storePopupRef = useRef<Window | null>(null)
 
   // ========================================
-  // 6. 開啟綠界選店頁面
+  // 新增：是否正在建立訂單
+  // ========================================
+
+  const [isSubmitting, setIsSubmitting] = useState(false)
+
+  // ========================================
+  // 開啟綠界超商地圖
   // ========================================
 
   function openEcpayStoreMap() {
@@ -109,35 +131,29 @@ function CheckoutPage({ onCreateOrder }: Props) {
   }
 
   // ========================================
-  // 7. 接收綠界回傳的門市資料
+  // 接收綠界選店結果
   // ========================================
 
   useEffect(() => {
 
     function handleStoreMessage(event: MessageEvent) {
 
-      // 檢查訊息來源
       if (event.origin !== ECPAY_CALLBACK_ORIGIN) {
         return
       }
 
-      // 檢查是否為選店視窗
       if (event.source !== storePopupRef.current) {
         return
       }
 
       const data = event.data
 
-      if (
-        !data ||
-        data.type !== 'ECPAY_STORE_SELECTED'
-      ) {
+      if (!data || data.type !== 'ECPAY_STORE_SELECTED') {
         return
       }
 
       const store = data.store
 
-      // 檢查門市資料
       if (
         !store ||
         typeof store.id !== 'string' ||
@@ -149,7 +165,6 @@ function CheckoutPage({ onCreateOrder }: Props) {
         return
       }
 
-      // 判斷超商品牌
       const chain: StoreChain =
         store.chain === 'FAMI'
           ? 'FAMI'
@@ -157,7 +172,6 @@ function CheckoutPage({ onCreateOrder }: Props) {
             ? 'UNIMART'
             : storeChain
 
-      // 儲存門市資料
       setSelectedStore({
         id: store.id,
         name: store.name,
@@ -181,24 +195,29 @@ function CheckoutPage({ onCreateOrder }: Props) {
   }, [storeChain])
 
   // ========================================
-  // 8. 建立測試訂單
+  // 建立訂單：真正呼叫 Spring Boot
   // ========================================
 
-  function handleConfirmOrder() {
+  async function handleConfirmOrder() {
 
-    // 檢查收件人姓名
+    // 防止重複點擊
+    if (isSubmitting) {
+      return
+    }
+
+    // 1. 檢查收件人姓名
     if (!receiverName.trim()) {
       alert('請輸入收件人姓名')
       return
     }
 
-    // 檢查手機號碼
+    // 2. 檢查電話
     if (!receiverPhone.trim()) {
       alert('請輸入聯絡電話')
       return
     }
 
-    // 宅配需要填寫地址
+    // 3. 宅配檢查地址
     if (
       shippingMethod === 'HOME' &&
       !receiverAddress.trim()
@@ -207,7 +226,7 @@ function CheckoutPage({ onCreateOrder }: Props) {
       return
     }
 
-    // 超商取貨需要選擇門市
+    // 4. 超商取貨檢查門市
     if (
       shippingMethod === 'CVS' &&
       !selectedStore
@@ -217,91 +236,163 @@ function CheckoutPage({ onCreateOrder }: Props) {
     }
 
     // ========================================
-    // 9. 組合訂單資料
+    // 5. 準備送給 Java 後端的資料
     // ========================================
 
-    const newOrder: Order = {
+    const orderData = {
 
-      // 訂單基本資料
-      id: `ORD-${Date.now()}`,
-
-      date: new Date().toLocaleDateString('sv-SE'),
-
-      // 商品資料
-      productName,
-
-      model: productModel,
-
-      quantity,
-
-      total: grandTotal,
-
-      shippingFee,
-
-      // 訂單狀態
-      status:
-        paymentMethod === 'CREDIT_CARD'
-          ? '待付款'
-          : '待出貨',
-
-      // 收件人資料
       receiverName: receiverName.trim(),
 
       receiverPhone: receiverPhone.trim(),
 
-      // 宅配地址
       receiverAddress:
         shippingMethod === 'HOME'
           ? receiverAddress.trim()
-          : undefined,
+          : '',
 
-      // 配送方式
       shippingMethod,
 
-      // 付款方式
       paymentMethod,
 
-      // ========================================
-      // 新增：綠界超商門市資料
-      // ========================================
-
-      // 超商品牌：UNIMART / FAMI
+      // 超商門市資料
       storeChain:
         shippingMethod === 'CVS'
           ? selectedStore?.chain
           : undefined,
 
-      // 門市代碼
-      storeId:
+      storeCode:
         shippingMethod === 'CVS'
           ? selectedStore?.id
           : undefined,
 
-      // 門市名稱
       storeName:
         shippingMethod === 'CVS'
           ? selectedStore?.name
           : undefined,
 
-      // 門市地址
       storeLocation:
         shippingMethod === 'CVS'
           ? selectedStore?.address
-          : undefined
+          : undefined,
+
+      // 商品明細
+      items: [
+        {
+          productName,
+          modelName: productModel,
+          color: '透明',
+          quantity
+        }
+      ]
 
     }
 
     // ========================================
-    // 10. 將訂單傳給 App.tsx
+    // 6. 呼叫 Spring Boot API
     // ========================================
 
-    onCreateOrder(newOrder)
+    setIsSubmitting(true)
 
-    alert('測試訂單建立成功！')
+    try {
+
+      const result = await createOrder(orderData)
+
+      // 後端必須真的回傳建立成功
+      if (!result.success) {
+        throw new Error(result.message || '訂單建立失敗')
+      }
+
+      // ========================================
+      // 7. 使用後端回傳的訂單資料
+      // ========================================
+
+      const newOrder: Order = {
+
+        // 使用 MySQL 訂單編號，不再使用前端時間戳
+        id: result.orderNumber,
+
+        date: new Date().toLocaleDateString('sv-SE'),
+
+        productName,
+
+        model: productModel,
+
+        quantity,
+
+        // 使用後端計算的真正金額
+        total: result.totalAmount,
+
+        shippingFee,
+
+        // 使用後端回傳的狀態
+        status: convertOrderStatus(result.status),
+
+        receiverName: receiverName.trim(),
+
+        receiverPhone: receiverPhone.trim(),
+
+        receiverAddress:
+          shippingMethod === 'HOME'
+            ? receiverAddress.trim()
+            : undefined,
+
+        shippingMethod,
+
+        paymentMethod,
+
+        storeChain:
+          shippingMethod === 'CVS'
+            ? selectedStore?.chain
+            : undefined,
+
+        storeId:
+          shippingMethod === 'CVS'
+            ? selectedStore?.id
+            : undefined,
+
+        storeName:
+          shippingMethod === 'CVS'
+            ? selectedStore?.name
+            : undefined,
+
+        storeLocation:
+          shippingMethod === 'CVS'
+            ? selectedStore?.address
+            : undefined
+
+      }
+
+      // ========================================
+      // 8. 更新 React 畫面
+      // ========================================
+
+      onCreateOrder(newOrder)
+
+      alert(
+        `訂單建立成功！\n` +
+        `訂單編號：${result.orderNumber}\n` +
+        `訂單金額：NT$ ${result.totalAmount}`
+      )
+
+    } catch (error) {
+
+      console.error('建立訂單失敗：', error)
+
+      if (error instanceof Error) {
+        alert(error.message)
+      } else {
+        alert('建立訂單失敗，請稍後再試')
+      }
+
+    } finally {
+
+      setIsSubmitting(false)
+
+    }
   }
 
   // ========================================
-  // 11. React 畫面
+  // React 結帳頁面
   // ========================================
 
   return (
@@ -312,9 +403,7 @@ function CheckoutPage({ onCreateOrder }: Props) {
 
       <hr />
 
-      {/* ================================= */}
       {/* 商品資訊 */}
-      {/* ================================= */}
 
       <h2>商品資訊</h2>
 
@@ -340,7 +429,7 @@ function CheckoutPage({ onCreateOrder }: Props) {
 
             <button
               type="button"
-              disabled={quantity <= 1}
+              disabled={quantity <= 1 || isSubmitting}
               onClick={() => setQuantity(quantity - 1)}
             >
               －
@@ -352,6 +441,7 @@ function CheckoutPage({ onCreateOrder }: Props) {
 
             <button
               type="button"
+              disabled={isSubmitting}
               onClick={() => setQuantity(quantity + 1)}
             >
               ＋
@@ -369,9 +459,7 @@ function CheckoutPage({ onCreateOrder }: Props) {
 
       <hr />
 
-      {/* ================================= */}
       {/* 收件人資料 */}
-      {/* ================================= */}
 
       <h2>收件人資料</h2>
 
@@ -395,9 +483,7 @@ function CheckoutPage({ onCreateOrder }: Props) {
 
       <hr />
 
-      {/* ================================= */}
       {/* 配送方式 */}
-      {/* ================================= */}
 
       <h2>配送方式</h2>
 
@@ -433,9 +519,7 @@ function CheckoutPage({ onCreateOrder }: Props) {
       <br />
       <br />
 
-      {/* ================================= */}
       {/* 宅配地址 */}
-      {/* ================================= */}
 
       {shippingMethod === 'HOME' && (
 
@@ -454,9 +538,7 @@ function CheckoutPage({ onCreateOrder }: Props) {
 
       )}
 
-      {/* ================================= */}
       {/* 綠界超商取貨 */}
-      {/* ================================= */}
 
       {shippingMethod === 'CVS' && (
 
@@ -473,8 +555,6 @@ function CheckoutPage({ onCreateOrder }: Props) {
           <p style={{ color: '#888', fontSize: '13px' }}>
             綠界物流測試環境
           </p>
-
-          {/* 選擇超商品牌 */}
 
           <h4>選擇超商品牌</h4>
 
@@ -512,8 +592,6 @@ function CheckoutPage({ onCreateOrder }: Props) {
 
           <br />
           <br />
-
-          {/* 顯示已選門市 */}
 
           {selectedStore ? (
 
@@ -555,11 +633,10 @@ function CheckoutPage({ onCreateOrder }: Props) {
 
           )}
 
-          {/* 開啟綠界選店 */}
-
           <button
             type="button"
             onClick={openEcpayStoreMap}
+            disabled={isSubmitting}
             style={{
               padding: '12px 24px',
               background: '#198754',
@@ -582,9 +659,7 @@ function CheckoutPage({ onCreateOrder }: Props) {
 
       <hr />
 
-      {/* ================================= */}
       {/* 付款方式 */}
-      {/* ================================= */}
 
       <h2>付款方式</h2>
 
@@ -621,9 +696,7 @@ function CheckoutPage({ onCreateOrder }: Props) {
 
       <hr />
 
-      {/* ================================= */}
       {/* 訂單金額 */}
-      {/* ================================= */}
 
       <h2>訂單金額</h2>
 
@@ -661,21 +734,23 @@ function CheckoutPage({ onCreateOrder }: Props) {
 
       </div>
 
-      {/* ================================= */}
-      {/* 建立訂單按鈕 */}
-      {/* ================================= */}
+      {/* 建立訂單 */}
 
       <button
         type="button"
         onClick={handleConfirmOrder}
+        disabled={isSubmitting}
         style={{
           width: '100%',
           padding: '16px',
-          fontSize: '18px'
+          fontSize: '18px',
+          cursor: isSubmitting ? 'not-allowed' : 'pointer'
         }}
       >
 
-        建立測試訂單
+        {isSubmitting
+          ? '訂單建立中，請稍候...'
+          : '建立測試訂單'}
 
       </button>
 

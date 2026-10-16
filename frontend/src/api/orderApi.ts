@@ -1,5 +1,7 @@
+import type { Order } from '../pages/order/OrderListPage'
+
 // ========================================
-// 1. 訂單商品資料
+// 1. 商品資料
 // ========================================
 
 export type OrderItemRequest = {
@@ -10,34 +12,27 @@ export type OrderItemRequest = {
 }
 
 // ========================================
-// 2. 建立訂單需要的資料
+// 2. 建立訂單的資料格式
 // ========================================
 
 export type CreateOrderRequest = {
-
-  // 收件人資料
   receiverName: string
   receiverPhone: string
   receiverAddress: string
 
-  // 配送方式
   shippingMethod: 'HOME' | 'CVS'
-
-  // 付款方式
   paymentMethod: 'CREDIT_CARD' | 'COD'
 
-  // 綠界超商門市
   storeChain?: 'UNIMART' | 'FAMI'
   storeCode?: string
   storeName?: string
   storeLocation?: string
 
-  // 訂單商品
   items: OrderItemRequest[]
 }
 
 // ========================================
-// 3. 後端建立訂單成功的回傳資料
+// 3. 建立訂單的回傳格式
 // ========================================
 
 export type CreateOrderResponse = {
@@ -50,55 +45,100 @@ export type CreateOrderResponse = {
 }
 
 // ========================================
-// 4. 呼叫 Spring Boot 建立訂單
+// 4. API 網址
+// ========================================
+
+const API_URL = 'http://localhost:8080/api/orders'
+
+// ========================================
+// 5. 建立訂單
 // ========================================
 
 export async function createOrder(
   orderData: CreateOrderRequest
 ): Promise<CreateOrderResponse> {
 
-  const response = await fetch(
-    'http://localhost:8080/api/orders',
-    {
-      method: 'POST',
+  const response = await fetch(API_URL, {
+    method: 'POST',
 
-      headers: {
-        'Content-Type': 'application/json'
-      },
+    headers: {
+      'Content-Type': 'application/json'
+    },
 
-      // 傳送會員登入的 Session Cookie
-      credentials: 'include',
+    credentials: 'include',
 
-      // 將訂單轉成 JSON
-      body: JSON.stringify(orderData)
-    }
-  )
-
-  // ========================================
-  // 5. 處理錯誤
-  // ========================================
+    body: JSON.stringify(orderData)
+  })
 
   if (!response.ok) {
 
     if (response.status === 401) {
-      throw new Error('請先登入會員，才能建立訂單')
-    }
-
-    if (response.status === 400) {
-      throw new Error('訂單資料有誤，請檢查填寫內容')
+      throw new Error('請先登入會員')
     }
 
     throw new Error(
-      `建立訂單失敗，HTTP 狀態碼：${response.status}`
+      `建立訂單失敗：HTTP ${response.status}`
     )
   }
 
-  // ========================================
-  // 6. 回傳後端建立成功的訂單
-  // ========================================
+  return response.json()
+}
 
-  const result: CreateOrderResponse =
-    await response.json()
+// ========================================
+// 6. 查詢我的訂單（新增）
+// ========================================
 
-  return result
+export async function getOrders(): Promise<Order[]> {
+
+  const response = await fetch(API_URL, {
+    method: 'GET',
+
+    credentials: 'include'
+  })
+
+  if (!response.ok) {
+
+    if (response.status === 401) {
+      throw new Error('請先使用測試會員登入')
+    }
+
+    throw new Error(
+      `查詢訂單失敗：HTTP ${response.status}`
+    )
+  }
+
+  return response.json()
+}
+
+// ========================================
+// 7. 取消訂單（新增）
+// ========================================
+
+export async function cancelOrder(
+  orderNumber: string
+): Promise<void> {
+
+  const response = await fetch(
+    `${API_URL}/${encodeURIComponent(orderNumber)}/cancel`,
+    {
+      method: 'POST',
+
+      credentials: 'include'
+    }
+  )
+
+  if (!response.ok) {
+
+    if (response.status === 401) {
+      throw new Error('請先登入會員')
+    }
+
+    if (response.status === 400) {
+      throw new Error('這筆訂單目前無法取消')
+    }
+
+    throw new Error(
+      `取消訂單失敗：HTTP ${response.status}`
+    )
+  }
 }
