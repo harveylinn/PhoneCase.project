@@ -16,6 +16,7 @@ export default function RegisterPage() {
   const [nameError, setNameError] = useState("");
   const [telError, setTelError] = useState("");
   const [emailError, setEmailError] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   function handleClear() {
     setAccount("");
@@ -34,8 +35,12 @@ export default function RegisterPage() {
     setEmailError("");
   }
 
-  function handleSubmit(event: SubmitEvent<HTMLFormElement>) {
+  async function handleSubmit(event: SubmitEvent<HTMLFormElement>) {
     event.preventDefault();
+
+    if (isSubmitting) {
+      return;
+    }
     setResultMessage("");
     //欄位資料驗證
     const trimmedAccount = account.trim();
@@ -103,7 +108,34 @@ export default function RegisterPage() {
       email: trimmedEmail,
     };
 
-    setResultMessage("驗證通過，註冊資料已準備完成，尚未送出。");
+    setIsSubmitting(true);
+
+    try {
+      const response = await fetch("/api/member/register", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(registerData),
+      });
+
+      if (!response.ok) {
+        setResultMessage(`請求失敗，HTTP狀態碼：${response.status}`);
+        return;
+      }
+
+      const data = await response.json();
+
+      if (data.success === true) {
+        setResultMessage(data.message ?? "後端已收到資料。");
+      } else {
+        setResultMessage(data.message ?? "後端未能完成請求。");
+      }
+    } catch {
+      setResultMessage("無法完成請求，請確認後端已啟動及回應格式正確");
+    } finally {
+      setIsSubmitting(false);
+    }
   }
 
   return (
@@ -132,7 +164,7 @@ export default function RegisterPage() {
             歡迎加入！請填寫以下資料，所有欄位皆為必填。
           </p>
           <form id="registerForm" onSubmit={handleSubmit} noValidate>
-            <fieldset id="registerFields">
+            <fieldset id="registerFields" disabled={isSubmitting}>
               <legend className="sr-only">會員註冊資料</legend>
               <div className="form-grid">
                 <div className="form-group full-width">
@@ -301,7 +333,9 @@ export default function RegisterPage() {
               </div>
               <div className="form-actions">
                 <button className="submit-button" type="submit" id="submitBtn">
-                  <span id="submitLabel">建立帳號</span>
+                  <span id="submitLabel">
+                    {isSubmitting ? "送出中" : "建立帳號"}
+                  </span>
                   <span>→</span>
                 </button>
                 <button
