@@ -1,8 +1,8 @@
-package com.example.phonecase.controller;
+package com.phonecase.backend.controller;
 
-import com.example.phonecase.dto.ProductVariantRequest;
-import com.example.phonecase.entity.ProductVariant;
-import com.example.phonecase.service.ProductVariantService;
+import com.phonecase.backend.dto.ProductVariantRequest;
+import com.phonecase.backend.entity.ProductVariant;
+import com.phonecase.backend.service.ProductVariantService;
 import jakarta.validation.Valid;
 import org.springframework.web.bind.annotation.*;
 

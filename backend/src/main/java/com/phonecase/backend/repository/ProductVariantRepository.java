@@ -1,6 +1,6 @@
-package com.example.phonecase.repository;
+package com.phonecase.backend.repository;
 
-import com.example.phonecase.entity.ProductVariant;
+import com.phonecase.backend.entity.ProductVariant;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 public interface ProductVariantRepository

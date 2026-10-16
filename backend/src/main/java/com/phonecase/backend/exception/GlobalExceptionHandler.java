@@ -1,4 +1,4 @@
-package com.example.phonecase.exception;
+package com.phonecase.backend.exception;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.MethodArgumentNotValidException;

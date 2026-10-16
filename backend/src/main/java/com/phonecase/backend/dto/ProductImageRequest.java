@@ -1,4 +1,4 @@
-package com.example.phonecase.dto;
+package com.phonecase.backend.dto;
 
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;

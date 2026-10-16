@@ -1,5 +1,5 @@
 
-package com.example.phonecase.entity;
+package com.phonecase.backend.entity;
 
 import jakarta.persistence.*;
 import com.fasterxml.jackson.annotation.JsonManagedReference;

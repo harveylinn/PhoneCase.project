@@ -1,6 +1,6 @@
-package com.example.phonecase.repository;
+package com.phonecase.backend.repository;
 
-import com.example.phonecase.entity.Product;
+import com.phonecase.backend.entity.Product;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.Query;

@@ -1,4 +1,4 @@
-package com.example.phonecase.dto;
+package com.phonecase.backend.dto;
 
 import lombok.Getter;
 import lombok.Setter;
