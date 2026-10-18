@@ -3,6 +3,9 @@ import ProductList from './pages/products/ProductList.jsx';
 import ProductDetail from './pages/products/ProductDetail.jsx';
 import AdminProducts from './pages/products/AdminProducts.jsx';
 import CartPage from './pages/cart/CartPage';
+import RegisterPage from './pages/member/RegisterPage';
+import LoginPage from './pages/member/LoginPage';
+import ProfilePage from './pages/member/ProfilePage';
 
 function Header() {
   return (
@@ -23,11 +26,15 @@ export default function App() {
     <>
       <Header />
       <Routes>
-        <Route path="/admin" element={<AdminProducts />} />
+        <Route path="/" element={<ProductList />} />
         <Route path="/products/:id" element={<ProductDetail />} />
-        <Route path="*" element={<ProductList />} />
+        <Route path="/admin" element={<AdminProducts />} />
 
         <Route path="/cart" element={<CartPage />} />
+
+        <Route path="/register" element={<RegisterPage />} />
+        <Route path="/login" element={<LoginPage />} />
+        <Route path="/profile" element={<ProfilePage />} />
 
         <Route path="*" element={<ProductList />} />
       </Routes>

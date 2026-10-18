@@ -2,6 +2,8 @@ import { useEffect, useMemo, useState } from 'react';
 import { Link, useParams, useSearchParams } from 'react-router-dom';
 import { getProduct } from '../../services/productApi.js';
 import { styleLabel } from '../../components/ProductCard.jsx';
+// 匯入組員寫好的購物車共用函式
+import { addToGuestCart } from '../../utils/cartStorage';
 
 export default function ProductDetail() {
   const { id } = useParams();
@@ -25,6 +27,56 @@ export default function ProductDetail() {
     .filter(item => item.model.toLowerCase().includes(modelKeyword.toLowerCase()));
   const images = selectedVariant?.images ?? [];
   const selectedImage = images[imageIndex] ?? images[0];
+
+  // 將使用者目前選擇的商品加入購物車
+  const addToCart = () => {
+
+    // 先確認商品資料與規格都有成功載入
+    if (!product || !selectedVariant) {
+      alert('請先選擇商品規格');
+      return;
+    }
+
+    // 從 API 資料取得規格 ID 和價格
+    const currentVariantId = Number(selectedVariant.id);
+    const currentPrice = Number(selectedVariant.price);
+
+    // 避免錯誤的規格 ID 或價格被加入購物車
+    if (
+        !Number.isSafeInteger(currentVariantId) ||
+        currentVariantId <= 0 ||
+        !Number.isFinite(currentPrice) ||
+        currentPrice < 0
+    ) {
+      alert('商品資料異常，無法加入購物車');
+      return;
+    }
+
+    // 呼叫組員寫好的 addToGuestCart
+    // 這裡的資料都來自商品 API，不是寫死的
+    try {
+      addToGuestCart({
+        variantId: currentVariantId,
+        name: product.name,
+        brand: selectedVariant.brand,
+        model: selectedVariant.model,
+        color: selectedVariant.color,
+        price: currentPrice,
+
+        // 取得目前所選規格的第一張圖片
+        imageUrl: selectedVariant.images?.[0]?.imageUrl ?? ''
+      });
+
+      // 成功呼叫購物車函式後顯示提示
+      alert('已加入購物車');
+
+    } catch (error) {
+      // 發生儲存錯誤時，提示使用者
+      console.error('加入購物車失敗：', error);
+      alert('加入購物車失敗，請稍後再試');
+    }
+  };
+
 
   useEffect(() => {
     if (selectedVariant) {
@@ -85,6 +137,13 @@ export default function ProductDetail() {
           </div>
           <div className="detail-benefits"><div><strong>日常防護</strong><span>安心保護手機外觀</span></div><div><strong>精準開孔</strong><span>貼合手機按鍵與鏡頭</span></div><div><strong>舒適手感</strong><span>適合長時間使用</span></div></div>
           <div className="detail-note"><strong>商品提醒</strong><p>圖片為商品款式示意，實際規格依所選手機型號與顏色為準。</p></div>
+          <button
+              type="button"
+              className="button button-primary"
+              onClick={addToCart}
+          >
+            加入購物車
+          </button>
           <Link className="button button-outline" to="/">返回商品列表</Link>
         </section>
       </article>
