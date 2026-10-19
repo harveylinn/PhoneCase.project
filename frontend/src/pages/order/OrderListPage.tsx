@@ -477,6 +477,33 @@ function OrderListPage({
             >
               查看訂單明細
             </button>
+            {/* 信用卡訂單：前往綠界付款 */}
+
+{order.paymentMethod === 'CREDIT_CARD' &&
+  order.status === '待付款' && (
+
+    <button
+      type="button"
+      onClick={() => {
+        window.open(
+          `http://localhost:8080/api/payment/ecpay/order/${encodeURIComponent(order.id)}`,
+          '_blank',
+          'noopener,noreferrer'
+        )
+      }}
+      style={{
+        padding: '10px 20px',
+        border: 'none',
+        borderRadius: '8px',
+        background: '#198754',
+        color: 'white',
+        cursor: 'pointer'
+      }}
+    >
+      💳 前往綠界付款
+    </button>
+
+)}
 
             {(order.status === '待付款' ||
               order.status === '待出貨') && (
