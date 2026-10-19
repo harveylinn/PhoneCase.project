@@ -10,6 +10,8 @@ import org.springframework.web.bind.annotation.RestController;
 
 import com.phonecase.backend.member.dto.RegisterRequest;
 
+import jakarta.validation.Valid;
+
 /* 
 前端註冊資料格式:
 {
@@ -24,8 +26,13 @@ import com.phonecase.backend.member.dto.RegisterRequest;
 @RestController
 @RequestMapping("/api/member")
 public class MemberController {
+
     @PostMapping("/register")
-    public ResponseEntity<Map<String, Object>> register(@RequestBody RegisterRequest request) {
-        return ResponseEntity.ok(Map.<String,Object>of("success", true, "message", "後端收到註冊資料"));
+    public ResponseEntity<Map<String, Object>> register(
+      @RequestBody @Valid RegisterRequest request) {
+        return ResponseEntity.ok(
+          Map.<String,Object>of(
+            "success", true,
+            "message", "後端驗證通過，尚未建立會員。"));
     }
 }
