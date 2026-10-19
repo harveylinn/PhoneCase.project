@@ -10,6 +10,7 @@ public record RegisterRequest(
     @NotBlank(message = "請輸入帳號。")
     @Size(max = 100, message = "帳號不可超過100字元。")
     String account,
+    
     @NotBlank (message = "請輸入密碼。")
     @Size (min = 8 ,message = "密碼至少需要8 字元。") 
     String password,

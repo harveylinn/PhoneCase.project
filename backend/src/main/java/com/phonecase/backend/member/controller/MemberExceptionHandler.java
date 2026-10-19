@@ -10,7 +10,7 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 
 @RestControllerAdvice(assignableTypes = MemberController.class)
 public class MemberExceptionHandler {
-    
+
     @ExceptionHandler (MethodArgumentNotValidException.class)
     public ResponseEntity<Map<String, Object>> handleValidation(MethodArgumentNotValidException exception) {
         Map<String, String> errors = new LinkedHashMap<>();
@@ -24,5 +24,14 @@ public class MemberExceptionHandler {
                                              "message", "請檢查註冊資料。",
                                              "errors", errors));
     }
-
+ /*  註冊資料錯誤，回傳:
+    {
+        "success": false,
+        "message": "請檢查註冊資料。",
+        "errors": {
+        "account": "請輸入帳號。",
+        "password": "密碼至少需要 8 個字元。"
+        }
+    }
+*/
 }
