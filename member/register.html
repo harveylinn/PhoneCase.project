@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>註冊會員</title>
+  <link rel="stylesheet" href="./css/member.css">
+</head>
+
+<body>
+  <main class="register-container">
+    <h1>會員註冊</h1>
+    <hr>
+
+    <p>請填寫以下資料建立會員帳號</p>
+    <form id="registerForm">
+
+      <div class="form-group">
+        <label for="account">帳號</label>
+        <input type="text" id="account" name="account" placeholder="請輸入帳號">
+        <span class="error-message" id="accountError"></span>
+      </div>
+
+
+      <div class="form-group">
+        <label for="password">密碼</label>
+        <input type="password" id="password" name="password" placeholder="請輸入密碼">
+        <span class="error-message" id="passwordError"></span>
+      </div>
+
+
+      <div class="form-group">
+        <label for="confirmPassword">確認密碼</label>
+        <input type="password" id="confirmPassword" placeholder="請再次輸入密碼">
+        <span class="error-message" id="confirmPasswordError"></span>
+      </div>
+
+
+      <div class="form-group">
+        <label for="name">姓名</label>
+        <input type="text" id="name" name="name" placeholder="請輸入姓名">
+      </div>
+
+
+      <div class="form-group">
+        <label for="email">Email</label>
+        <input type="email" id="email" name="email" placeholder="example@email.com">
+      </div>
+
+
+      <div class="form-group">
+        <label for="tel">電話</label>
+        <input type="tel" id="tel" name="tel" placeholder="0912345678">
+      </div>
+
+
+      <button type="submit">
+        註冊
+      </button>
+      <button type="reset">清除</button>
+
+      <p id="result"></p>
+
+    </form>
+
+
+    <script src="./js/register.js"></script>
+    
+  </main>
+
+</body>
+
+</html>
+
+<!-- <form action="">
+      <div>
+        <label for="account">帳號</label>
+        <input type="text" id="account" name="account">
+        <span id="accountError">accountError</span>
+      </div>
+      <div>
+        <label for="password">密碼</label>
+        <input type="text" id="password" name="password">
+        <span id="passwordError">passwordError</span>
+      </div>
+      <div>
+        <label for="confirmPassword">確認密碼</label>
+        <input type="text" id="confirmPassword">
+        <span id="confirmPasswordError">confirmPasswordError</span>
+      </div>
+      <div>
+        <label for="name">姓名</label>
+        <input type="text" id="name" name="name">
+      </div>
+      <div>
+        <label for="email">Email</label>
+        <input type="email" id="email" name="email">
+      </div>
+      <div>
+        <label for="tel">聯絡電話</label>
+        <input type="tel" id="tel" name="tel">
+      </div>
+      <button type="submit" id="submitBtn">註冊</button>
+      <button type="reset">清空</button>
+    </form> -->
