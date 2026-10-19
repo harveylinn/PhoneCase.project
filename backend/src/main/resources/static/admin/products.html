@@ -1,0 +1,25 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>商品管理｜CASELAB 後台</title>
+  <link rel="stylesheet" href="../css/common.css"><link rel="stylesheet" href="../css/admin-products.css">
+</head>
+<body>
+  <header class="admin-header"><a class="brand" href="products.html">CASELAB</a><div><span class="admin-label">管理後台</span><a href="../products.html">回到顧客端</a></div></header>
+  <main class="admin-shell">
+    <div class="admin-heading"><div><p class="eyebrow">CASELAB ADMIN</p><h1>商品管理</h1><p class="muted">新增、修改、下架與管理商品資料</p></div><button id="newProductButton" class="button button-primary" type="button">＋ 新增商品</button></div>
+    <div id="notice" class="notice is-hidden" role="status"></div>
+    <section class="admin-panel"><div class="panel-toolbar"><div><h2>商品列表</h2><span id="productCount" class="muted">載入中…</span></div><div class="toolbar-actions"><input id="adminSearch" type="search" placeholder="搜尋商品名稱"><select id="statusFilter"><option value="all">全部狀態</option><option value="available">上架中</option><option value="inactive">已下架</option></select><button id="refreshButton" class="button button-outline" type="button">重新整理</button></div></div>
+      <div id="loadingState" class="state-card">正在載入商品…</div><div id="errorState" class="state-card is-hidden"><h2>商品資料載入失敗</h2><p id="errorMessage">請確認後端管理 API 已完成。</p><button id="retryButton" class="button button-outline" type="button">重新載入</button></div>
+      <div class="table-wrap"><table><thead><tr><th>商品</th><th>分類／型號</th><th>價格</th><th>狀態</th><th>操作</th></tr></thead><tbody id="productTable"></tbody></table></div><div id="emptyState" class="empty-state is-hidden">目前沒有符合條件的商品。</div>
+    </section>
+    <section id="editorPanel" class="admin-panel editor-panel is-hidden"><div class="panel-toolbar"><div><p class="eyebrow">PRODUCT EDITOR</p><h2 id="editorTitle">新增商品</h2></div><button id="closeEditorButton" class="text-button" type="button">關閉</button></div><form id="productForm"><input id="productId" type="hidden"><input id="variantId" type="hidden"><input id="imageId" type="hidden"><div class="form-grid"><label>商品名稱<input id="name" required maxlength="100"></label><label>價格<input id="price" type="number" min="0" required></label><label>分類<input id="category" required maxlength="50" placeholder="例如手機殼"></label><label>品牌<input id="brand" required maxlength="50" placeholder="例如 Apple"></label><label>手機型號<input id="model" required maxlength="80" placeholder="例如 iPhone 15"></label><label>顏色<input id="color" required maxlength="30" placeholder="例如透明、黑色"></label><label>庫存<input id="stock" type="number" min="0" required value="10"></label><label>SKU 商品編號<input id="sku" required maxlength="100" placeholder="例如 SOLID-APPLE-IP16-BLK"></label><label>商品狀態<select id="status"><option value="上架">上架</option><option value="下架">下架</option></select></label><label class="wide">圖片路徑<input id="imageUrl" placeholder="例如 /images/solid-apple-iphone16-blk.webp"></label><label class="wide">商品描述<textarea id="description" rows="4"></textarea></label></div><div class="form-actions"><button id="cancelButton" class="button button-outline" type="button">取消</button><button class="button button-primary" type="submit">儲存商品</button></div></form></section>
+    <section id="variantPanel" class="admin-panel is-hidden">
+      <div class="panel-toolbar"><div><p class="eyebrow">VARIANT MANAGER</p><h2 id="variantTitle">商品規格</h2></div><button id="newVariantButton" class="button button-outline" type="button">＋ 新增規格</button></div>
+      <div class="table-wrap"><table><thead><tr><th>品牌</th><th>手機型號</th><th>顏色</th><th>價格</th><th>庫存</th><th>SKU</th><th>狀態</th><th>操作</th></tr></thead><tbody id="variantTable"></tbody></table></div>
+      <form id="variantForm" class="variant-editor is-hidden"><input id="variantFormId" type="hidden"><div class="form-grid"><label>品牌<input id="variantBrand" required maxlength="50"></label><label>手機型號<input id="variantModel" required maxlength="80"></label><label>顏色<input id="variantColor" required maxlength="30"></label><label>價格<input id="variantPrice" type="number" min="0" required></label><label>庫存<input id="variantStock" type="number" min="0" required></label><label>SKU<input id="variantSku" required maxlength="100"></label><label>狀態<select id="variantStatus"><option value="上架">上架</option><option value="下架">下架</option></select></label><label class="wide">圖片路徑<input id="variantImageUrl" placeholder="例如 /images/solid-apple-iphone16-blk.webp"></label></div><div class="form-actions"><button id="cancelVariantButton" class="button button-outline" type="button">取消</button><button class="button button-primary" type="submit">儲存規格</button></div></form>
+    </section>
+  </main>
+  <script src="../js/admin-products.js"></script>
+</body></html>
