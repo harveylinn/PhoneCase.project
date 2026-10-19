@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState } from 'react'
 import type { Order, OrderStatus } from './OrderListPage'
 import { createOrder } from '../../api/orderApi'
+import type { CartItem } from '../cart/CartItem'
+import { getGuestCart, saveGuestCart } from '../../utils/cartStorage'
 import './CheckoutPage.css'
 
 // ========================================
@@ -73,19 +75,19 @@ function CheckoutPage({ onCreateOrder }: Props) {
     useState<'CREDIT_CARD' | 'COD'>('CREDIT_CARD')
 
   // ========================================
-  // 測試商品
+  // 從訪客購物車讀取已勾選商品
   // ========================================
 
-  const [quantity, setQuantity] = useState(2)
+  const [selectedItems] = useState<CartItem[]>(
+    () => getGuestCart().filter((item) => item.selected)
+  )
 
-  const productName = '透明防摔手機殼'
-  const productModel = 'iPhone 17 Pro'
-  const productPrice = 590
-
-  const productSubtotal = productPrice * quantity
+  const productSubtotal = selectedItems.reduce(
+    (sum, item) => sum + item.price * item.quantity,
+    0
+  )
 
   const shippingFee = shippingMethod === 'HOME' ? 80 : 60
-
   const grandTotal = productSubtotal + shippingFee
 
   // ========================================
@@ -239,6 +241,12 @@ function CheckoutPage({ onCreateOrder }: Props) {
     // 5. 準備送給 Java 後端的資料
     // ========================================
 
+    const orderItems = getGuestCart().filter((item) => item.selected)
+    if (orderItems.length === 0) {
+      alert('購物車沒有已勾選的商品，請先回購物車選擇商品')
+      return
+    }
+
     const orderData = {
 
       receiverName: receiverName.trim(),
@@ -275,15 +283,11 @@ function CheckoutPage({ onCreateOrder }: Props) {
           ? selectedStore?.address
           : undefined,
 
-      // 商品明細
-      items: [
-        {
-          productName,
-          modelName: productModel,
-          color: '透明',
-          quantity
-        }
-      ]
+      // 只傳商品規格 ID 和數量，金額與商品資料由後端查詢
+      items: orderItems.map((item) => ({
+        variantId: item.variantId,
+        quantity: item.quantity
+      }))
 
     }
 
@@ -306,6 +310,17 @@ function CheckoutPage({ onCreateOrder }: Props) {
       // 7. 使用後端回傳的訂單資料
       // ========================================
 
+      const orderProductName = orderItems
+        .map((item) => item.name)
+        .join('、')
+      const orderModel = orderItems
+        .map((item) => (item.brand + ' ' + item.model).trim())
+        .join('、')
+      const orderQuantity = orderItems.reduce(
+        (sum, item) => sum + item.quantity,
+        0
+      )
+
       const newOrder: Order = {
 
         // 使用 MySQL 訂單編號，不再使用前端時間戳
@@ -313,11 +328,11 @@ function CheckoutPage({ onCreateOrder }: Props) {
 
         date: new Date().toLocaleDateString('sv-SE'),
 
-        productName,
+        productName: orderProductName,
 
-        model: productModel,
+        model: orderModel,
 
-        quantity,
+        quantity: orderQuantity,
 
         // 使用後端計算的真正金額
         total: result.totalAmount,
@@ -360,6 +375,20 @@ function CheckoutPage({ onCreateOrder }: Props) {
             ? selectedStore?.address
             : undefined
 
+      }
+
+      // 訂單成功後只移除本次已購買的規格，保留未勾選商品。
+      const purchasedVariantIds = new Set(
+        orderItems.map((item) => item.variantId)
+      )
+      try {
+        saveGuestCart(
+          getGuestCart().filter(
+            (item) => !purchasedVariantIds.has(item.variantId)
+          )
+        )
+      } catch (cartError) {
+        console.error('訂單已建立，但更新購物車失敗：', cartError)
       }
 
       // ========================================
@@ -407,55 +436,41 @@ function CheckoutPage({ onCreateOrder }: Props) {
 
       <h2>商品資訊</h2>
 
-      <div className="checkout-product">
+      {selectedItems.length === 0 ? (
+        <p role="status">購物車目前沒有已勾選商品。</p>
+      ) : (
+        selectedItems.map((item) => (
+          <div className="checkout-product" key={item.variantId}>
+            <div className="product-image">
+              {item.imageUrl ? (
+                <img
+                  src={item.imageUrl}
+                  alt={item.name}
+                  style={{
+                    maxWidth: '100%',
+                    maxHeight: '100%',
+                    objectFit: 'contain'
+                  }}
+                />
+              ) : (
+                '📱'
+              )}
+            </div>
 
-        <div className="product-image">
-          📱
-        </div>
+            <div className="product-info">
+              <h3>{item.name}</h3>
+              <p>適用型號：{item.brand} {item.model}</p>
+              <p>顏色：{item.color}</p>
+              <p>單價：NT$ {item.price.toLocaleString()}</p>
+              <p>數量：{item.quantity}</p>
+            </div>
 
-        <div className="product-info">
-
-          <h3>{productName}</h3>
-
-          <p>適用型號：{productModel}</p>
-
-          <p>顏色：透明</p>
-
-          <p>單價：NT$ {productPrice}</p>
-
-          <div style={{ marginTop: '15px' }}>
-
-            <span>數量：</span>
-
-            <button
-              type="button"
-              disabled={quantity <= 1 || isSubmitting}
-              onClick={() => setQuantity(quantity - 1)}
-            >
-              －
-            </button>
-
-            <span style={{ margin: '0 15px' }}>
-              {quantity}
-            </span>
-
-            <button
-              type="button"
-              disabled={isSubmitting}
-              onClick={() => setQuantity(quantity + 1)}
-            >
-              ＋
-            </button>
-
+            <div className="product-subtotal">
+              NT$ {(item.price * item.quantity).toLocaleString()}
+            </div>
           </div>
-
-        </div>
-
-        <div className="product-subtotal">
-          NT$ {productSubtotal.toLocaleString()}
-        </div>
-
-      </div>
+        ))
+      )}
 
       <hr />
 
@@ -739,7 +754,7 @@ function CheckoutPage({ onCreateOrder }: Props) {
       <button
         type="button"
         onClick={handleConfirmOrder}
-        disabled={isSubmitting}
+        disabled={isSubmitting || selectedItems.length === 0}
         style={{
           width: '100%',
           padding: '16px',
@@ -750,7 +765,7 @@ function CheckoutPage({ onCreateOrder }: Props) {
 
         {isSubmitting
           ? '訂單建立中，請稍候...'
-          : '建立測試訂單'}
+          : '建立訂單'}
 
       </button>
 

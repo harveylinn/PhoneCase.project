@@ -5,9 +5,7 @@ import type { Order } from '../pages/order/OrderListPage'
 // ========================================
 
 export type OrderItemRequest = {
-  productName: string
-  modelName: string
-  color: string
+  variantId: number
   quantity: number
 }
 
