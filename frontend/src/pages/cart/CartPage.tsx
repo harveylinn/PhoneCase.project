@@ -2,11 +2,7 @@ import { useEffect, useState } from 'react'
 import type { CartItem } from './CartItem'
 import './CartPage.css'
 import CartItemCard from './CartItemCard'
-import {
-    getGuestCart,
-    saveGuestCart,
-    addToGuestCart
-} from '../../utils/cartStorage'
+import {getGuestCart,saveGuestCart,} from '../../utils/cartStorage'
 
 function CartPage() {
 
@@ -19,22 +15,6 @@ function CartPage() {
         saveGuestCart(cartItems)
     }, [cartItems])
 
-
-    // 暫時模擬商品頁加入購物車
-    const testAddToCart = () => {
-        addToGuestCart({
-            variantId: 3,
-            name: '奶茶色手機殼',
-            brand: 'Apple',
-            model: 'iPhone 15',
-            color: '奶茶色',
-            price: 590,
-            imageUrl: 'https://placehold.co/300x300.png?text=Milk+Tea+Case'
-        })
-
-        // 同步更新 React 畫面
-        setCartItems(getGuestCart())
-    }
 
 
     // 增加商品數量
@@ -107,10 +87,6 @@ function CartPage() {
         <div className="cart-page">
             <h1>我的購物車</h1>
 
-            {/* 暫時測試商品頁加入購物車 */}
-            <button type="button" onClick={testAddToCart}>
-                測試：加入奶茶色手機殼
-            </button>
 
             <label className="cart-select-all">
                 <input
