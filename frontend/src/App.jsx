@@ -25,7 +25,7 @@ export default function App() {
         <>
             <Header/>
             <Routes>
-                <Route path="/admin" element={<AdminProducts/>}/>
+                <Route path="/admin-products" element={<AdminProducts/>}/>
                 <Route path="/admin/samples" element={<ImageSamples/>}/>
                 <Route path="/products/:id" element={<ProductDetail/>}/>
                 <Route path="*" element={<ProductList/>}/>
