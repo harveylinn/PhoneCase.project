@@ -2,6 +2,7 @@ import {Link, Route, Routes} from 'react-router-dom';
 import ProductList from './pages/products/ProductList.jsx';
 import ProductDetail from './pages/products/ProductDetail.jsx';
 import AdminProducts from './pages/products/AdminProducts.jsx';
+import ImageSamples from './pages/samples/ImageSamples.jsx';
 import AiChatWidget from './components/AiChatWidget.jsx';
 
 function Header() {
@@ -10,6 +11,7 @@ function Header() {
             <Link className="brand" to="/">CASELAB</Link>
             <nav className="header-nav">
                 <Link to="/">商品專區</Link>
+                <Link to="/admin/samples">圖片樣本庫</Link>
                 <a href="#design">設計理念</a>
                 <a href="#story">品牌故事</a>
                 <span className="nav-placeholder">會員／購物車</span>
@@ -24,6 +26,7 @@ export default function App() {
             <Header/>
             <Routes>
                 <Route path="/admin" element={<AdminProducts/>}/>
+                <Route path="/admin/samples" element={<ImageSamples/>}/>
                 <Route path="/products/:id" element={<ProductDetail/>}/>
                 <Route path="*" element={<ProductList/>}/>
             </Routes>
