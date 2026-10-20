@@ -1,6 +1,19 @@
 import { useState, type SubmitEvent } from "react";
 import "../../styles/member/register.css";
 
+interface RegisterResponse {
+  success: boolean;
+  message: string;
+  memberId?: memberId;
+  errors?: {
+    account?: string;
+    password?: string;
+    name?: string;
+    phone?: string;
+    email?: string;
+  };
+}
+
 export default function RegisterPage() {
   const [account, setAccount] = useState("");
   const [email, setEmail] = useState("");
@@ -119,18 +132,18 @@ export default function RegisterPage() {
         body: JSON.stringify(registerData),
       });
 
-      if (!response.ok) {
-        setResultMessage(`請求失敗，HTTP狀態碼：${response.status}`);
-        return;
+      const data: RegisterResponse = await response.json()  ;
+
+      if (!response.ok || data.success !== true){
+        //後端若有提供欄位錯誤，就顯示在對應欄位下方。
+        setAccountError(data.errors?.account ?? "");
+        setPasswordError(data.errors?.password ?? "");
+        setNameError(data.errors?.name ?? "");
+        setTelError(data.errors?.phone ?? "");
+        setEmailError(data.errors?.email ?? "");
       }
 
-      const data = await response.json();
-
-      if (data.success === true) {
-        setResultMessage(data.message ?? "後端已收到資料。");
-      } else {
-        setResultMessage(data.message ?? "後端未能完成請求。");
-      }
+      
     } catch {
       setResultMessage("無法完成請求，請確認後端已啟動及回應格式正確");
     } finally {

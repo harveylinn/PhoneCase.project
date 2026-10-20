@@ -2,6 +2,7 @@ package com.phonecase.backend.member.controller;
 
 import java.util.Map;
 
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -9,6 +10,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.phonecase.backend.member.dto.RegisterRequest;
+import com.phonecase.backend.member.service.MemberService;
 
 import jakarta.validation.Valid;
 
@@ -26,13 +28,19 @@ import jakarta.validation.Valid;
 @RestController
 @RequestMapping("/api/member")
 public class MemberController {
+  @Autowired
+  private MemberService memberService;
 
-    @PostMapping("/register")
-    public ResponseEntity<Map<String, Object>> register(
-      @RequestBody @Valid RegisterRequest request) {
-        return ResponseEntity.ok(
-          Map.<String,Object>of(
-            "success", true,
-            "message", "後端驗證通過，尚未建立會員。"));
-    }
+  @PostMapping("/register")
+  public ResponseEntity<Map<String, Object>> register(@RequestBody @Valid RegisterRequest request) {
+    Long memberId = memberService.register(request);
+
+    return ResponseEntity.status(201).body(
+            Map.<String,Object>of(
+              "success", true, 
+              "message", "註冊成功，請登入。",
+              "memberId", memberId
+            )
+    );
+  }
 }
