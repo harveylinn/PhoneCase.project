@@ -7,19 +7,15 @@ import lombok.Setter;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
-@Entity
-@Table(name = "admin_document")
+// 四種單據共用的欄位，各自對應不同的資料表
+@MappedSuperclass
 @Getter
 @Setter
-public class AdminDocument {
+public abstract class BaseDocument {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
-
-    // 單據類型：訂單、採購單、入庫單、出庫單
-    @Column(name = "doc_type", nullable = false, length = 20)
-    private String docType;
 
     // 單號（前端欄位名稱為 orderNo）
     @Column(name = "order_no", nullable = false, unique = true, length = 30)

@@ -449,9 +449,15 @@ export default function App() {
     setPendingDeleteId('');
   };
 
+  // 讀取後端回傳的錯誤訊息，例如「單號已存在」「庫存不足」
+  const getErrorMessage = async (response) => {
+    const err = await response.json().catch(() => ({}));
+    return err.message || Object.values(err).join('、') || `HTTP ${response.status}`;
+  };
+
   const handleCreateSubmit = async (e) => {
     e.preventDefault();
-     const payload = {
+    const payload = {
       docType: currentType,
       orderNo: formData.orderNo,
       productName: formData.productName,
@@ -473,10 +479,10 @@ export default function App() {
         alert(`【${currentType}】新增成功並寫入資料庫！`);
         closeMainModal();
       } else {
-        alert('新增失敗，請檢查 Java 後端或 Console 訊息');
+        alert(`新增失敗：${await getErrorMessage(response)}`);
       }
     } catch (error) {
-      console.error('Error creating order:', error);
+      console.error('Error creating document:', error);
       alert('無法連線至 Java 後端 (http://localhost:8080)');
     }
   };
@@ -493,57 +499,53 @@ export default function App() {
         setSearchResults(data);
       } else {
         setSearchResults([]);
+        alert(`查詢失敗：${await getErrorMessage(response)}`);
       }
     } catch (error) {
-      console.error('Error searching orders:', error);
-      setSearchResults([
-        {
-          orderNo: searchKeyword || '2609190001',
-          productName: '防摔手機殼-黑色-iPhone15',
-          quantity: 10,
-          unitPrice: 490,
-          totalPrice: 4900,
-          customerName: '王小明'
-        }
-      ]);
+      console.error('Error searching documents:', error);
+      setSearchResults([]);
+      alert('無法連線至 Java 後端，查詢失敗');
     }
     setHasSearched(true);
   };
 
   const handleUpdateSubmit = async (item) => {
     try {
-      const response = await fetch(`/api/admin/documents/${item.orderNo}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(item)
-      });
+      const response = await fetch(
+        `/api/admin/documents/${encodeURIComponent(item.orderNo)}?docType=${encodeURIComponent(currentType)}`,
+        {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(item)
+        }
+      );
       if (response.ok) {
         alert(`單據 ${item.orderNo} 已成功修改並傳送至資料庫！`);
         setSelectedItem(null);
         handleSearch();
       } else {
-        alert('修改失敗！');
+        alert(`修改失敗：${await getErrorMessage(response)}`);
       }
     } catch (error) {
-      console.error('Error updating order:', error);
-      alert('無法連線至 Java 後端，模擬更新成功');
-      setSelectedItem(null);
+      console.error('Error updating document:', error);
+      alert('無法連線至 Java 後端，更新失敗');
     }
   };
 
   const executeDelete = async () => {
     try {
-      const response = await fetch(`/api/admin/documents/${pendingDeleteId}`, {
-        method: 'DELETE'
-      });
+      const response = await fetch(
+        `/api/admin/documents/${encodeURIComponent(pendingDeleteId)}?docType=${encodeURIComponent(currentType)}`,
+        { method: 'DELETE' }
+      );
       if (response.ok) {
-        alert(`單據 ${pendingDeleteId} 已傳回資料庫並成功刪除！`);
+        alert(`單據 ${pendingDeleteId} 已成功從資料庫刪除！`);
       } else {
-        alert(`單據 ${pendingDeleteId} 刪除失敗！`);
+        alert(`單據 ${pendingDeleteId} 刪除失敗：${await getErrorMessage(response)}`);
       }
     } catch (error) {
-      console.error('Error deleting order:', error);
-      alert(`單據 ${pendingDeleteId} 已傳回資料庫並順利刪除！`);
+      console.error('Error deleting document:', error);
+      alert('無法連線至 Java 後端，刪除失敗');
     } finally {
       closeDeleteConfirm();
       closeMainModal();

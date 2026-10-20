@@ -1,7 +1,7 @@
 package com.phonecase.backend.controller;
 
 import com.phonecase.backend.dto.AdminDocumentRequest;
-import com.phonecase.backend.entity.AdminDocument;
+import com.phonecase.backend.entity.BaseDocument;
 import com.phonecase.backend.service.AdminDocumentService;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
@@ -21,12 +21,12 @@ public class AdminDocumentController {
 
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
-    public AdminDocument createDocument(@Valid @RequestBody AdminDocumentRequest request) {
+    public BaseDocument createDocument(@Valid @RequestBody AdminDocumentRequest request) {
         return adminDocumentService.createDocument(request);
     }
 
     @GetMapping("/search")
-    public List<AdminDocument> searchDocuments(
+    public List<BaseDocument> searchDocuments(
             @RequestParam String docType,
             @RequestParam(required = false) String keyword,
             @RequestParam(defaultValue = "=") String operator) {
@@ -34,19 +34,24 @@ public class AdminDocumentController {
     }
 
     @GetMapping("/{orderNo}")
-    public AdminDocument getDocument(@PathVariable String orderNo) {
-        return adminDocumentService.getDocument(orderNo);
+    public BaseDocument getDocument(
+            @PathVariable String orderNo,
+            @RequestParam String docType) {
+        return adminDocumentService.getDocument(docType, orderNo);
     }
 
     @PutMapping("/{orderNo}")
-    public AdminDocument updateDocument(
+    public BaseDocument updateDocument(
             @PathVariable String orderNo,
+            @RequestParam String docType,
             @Valid @RequestBody AdminDocumentRequest request) {
-        return adminDocumentService.updateDocument(orderNo, request);
+        return adminDocumentService.updateDocument(docType, orderNo, request);
     }
 
     @DeleteMapping("/{orderNo}")
-    public void deleteDocument(@PathVariable String orderNo) {
-        adminDocumentService.deleteDocument(orderNo);
+    public void deleteDocument(
+            @PathVariable String orderNo,
+            @RequestParam String docType) {
+        adminDocumentService.deleteDocument(docType, orderNo);
     }
 }
