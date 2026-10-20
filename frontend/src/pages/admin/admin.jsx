@@ -451,7 +451,8 @@ export default function App() {
 
   const handleCreateSubmit = async (e) => {
     e.preventDefault();
-    const payload = {
+     const payload = {
+      docType: currentType,
       orderNo: formData.orderNo,
       productName: formData.productName,
       color: formData.color,
@@ -462,7 +463,7 @@ export default function App() {
     };
 
     try {
-      const response = await fetch('http://localhost:8080/api/orders', {
+      const response = await fetch('/api/admin/documents', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload)
@@ -483,7 +484,7 @@ export default function App() {
   const handleSearch = async () => {
     try {
       const response = await fetch(
-        `http://localhost:8080/api/orders/search?keyword=${encodeURIComponent(
+        `/api/admin/documents/search?docType=${encodeURIComponent(currentType)}&keyword=${encodeURIComponent(
           searchKeyword
         )}&operator=${encodeURIComponent(searchOperator)}`
       );
@@ -511,7 +512,7 @@ export default function App() {
 
   const handleUpdateSubmit = async (item) => {
     try {
-      const response = await fetch(`http://localhost:8080/api/orders/${item.orderNo}`, {
+      const response = await fetch(`/api/admin/documents/${item.orderNo}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(item)
@@ -532,13 +533,13 @@ export default function App() {
 
   const executeDelete = async () => {
     try {
-      const response = await fetch(`http://localhost:8080/api/orders/${pendingDeleteId}`, {
+      const response = await fetch(`/api/admin/documents/${pendingDeleteId}`, {
         method: 'DELETE'
       });
       if (response.ok) {
         alert(`單據 ${pendingDeleteId} 已傳回資料庫並成功刪除！`);
       } else {
-        alert(`單據 ${pendingDeleteId} 刪除成功（測試流程）！`);
+        alert(`單據 ${pendingDeleteId} 刪除失敗！`);
       }
     } catch (error) {
       console.error('Error deleting order:', error);
