@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- 主機： localhost:3306
--- 產生時間： 2026-10-16 08:31:19
+-- 產生時間： 2026-10-20 08:26:15
 -- 伺服器版本： 5.7.24
 -- PHP 版本： 8.3.1
 
@@ -18,7 +18,7 @@ SET time_zone = "+00:00";
 /*!40101 SET NAMES utf8mb4 */;
 
 --
--- 資料庫: `backend`
+-- 資料庫: `phonecaseshop`
 --
 
 -- --------------------------------------------------------
@@ -42,6 +42,13 @@ CREATE TABLE `members` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 --
+-- 傾印資料表的資料 `members`
+--
+
+INSERT INTO `members` (`id`, `account`, `email`, `password_hash`, `name`, `phone`, `default_address`, `role`, `status`, `created_at`, `updated_at`) VALUES
+(1, 'test002', 'test002@example.com', '$2a$10$PD/i0CzTidJoFnWrlY7xH.7iWmNoLb2ZKXZSmTVBnZrSZsHHbzwOS', '測試會員', '0912345678', NULL, 'CUSTOMER', 'ACTIVE', '2026-10-20 15:14:59', '2026-10-20 15:14:59');
+
+--
 -- 已傾印資料表的索引
 --
 
@@ -61,7 +68,7 @@ ALTER TABLE `members`
 -- 使用資料表自動遞增(AUTO_INCREMENT) `members`
 --
 ALTER TABLE `members`
-  MODIFY `id` bigint(20) NOT NULL AUTO_INCREMENT;
+  MODIFY `id` bigint(20) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2;
 COMMIT;
 
 /*!40101 SET CHARACTER_SET_CLIENT=@OLD_CHARACTER_SET_CLIENT */;
