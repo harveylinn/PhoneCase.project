@@ -2,9 +2,11 @@ import { useEffect, useState } from 'react'
 import type { CartItem } from './CartItem'
 import './CartPage.css'
 import CartItemCard from './CartItemCard'
-import {getGuestCart,saveGuestCart,} from '../../utils/cartStorage'
+import { getGuestCart, saveGuestCart, } from '../../utils/cartStorage'
+import { useNavigate } from 'react-router-dom'
 
 function CartPage() {
+    const navigate = useNavigate()
 
     // 初始化購物車，從 localStorage 讀取資料
     const [cartItems, setCartItems] = useState<CartItem[]>(getGuestCart)
@@ -82,6 +84,19 @@ function CartPage() {
         )
     }
 
+    // 暫時開放訪客前往結帳頁，供訂單組員測試
+    const handleCheckout = () => {
+        const selectedItems = cartItems.filter(
+            item => item.selected
+        )
+
+        if (selectedItems.length === 0) {
+            return
+        }
+
+        navigate('/checkout')
+    }
+
 
     return (
         <div className="cart-page">
@@ -118,8 +133,15 @@ function CartPage() {
             <div className="cart-summary">
                 <h2>購物車總金額</h2>
                 <h2>NT$ {totalPrice.toLocaleString('en-US')}</h2>
+                <button
+                    type="button"
+                    className="cart-checkout-button"
+                    onClick={handleCheckout}
+                    disabled={!cartItems.some(item => item.selected)}
+                >
+                    前往結帳
+                </button>
             </div>
-
 
         </div>
     )

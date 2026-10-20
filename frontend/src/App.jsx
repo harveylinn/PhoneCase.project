@@ -7,6 +7,9 @@ import RegisterPage from './pages/member/RegisterPage';
 import LoginPage from './pages/member/LoginPage';
 import ProfilePage from './pages/member/ProfilePage';
 import Admin from './pages/admin/admin.jsx';
+import CheckOutPage from './pages/order/CheckoutPage.tsx'
+import OrderDetailPage from './pages/order/OrderDetailPage.tsx'
+import OrderListPage from './pages/order/OrderListPage.tsx'
 import { useEffect, useState } from 'react';
 import { getGuestCartCount } from './utils/cartStorage';
 
@@ -58,6 +61,10 @@ export default function App() {
         <Route path="/register" element={<RegisterPage />} />
         <Route path="/login" element={<LoginPage />} />
         <Route path="/profile" element={<ProfilePage />} />
+
+        <Route path="/checkout" element={<CheckOutPage />} />
+        <Route path="/orderdetail" element={<OrderDetailPage />} />
+        <Route path="/orderlist" element={<OrderListPage />} />
 
         <Route path="/admin" element={<Admin />} />
 
