@@ -7,22 +7,47 @@ import RegisterPage from './pages/member/RegisterPage';
 import LoginPage from './pages/member/LoginPage';
 import ProfilePage from './pages/member/ProfilePage';
 import Admin from './pages/admin/admin.jsx';
+import CheckOutPage from './pages/order/CheckoutPage.tsx'
+import OrderDetailPage from './pages/order/OrderDetailPage.tsx'
+import OrderListPage from './pages/order/OrderListPage.tsx'
+import { useEffect, useState } from 'react';
+import { getGuestCartCount } from './utils/cartStorage';
 import OrderModule from './pages/order/OrderModule';
 
+
+// 首頁欄
 function Header() {
+  const [cartCount, setCartCount] = useState(getGuestCartCount);
+
+  useEffect(() => {
+    const updateCartCount = () => {
+      setCartCount(getGuestCartCount());
+    };
+
+    window.addEventListener('cartUpdated', updateCartCount);
+    window.addEventListener('storage', updateCartCount);
+
+    return () => {
+      window.removeEventListener('cartUpdated', updateCartCount);
+      window.removeEventListener('storage', updateCartCount);
+    };
+  }, []);
+
   return (
     <header className="site-header">
       <Link className="brand" to="/">CASELAB</Link>
+
       <nav className="header-nav">
         <Link to="/">商品專區</Link>
         <a href="#design">設計理念</a>
         <a href="#story">品牌故事</a>
-        <span className="nav-placeholder">會員／購物車</span>
+        <Link to="/cart" className="header-cart-link">購物車 ({cartCount})</Link>
       </nav>
     </header>
   );
 }
 
+// 分頁
 export default function App() {
   return (
     <>
@@ -33,11 +58,14 @@ export default function App() {
         <Route path="/admin-products" element={<AdminProducts />} />
 
         <Route path="/cart" element={<CartPage />} />
-        <Route path="/checkout" element={<OrderModule />} />
 
         <Route path="/register" element={<RegisterPage />} />
         <Route path="/login" element={<LoginPage />} />
         <Route path="/profile" element={<ProfilePage />} />
+
+        <Route path="/checkout" element={<OrderModule />} />
+        <Route path="/orderdetail" element={<OrderDetailPage />} />
+        <Route path="/orderlist" element={<OrderListPage />} />
 
         <Route path="/admin" element={<Admin />} />
 

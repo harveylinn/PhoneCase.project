@@ -1,4 +1,3 @@
-
 import type { CartItem } from '../pages/cart/CartItem'
 
 // 統一購物車在 localStorage 使用的 Key
@@ -57,6 +56,8 @@ export function saveGuestCart(items: CartItem[]): void {
         CART_STORAGE_KEY,
         JSON.stringify(items)
     )
+
+    window.dispatchEvent(new Event('cartUpdated'))
 }
 
 // 新增商品到訪客購物車
@@ -98,4 +99,13 @@ export function addToGuestCart(
     }
 
     saveGuestCart(updatedCart)
+}
+
+// 計算購物車內所有商品的總數量
+
+export function getGuestCartCount(): number {
+    return getGuestCart().reduce(
+        (total, item) => total + item.quantity,
+        0
+    )
 }

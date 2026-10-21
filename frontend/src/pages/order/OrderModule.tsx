@@ -35,11 +35,15 @@ type CancelInfo = {
 // 2. App
 // ========================================
 
-function OrderModule() {
+function OrderModule({
+  initialPage = 'checkout'
+}: {
+  initialPage?: 'checkout' | 'list' | 'detail'
+}) {
 
   // 目前頁面
   const [currentPage, setCurrentPage] =
-    useState('checkout')
+  useState(initialPage)
 
   // MySQL 訂單資料
   const [orders, setOrders] =
