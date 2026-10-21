@@ -3,6 +3,10 @@ package com.phonecase.backend.service;
 import com.phonecase.backend.entity.ImageSample;
 import com.phonecase.backend.entity.Product;
 import com.phonecase.backend.entity.ProductVariant;
+import com.phonecase.backend.dto.AiProductRecommendation;
+import com.phonecase.backend.dto.AiSearchRequest;
+import com.phonecase.backend.dto.AiVisionResult;
+import com.phonecase.backend.dto.ImageSampleAnalysisResponse;
 import com.phonecase.backend.repository.ImageSampleRepository;
 import org.springframework.http.HttpStatus;
 import org.springframework.beans.factory.annotation.Value;
@@ -12,6 +16,7 @@ import org.springframework.web.server.ResponseStatusException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.Base64;
 import java.util.List;
 
 @Service
@@ -20,16 +25,19 @@ public class ImageSampleService {
     private final ImageSampleRepository repository;
     private final AiVisionService aiVisionService;
     private final ProductService productService;
+    private final ProductRecommendationService productRecommendationService;
     private final Path uploadRoot;
 
     public ImageSampleService(
             ImageSampleRepository repository,
             AiVisionService aiVisionService,
             ProductService productService,
+            ProductRecommendationService productRecommendationService,
             @Value("${app.upload.dir:uploads}") String uploadDir) {
         this.repository = repository;
         this.aiVisionService = aiVisionService;
         this.productService = productService;
+        this.productRecommendationService = productRecommendationService;
         this.uploadRoot = Paths.get(uploadDir).toAbsolutePath().normalize();
     }
 
@@ -71,7 +79,7 @@ public class ImageSampleService {
         return repository.save(sample);
     }
 
-    public ImageSample analyzeImage(Long id) {
+    public ImageSampleAnalysisResponse analyzeImage(Long id) {
         ImageSample sample = findById(id);
         String imageUrl = sample.getImageUrl();
 
@@ -93,11 +101,17 @@ public class ImageSampleService {
                 mimeType = "image/jpeg";
             }
             byte[] imageBytes = Files.readAllBytes(imagePath);
+            List<AiProductRecommendation> candidates = List.of();
+            AiVisionResult criteria = null;
             if (sample.getProductId() == null) {
-                sample.setAiDescription(aiVisionService.describeImage(imageBytes, mimeType));
-                sample.setAiMatchStatus("未比對");
+                String imageBase64 = Base64.getEncoder().encodeToString(imageBytes);
+                criteria = aiVisionService.analyze(
+                        new AiSearchRequest(null, imageBase64, mimeType));
+                candidates = productRecommendationService.findSimilar(criteria, null);
+                sample.setAiDescription(buildCriteriaDescription(criteria));
+                sample.setAiMatchStatus(candidates.isEmpty() ? "找不到候選" : "待確認");
                 sample.setAiMatchConfidence(null);
-                sample.setAiMatchReason("未設定關聯商品 ID");
+                sample.setAiMatchReason(buildCandidateReason(criteria, candidates));
             } else {
                 Product product = productService.getProductById(sample.getProductId());
                 var result = aiVisionService.validateImage(
@@ -109,11 +123,48 @@ public class ImageSampleService {
                 sample.setAiMatchConfidence(result.confidence());
                 sample.setAiMatchReason(result.reason());
             }
-            return repository.save(sample);
+            return new ImageSampleAnalysisResponse(
+                    repository.save(sample), criteria, candidates);
         } catch (Exception error) {
             throw new ResponseStatusException(
                     HttpStatus.BAD_GATEWAY, "AI 圖片分析失敗", error);
         }
+    }
+
+    public ImageSample confirmProduct(Long id, Long productId) {
+        if (productId == null) {
+            throw new ResponseStatusException(
+                    HttpStatus.BAD_REQUEST, "商品 ID 不可為空");
+        }
+        productService.getProductById(productId);
+        ImageSample sample = findById(id);
+        sample.setProductId(productId);
+        sample.setAiMatchStatus("已確認");
+        return repository.save(sample);
+    }
+
+    private String buildCriteriaDescription(AiVisionResult criteria) {
+        return "AI 分析：型號=" + valueOrUnknown(criteria.model())
+                + "、顏色=" + valueOrUnknown(criteria.color())
+                + "、風格=" + valueOrUnknown(criteria.styleTag());
+    }
+
+    private String buildCandidateReason(
+            AiVisionResult criteria,
+            List<AiProductRecommendation> candidates) {
+        if (candidates.isEmpty()) {
+            return "AI 分析後找不到可比對的商品，請補充商品資料或 tags。";
+        }
+        String names = candidates.stream()
+                .map(candidate -> candidate.productId() + ": " + candidate.productName())
+                .distinct()
+                .reduce((left, right) -> left + "；" + right)
+                .orElse("無");
+        return "候選商品：" + names + "。請由管理員確認後建立關聯。";
+    }
+
+    private String valueOrUnknown(String value) {
+        return value == null || value.isBlank() ? "未確認" : value;
     }
 
     private String buildProductContext(Product product) {

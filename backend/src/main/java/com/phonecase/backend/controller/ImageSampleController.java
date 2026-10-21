@@ -1,6 +1,7 @@
 package com.phonecase.backend.controller;
 
 import com.phonecase.backend.entity.ImageSample;
+import com.phonecase.backend.dto.ImageSampleAnalysisResponse;
 import com.phonecase.backend.service.ImageSampleService;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
@@ -53,8 +54,15 @@ public class ImageSampleController {
     }
 
     @PostMapping("/{id}/analyze")
-    public ImageSample analyzeImage(@PathVariable Long id) {
+    public ImageSampleAnalysisResponse analyzeImage(@PathVariable Long id) {
         return service.analyzeImage(id);
+    }
+
+    @PatchMapping("/{id}/product")
+    public ImageSample confirmProduct(
+            @PathVariable Long id,
+            @RequestBody ProductRequest request) {
+        return service.confirmProduct(id, request.productId());
     }
 
     @DeleteMapping("/{id}")
@@ -68,4 +76,6 @@ public class ImageSampleController {
     ) {}
 
     public record DescriptionRequest(String aiDescription) {}
+
+    public record ProductRequest(Long productId) {}
 }

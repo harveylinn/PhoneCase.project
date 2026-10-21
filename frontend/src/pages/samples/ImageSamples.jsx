@@ -16,6 +16,7 @@ export default function ImageSamples() {
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
     const [analyzingId, setAnalyzingId] = useState(null);
+    const [candidates, setCandidates] = useState({});
     const [message, setMessage] = useState('');
 
     async function loadSamples() {
@@ -123,12 +124,31 @@ export default function ImageSamples() {
                 method: 'POST',
             });
             if (!response.ok) throw new Error('AI 圖片分析失敗');
+            const result = await response.json();
+            setCandidates(current => ({
+                ...current,
+                [id]: result.candidates || [],
+            }));
             await loadSamples();
             setMessage('AI 圖片描述已更新，請確認內容後再審核。');
         } catch (error) {
             setMessage(error.message);
         } finally {
             setAnalyzingId(null);
+        }
+    }
+
+    async function confirmProduct(sampleId, productId) {
+        const response = await fetch(`/api/image-samples/${sampleId}/product`, {
+            method: 'PATCH',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({productId}),
+        });
+        if (response.ok) {
+            setMessage('商品關聯已確認');
+            await loadSamples();
+        } else {
+            setMessage('商品關聯確認失敗');
         }
     }
 
@@ -168,6 +188,20 @@ export default function ImageSamples() {
                                     </p>
                                 )}
                                 {sample.aiMatchReason && <p>{sample.aiMatchReason}</p>}
+                                {candidates[sample.id]?.length > 0 && (
+                                    <div>
+                                        <p>請選擇候選商品：</p>
+                                        {candidates[sample.id].map(candidate => (
+                                            <button
+                                                key={candidate.variantId}
+                                                onClick={() => confirmProduct(
+                                                    sample.id, candidate.productId)}
+                                            >
+                                                確認 {candidate.productName}（{candidate.model}）
+                                            </button>
+                                        ))}
+                                    </div>
+                                )}
                                 <button
                                     onClick={() => analyzeSample(sample.id)}
                                     disabled={analyzingId === sample.id}

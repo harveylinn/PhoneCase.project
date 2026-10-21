@@ -3,6 +3,7 @@ package com.phonecase.backend.dto;
 import java.math.BigDecimal;
 
 public record AiProductRecommendation(
+        Long productId,
         Long variantId,
         String sku,
         String productName,

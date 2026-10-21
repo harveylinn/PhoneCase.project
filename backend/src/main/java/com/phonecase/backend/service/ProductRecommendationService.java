@@ -173,7 +173,7 @@ public class ProductRecommendationService {
 
     private AiProductRecommendation toRecommendation(Product product, ProductVariant variant) {
         return new AiProductRecommendation(
-                variant.getId(), variant.getSku(), product.getName(),
+                product.getId(), variant.getId(), variant.getSku(), product.getName(),
                 variant.getBrand(), variant.getModel(), variant.getColor(),
                 variant.getTags(), variant.getPrice(), variant.getStock()
         );
