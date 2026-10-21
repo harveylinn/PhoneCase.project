@@ -67,7 +67,13 @@ public class ProductRecommendationService {
             String question,
             List<Product> products
     ) {
-        String brand = findQuestionValue(question, products.stream()
+        String normalizedQuestion = normalizeText(question);
+        String normalizedBrand = normalizeValue(criteria.brand());
+        String normalizedModel = normalizeValue(criteria.model());
+        String normalizedColor = normalizeValue(criteria.color());
+        String normalizedStyleTag = normalizeValue(criteria.styleTag());
+
+        String brand = findQuestionValue(normalizedQuestion, products.stream()
                 .filter(product -> product.getVariants() != null)
                 .flatMap(product -> product.getVariants().stream())
                 .map(variant -> variant.getBrand())
@@ -75,7 +81,7 @@ public class ProductRecommendationService {
                 .distinct()
                 .toList());
 
-        String model = findQuestionValue(question, products.stream()
+        String model = findQuestionValue(normalizedQuestion, products.stream()
                 .filter(product -> product.getVariants() != null)
                 .flatMap(product -> product.getVariants().stream())
                 .map(variant -> variant.getModel())
@@ -83,7 +89,7 @@ public class ProductRecommendationService {
                 .distinct()
                 .toList());
 
-        String color = findQuestionValue(question, products.stream()
+        String color = findQuestionValue(normalizedQuestion, products.stream()
                 .filter(product -> product.getVariants() != null)
                 .flatMap(product -> product.getVariants().stream())
                 .map(variant -> variant.getColor())
@@ -91,7 +97,7 @@ public class ProductRecommendationService {
                 .distinct()
                 .toList());
 
-        String tag = findQuestionValue(question, products.stream()
+        String tag = findQuestionValue(normalizedQuestion, products.stream()
                 .filter(product -> product.getVariants() != null)
                 .flatMap(product -> product.getVariants().stream())
                 .map(variant -> variant.getTags())
@@ -104,14 +110,14 @@ public class ProductRecommendationService {
 
         String correctedTag = tag != null
                 ? tag
-                : hasStyleRequest(question)
+                : hasStyleRequest(normalizedQuestion)
                 ? "__NO_MATCHING_STYLE__"
-                : validValue(criteria.styleTag(), products, ValueType.TAG);
+                : validValue(normalizedStyleTag, products, ValueType.TAG);
 
         return new AiVisionResult(
-                brand != null ? brand : validValue(criteria.brand(), products, ValueType.BRAND),
-                model != null ? model : validValue(criteria.model(), products, ValueType.MODEL),
-                color != null ? color : validValue(criteria.color(), products, ValueType.COLOR),
+                brand != null ? brand : validValue(normalizedBrand, products, ValueType.BRAND),
+                model != null ? model : validValue(normalizedModel, products, ValueType.MODEL),
+                color != null ? color : validValue(normalizedColor, products, ValueType.COLOR),
                 correctedTag,
                 criteria.cameraLayout(),
                 criteria.reason()
@@ -132,6 +138,38 @@ public class ProductRecommendationService {
                         .contains(value.toLowerCase(Locale.ROOT)))
                 .max((left, right) -> Integer.compare(left.length(), right.length()))
                 .orElse(null);
+    }
+
+    private String normalizeText(String text) {
+        if (text == null) {
+            return null;
+        }
+        return normalizeValue(text);
+    }
+
+    private String normalizeValue(String value) {
+        if (value == null || value.isBlank()) {
+            return value;
+        }
+        return value
+                .replace("White", "白色")
+                .replace("white", "白色")
+                .replace("Black", "黑色")
+                .replace("black", "黑色")
+                .replace("Transparent", "透明")
+                .replace("transparent", "透明")
+                .replace("Clear", "透明")
+                .replace("clear", "透明")
+                .replace("Navy", "海軍藍")
+                .replace("navy", "海軍藍")
+                .replace("Anime Character", "動漫風")
+                .replace("anime character", "動漫風")
+                .replace("Anime", "動漫風")
+                .replace("anime", "動漫風")
+                .replace("Pixel Art", "像素風")
+                .replace("pixel art", "像素風")
+                .replace("Pixel", "像素風")
+                .replace("pixel", "像素風");
     }
 
     private String validValue(String value, List<Product> products, ValueType type) {
