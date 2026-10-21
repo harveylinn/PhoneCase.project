@@ -160,6 +160,14 @@ export default function ImageSamples() {
                                 <p>來源：{sample.source || '未填寫'}</p>
                                 <p>授權：{sample.licenseType || '未填寫'}</p>
                                 <p>{sample.aiDescription || '尚未建立 AI 描述'}</p>
+                                {sample.aiMatchStatus && (
+                                    <p>
+                                        商品比對：{sample.aiMatchStatus}
+                                        {sample.aiMatchConfidence != null &&
+                                            `（${sample.aiMatchConfidence}%）`}
+                                    </p>
+                                )}
+                                {sample.aiMatchReason && <p>{sample.aiMatchReason}</p>}
                                 <button
                                     onClick={() => analyzeSample(sample.id)}
                                     disabled={analyzingId === sample.id}

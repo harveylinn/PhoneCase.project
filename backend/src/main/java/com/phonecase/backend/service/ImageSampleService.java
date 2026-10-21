@@ -1,6 +1,8 @@
 package com.phonecase.backend.service;
 
 import com.phonecase.backend.entity.ImageSample;
+import com.phonecase.backend.entity.Product;
+import com.phonecase.backend.entity.ProductVariant;
 import com.phonecase.backend.repository.ImageSampleRepository;
 import org.springframework.http.HttpStatus;
 import org.springframework.beans.factory.annotation.Value;
@@ -17,14 +19,17 @@ public class ImageSampleService {
 
     private final ImageSampleRepository repository;
     private final AiVisionService aiVisionService;
+    private final ProductService productService;
     private final Path uploadRoot;
 
     public ImageSampleService(
             ImageSampleRepository repository,
             AiVisionService aiVisionService,
+            ProductService productService,
             @Value("${app.upload.dir:uploads}") String uploadDir) {
         this.repository = repository;
         this.aiVisionService = aiVisionService;
+        this.productService = productService;
         this.uploadRoot = Paths.get(uploadDir).toAbsolutePath().normalize();
     }
 
@@ -87,14 +92,48 @@ public class ImageSampleService {
             if (mimeType == null || !mimeType.startsWith("image/")) {
                 mimeType = "image/jpeg";
             }
-            String description = aiVisionService.describeImage(
-                    Files.readAllBytes(imagePath), mimeType);
-            sample.setAiDescription(description);
+            byte[] imageBytes = Files.readAllBytes(imagePath);
+            if (sample.getProductId() == null) {
+                sample.setAiDescription(aiVisionService.describeImage(imageBytes, mimeType));
+                sample.setAiMatchStatus("未比對");
+                sample.setAiMatchConfidence(null);
+                sample.setAiMatchReason("未設定關聯商品 ID");
+            } else {
+                Product product = productService.getProductById(sample.getProductId());
+                var result = aiVisionService.validateImage(
+                        imageBytes, mimeType, buildProductContext(product));
+                sample.setAiDescription(result.description());
+                sample.setAiMatchStatus(result.matchesProduct() == null
+                        ? "待確認"
+                        : result.matchesProduct() ? "符合" : "不符合");
+                sample.setAiMatchConfidence(result.confidence());
+                sample.setAiMatchReason(result.reason());
+            }
             return repository.save(sample);
         } catch (Exception error) {
             throw new ResponseStatusException(
                     HttpStatus.BAD_GATEWAY, "AI 圖片分析失敗", error);
         }
+    }
+
+    private String buildProductContext(Product product) {
+        StringBuilder context = new StringBuilder();
+        context.append("商品 ID：").append(product.getId()).append('\n')
+                .append("商品名稱：").append(product.getName()).append('\n')
+                .append("商品分類：").append(product.getCategory()).append('\n')
+                .append("商品描述：").append(product.getDescription()).append('\n')
+                .append("商品款式：\n");
+
+        if (product.getVariants() != null) {
+            for (ProductVariant variant : product.getVariants()) {
+                context.append("- 品牌：").append(variant.getBrand())
+                        .append("，型號：").append(variant.getModel())
+                        .append("，顏色：").append(variant.getColor())
+                        .append("，標籤：").append(variant.getTags())
+                        .append('\n');
+            }
+        }
+        return context.toString();
     }
 
     public void delete(Long id) {

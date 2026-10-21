@@ -35,6 +35,15 @@ public class ImageSample {
     @Column(name = "ai_description", columnDefinition = "TEXT")
     private String aiDescription;
 
+    @Column(name = "ai_match_status", length = 30)
+    private String aiMatchStatus;
+
+    @Column(name = "ai_match_confidence")
+    private Integer aiMatchConfidence;
+
+    @Column(name = "ai_match_reason", columnDefinition = "TEXT")
+    private String aiMatchReason;
+
     @Column(name = "review_status", nullable = false, length = 30)
     private String reviewStatus = "待審核";
 

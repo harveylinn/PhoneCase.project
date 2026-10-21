@@ -2,6 +2,7 @@ package com.phonecase.backend.service;
 
 import com.phonecase.backend.dto.AiSearchRequest;
 import com.phonecase.backend.dto.AiVisionResult;
+import com.phonecase.backend.dto.AiImageValidationResult;
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.core.io.ByteArrayResource;
 import org.springframework.stereotype.Service;
@@ -70,5 +71,33 @@ public class AiVisionService {
                         ))
                 .call()
                 .content();
+    }
+
+    public AiImageValidationResult validateImage(
+            byte[] imageBytes,
+            String imageMimeType,
+            String productContext) {
+        return chatClient.prompt()
+                .system("""
+                        你是商品圖片審核助手。
+                        請根據圖片與提供的商品資料，判斷圖片是否可能屬於這個商品。
+                        只能根據圖片中明確看得到的特徵判斷，不要因為商品資料存在就直接判定符合。
+                        回傳 JSON 欄位：matchesProduct、confidence、description、reason。
+                        matchesProduct 只能是 true、false 或 null；不確定時填 null。
+                        confidence 是 0 到 100 的整數；不確定時填 0。
+                        description 用繁體中文描述圖片中看得到的手機殼特徵。
+                        reason 用繁體中文說明判斷依據。
+                        """)
+                .user(user -> user
+                        .text("""
+                                請審核這張圖片是否符合以下商品資料：
+                                %s
+                                """.formatted(productContext))
+                        .media(
+                                MimeTypeUtils.parseMimeType(imageMimeType),
+                                new ByteArrayResource(imageBytes)
+                        ))
+                .call()
+                .entity(AiImageValidationResult.class);
     }
 }
