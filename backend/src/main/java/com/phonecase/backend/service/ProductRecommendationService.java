@@ -67,6 +67,14 @@ public class ProductRecommendationService {
             String question,
             List<Product> products
     ) {
+        String brand = findQuestionValue(question, products.stream()
+                .filter(product -> product.getVariants() != null)
+                .flatMap(product -> product.getVariants().stream())
+                .map(variant -> variant.getBrand())
+                .filter(Objects::nonNull)
+                .distinct()
+                .toList());
+
         String model = findQuestionValue(question, products.stream()
                 .filter(product -> product.getVariants() != null)
                 .flatMap(product -> product.getVariants().stream())
@@ -101,9 +109,11 @@ public class ProductRecommendationService {
                 : validValue(criteria.styleTag(), products, ValueType.TAG);
 
         return new AiVisionResult(
+                brand != null ? brand : validValue(criteria.brand(), products, ValueType.BRAND),
                 model != null ? model : validValue(criteria.model(), products, ValueType.MODEL),
                 color != null ? color : validValue(criteria.color(), products, ValueType.COLOR),
                 correctedTag,
+                criteria.cameraLayout(),
                 criteria.reason()
         );
     }
@@ -132,6 +142,7 @@ public class ProductRecommendationService {
                 .filter(product -> product.getVariants() != null)
                 .flatMap(product -> product.getVariants().stream())
                 .map(variant -> switch (type) {
+                    case BRAND -> variant.getBrand();
                     case MODEL -> variant.getModel();
                     case COLOR -> variant.getColor();
                     case TAG -> variant.getTags();
@@ -141,16 +152,18 @@ public class ProductRecommendationService {
         return values.stream().anyMatch(item -> contains(item, value)) ? value : null;
     }
 
-    private enum ValueType { MODEL, COLOR, TAG }
+    private enum ValueType { BRAND, MODEL, COLOR, TAG }
 
     private boolean matches(ProductVariant variant, AiVisionResult criteria) {
-        return contains(variant.getModel(), criteria.model())
+        return contains(variant.getBrand(), criteria.brand())
+                && contains(variant.getModel(), criteria.model())
                 && contains(variant.getColor(), criteria.color())
                 && contains(variant.getTags(), criteria.styleTag());
     }
 
     private int score(ProductVariant variant, AiVisionResult criteria) {
         int score = 0;
+        score += exactScore(variant.getBrand(), criteria.brand(), 3);
         score += exactScore(variant.getModel(), criteria.model(), 4);
         score += exactScore(variant.getColor(), criteria.color(), 2);
         score += exactScore(variant.getTags(), criteria.styleTag(), 3);

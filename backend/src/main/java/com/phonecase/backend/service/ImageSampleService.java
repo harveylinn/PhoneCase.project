@@ -144,9 +144,11 @@ public class ImageSampleService {
     }
 
     private String buildCriteriaDescription(AiVisionResult criteria) {
-        return "AI 分析：型號=" + valueOrUnknown(criteria.model())
+        return "AI 分析：品牌=" + valueOrUnknown(criteria.brand())
+                + "、型號=" + valueOrUnknown(criteria.model())
                 + "、顏色=" + valueOrUnknown(criteria.color())
-                + "、風格=" + valueOrUnknown(criteria.styleTag());
+                + "、風格=" + valueOrUnknown(criteria.styleTag())
+                + "、鏡頭特徵=" + valueOrUnknown(criteria.cameraLayout());
     }
 
     private String buildCandidateReason(

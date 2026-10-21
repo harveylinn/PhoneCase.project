@@ -24,9 +24,11 @@ public class AiVisionService {
                 .system("""
                         你是 PhoneCase 搜尋條件分析器。
                         只負責從使用者文字或圖片抽取搜尋條件，不負責推薦商品。
-                        回傳 JSON 欄位：model、color、styleTag、reason。
+                        回傳 JSON 欄位：brand、model、color、styleTag、cameraLayout、reason。
                         無法確認的欄位必須是 null，不可以猜測。
                         styleTag 只能填使用者明確提到的風格，或圖片中非常明確的風格；不確定就填 null。
+                        cameraLayout 只能描述圖片看得到的鏡頭孔排列、數量與閃光燈位置；看不到就填 null。
+                        brand 只有在圖片或文字能明確判斷時才填寫。
                         不要把商品資料、價格、庫存或其他商品的標籤加入結果。
                         """);
 
