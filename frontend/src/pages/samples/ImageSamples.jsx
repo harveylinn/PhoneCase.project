@@ -15,6 +15,7 @@ export default function ImageSamples() {
     const [preview, setPreview] = useState('');
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
+    const [analyzingId, setAnalyzingId] = useState(null);
     const [message, setMessage] = useState('');
 
     async function loadSamples() {
@@ -114,6 +115,23 @@ export default function ImageSamples() {
         else setMessage('刪除樣本失敗');
     }
 
+    async function analyzeSample(id) {
+        setAnalyzingId(id);
+        setMessage('AI 正在分析圖片…');
+        try {
+            const response = await fetch(`/api/image-samples/${id}/analyze`, {
+                method: 'POST',
+            });
+            if (!response.ok) throw new Error('AI 圖片分析失敗');
+            await loadSamples();
+            setMessage('AI 圖片描述已更新，請確認內容後再審核。');
+        } catch (error) {
+            setMessage(error.message);
+        } finally {
+            setAnalyzingId(null);
+        }
+    }
+
     return (
         <main className="sample-admin">
             <h1>圖片樣本庫</h1>
@@ -142,6 +160,12 @@ export default function ImageSamples() {
                                 <p>來源：{sample.source || '未填寫'}</p>
                                 <p>授權：{sample.licenseType || '未填寫'}</p>
                                 <p>{sample.aiDescription || '尚未建立 AI 描述'}</p>
+                                <button
+                                    onClick={() => analyzeSample(sample.id)}
+                                    disabled={analyzingId === sample.id}
+                                >
+                                    {analyzingId === sample.id ? '分析中…' : 'AI 分析'}
+                                </button>
                                 <button onClick={() => reviewSample(sample.id, '通過')}>通過</button>
                                 <button onClick={() => reviewSample(sample.id, '退回')}>退回</button>
                                 <button onClick={() => deleteSample(sample.id)}>刪除</button>

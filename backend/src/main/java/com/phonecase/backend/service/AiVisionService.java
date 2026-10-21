@@ -53,4 +53,22 @@ public class AiVisionService {
             throw new IllegalArgumentException("圖片 Base64 或 MIME type 格式錯誤", error);
         }
     }
+
+    public String describeImage(byte[] imageBytes, String imageMimeType) {
+        return chatClient.prompt()
+                .system("""
+                        你是商品圖片標註助手。
+                        請用繁體中文描述圖片中看得到的手機殼特徵，包含外觀風格、顏色、材質、透明度、磁吸環或邊框等資訊。
+                        只能描述圖片中明確看得到的內容，不要猜測手機型號、品牌、價格或庫存。
+                        回覆 1 到 3 句簡潔文字，不要使用 Markdown 或 JSON。
+                        """)
+                .user(user -> user
+                        .text("請建立這張商品圖片的 AI 描述。")
+                        .media(
+                                MimeTypeUtils.parseMimeType(imageMimeType),
+                                new ByteArrayResource(imageBytes)
+                        ))
+                .call()
+                .content();
+    }
 }

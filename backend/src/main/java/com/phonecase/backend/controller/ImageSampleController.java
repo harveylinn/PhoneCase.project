@@ -52,6 +52,11 @@ public class ImageSampleController {
         return service.updateDescription(id, request.aiDescription());
     }
 
+    @PostMapping("/{id}/analyze")
+    public ImageSample analyzeImage(@PathVariable Long id) {
+        return service.analyzeImage(id);
+    }
+
     @DeleteMapping("/{id}")
     public void delete(@PathVariable Long id) {
         service.delete(id);
