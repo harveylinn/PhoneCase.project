@@ -1,5 +1,7 @@
 package com.phonecase.backend.controller;
 
+import com.phonecase.backend.dto.AiSearchRequest;
+import com.phonecase.backend.dto.AiSearchResponse;
 import com.phonecase.backend.service.AiSearchService;
 import org.springframework.web.bind.annotation.*;
 
@@ -15,21 +17,6 @@ public class AiSearchController {
 
     @PostMapping("/search")
     public AiSearchResponse search(@RequestBody AiSearchRequest request) {
-        String answer = aiSearchService.search(
-                request.text(),
-                request.imageBase64(),
-                request.imageMimeType()
-        );
-        return new AiSearchResponse(answer);
-    }
-
-    public record AiSearchRequest(
-            String text,
-            String imageBase64,
-            String imageMimeType
-    ) {
-    }
-
-    public record AiSearchResponse(String answer) {
+        return new AiSearchResponse(aiSearchService.search(request));
     }
 }

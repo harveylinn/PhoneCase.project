@@ -42,6 +42,7 @@ public class ProductVariantService {
         variant.setStock(request.getStock());
         variant.setSku(request.getSku());
         variant.setStatus(request.getStatus());
+        variant.setTags(request.getTags());
         Product product = productRepository
                 .findById(productId)
                 .orElseThrow(() ->
@@ -87,6 +88,7 @@ public class ProductVariantService {
         existingVariant.setStock(request.getStock());
         existingVariant.setSku(request.getSku());
         existingVariant.setStatus(request.getStatus());
+        existingVariant.setTags(request.getTags());
         return productVariantRepository.save(existingVariant);
     }
 

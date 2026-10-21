@@ -34,16 +34,12 @@ export default function AiChatWidget() {
         setLoading(true);
 
         try {
-            const conversation = nextMessages
-                .map(message => `${message.role}: ${message.content}`)
-                .join('\n');
-
             const imageBase64 = imageFile
                 ? await fileToBase64(imageFile)
                 : null;
 
             const answer = await searchProductsWithAi(
-                `${conversation}\n目前問題：${actualQuestion}`,
+                actualQuestion,
                 imageBase64,
                 imageFile?.type
             );

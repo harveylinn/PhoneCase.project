@@ -35,4 +35,6 @@ public class ProductVariantRequest {
 
     @NotBlank(message = "商品狀態不可空白")
     private String status;
+
+    private String tags;
 }

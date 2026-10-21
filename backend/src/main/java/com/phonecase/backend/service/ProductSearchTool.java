@@ -22,17 +22,21 @@ public class ProductSearchTool {
 
     @Tool(description = """
             查詢目前上架的手機殼商品。
-            可依手機型號與顏色篩選；沒有條件時傳 null。
+            可依手機型號、顏色與風格標籤篩選；沒有條件時傳 null。
             必須只回傳資料庫實際存在的商品，不可自行建立商品。
             """)
     public List<Product> searchProducts(
             @ToolParam(description = "手機型號，例如 iPhone 16 Pro；沒有則傳 null", required = false)
             String model,
             @ToolParam(description = "顏色，例如 黑色、透明、粉色；沒有則傳 null", required = false)
-            String color) {
+            String color,
+            @ToolParam(description = "商品標籤，例如可愛風、像素風、透明；沒有則傳 null", required = false)
+            String tags){
+
 
         String normalizedModel = normalize(model);
         String normalizedColor = normalize(color);
+        String normalizedTags = normalize(tags);
 
         return productService.getAvailableProducts().stream()
                 .filter(product -> product.getVariants() != null)
@@ -41,11 +45,14 @@ public class ProductSearchTool {
                             || containsIgnoreCase(variant.getModel(), normalizedModel);
                     boolean colorMatches = normalizedColor == null
                             || containsIgnoreCase(variant.getColor(), normalizedColor);
-                    return modelMatches && colorMatches;
+                    boolean tagsMatches = normalizedTags == null
+                            || containsIgnoreCase(variant.getTags(), normalizedTags);
+                    return modelMatches && colorMatches && tagsMatches;
                 }))
                 .limit(10)
                 .toList();
     }
+
 
     private String normalize(String value) {
         if (value == null || value.isBlank()) {
