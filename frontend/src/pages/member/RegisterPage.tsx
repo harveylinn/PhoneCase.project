@@ -4,7 +4,7 @@ import "../../styles/member/register.css";
 interface RegisterResponse {
   success: boolean;
   message: string;
-  memberId?: memberId;
+  memberId?: number;
   errors?: {
     account?: string;
     password?: string;
@@ -132,20 +132,31 @@ export default function RegisterPage() {
         body: JSON.stringify(registerData),
       });
 
-      const data: RegisterResponse = await response.json()  ;
+      const data: RegisterResponse = await response.json();
 
-      if (!response.ok || data.success !== true){
+      if (!response.ok || data.success !== true) {
         //後端若有提供欄位錯誤，就顯示在對應欄位下方。
+        //符號??表示：null 或undefined時 使用右邊值(空字串)
         setAccountError(data.errors?.account ?? "");
         setPasswordError(data.errors?.password ?? "");
         setNameError(data.errors?.name ?? "");
         setTelError(data.errors?.phone ?? "");
         setEmailError(data.errors?.email ?? "");
+
+        setResultMessage(
+          data.message ?? `註冊失敗，HTTP狀態碼:${response.status}`,
+        );
+
+        return;
       }
 
-      
+      //清空表單後，再顯示成功訊息。
+      handleClear();
+      setResultMessage(data.message ?? "註冊成功，請登入");
     } catch {
-      setResultMessage("無法完成請求，請確認後端已啟動及回應格式正確");
+      setResultMessage(
+        "無法取得有效回應，請確認網路與後端服務，再確認註冊結果",
+      );
     } finally {
       setIsSubmitting(false);
     }
@@ -157,12 +168,6 @@ export default function RegisterPage() {
         跳至註冊表單
       </a>
       <header className="site-header">
-        <a className="brand" href="/index">
-          <span className="brand-mark">
-            P<span>·</span>
-          </span>
-          PhoneCase<span className="brand-dot">.</span>
-        </a>
         <a className="back-link" href="/login">
           <span>←</span> 返回登入
         </a>

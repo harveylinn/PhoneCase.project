@@ -19,7 +19,7 @@ public record RegisterRequest(
     @Size(max = 80,message = "姓名不可超過80字元。")
     String name,
 
-    // @NotBlank (message = "請輸入電話。")
+    @NotBlank (message = "請輸入電話。")
     @Size(max = 30,message = "電話不可超過30字元。")
     @Pattern (
                 regexp = "^\\+?(?=(?:\\D*\\d){7,15}\\D*$)[0-9-]+$",

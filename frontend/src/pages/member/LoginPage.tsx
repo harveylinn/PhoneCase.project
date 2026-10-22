@@ -35,7 +35,7 @@ export default function LoginPage(){
                             aria-hidden="true">→</span></button>
                     <p className="form-status" id="loginStatus" role="status" aria-live="polite" hidden></p>
                 </form>
-                <div className="register-prompt"><span>還沒有帳號？</span><a href="./register.html">註冊會員 <span
+                <div className="register-prompt"><span>還沒有帳號？</span><a href="./register">註冊會員 <span
                             aria-hidden="true">↗</span></a></div>
             </div>
         </section>
