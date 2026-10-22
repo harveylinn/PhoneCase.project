@@ -114,9 +114,17 @@ public class ProductRecommendationService {
                 ? "__NO_MATCHING_STYLE__"
                 : validValue(normalizedStyleTag, products, ValueType.TAG);
 
+        String resolvedModel = model != null
+                ? model : validValue(normalizedModel, products, ValueType.MODEL);
+        String resolvedBrand = brand != null
+                ? brand : validValue(normalizedBrand, products, ValueType.BRAND);
+        if (resolvedBrand == null) {
+            resolvedBrand = inferBrandFromModel(resolvedModel);
+        }
+
         return new AiVisionResult(
-                brand != null ? brand : validValue(normalizedBrand, products, ValueType.BRAND),
-                model != null ? model : validValue(normalizedModel, products, ValueType.MODEL),
+                resolvedBrand,
+                resolvedModel,
                 color != null ? color : validValue(normalizedColor, products, ValueType.COLOR),
                 correctedTag,
                 criteria.cameraLayout(),
@@ -170,6 +178,20 @@ public class ProductRecommendationService {
                 .replace("pixel art", "像素風")
                 .replace("Pixel", "像素風")
                 .replace("pixel", "像素風");
+    }
+
+    private String inferBrandFromModel(String model) {
+        if (model == null || model.isBlank()) {
+            return null;
+        }
+        String normalized = model.toLowerCase(Locale.ROOT);
+        if (normalized.contains("iphone")) return "Apple";
+        if (normalized.contains("galaxy")) return "Samsung";
+        if (normalized.contains("pixel")) return "Google";
+        if (normalized.contains("xiaomi") || normalized.contains("redmi")) {
+            return "Xiaomi";
+        }
+        return null;
     }
 
     private String validValue(String value, List<Product> products, ValueType type) {

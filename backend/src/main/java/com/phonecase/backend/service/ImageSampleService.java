@@ -144,7 +144,8 @@ public class ImageSampleService {
     }
 
     private String buildCriteriaDescription(AiVisionResult criteria) {
-        return "AI 分析：品牌=" + valueOrUnknown(criteria.brand())
+        return "AI 分析：品牌=" + valueOrUnknown(
+                criteria.brand() != null ? criteria.brand() : inferBrandFromModel(criteria.model()))
                 + "、型號=" + valueOrUnknown(criteria.model())
                 + "、顏色=" + valueOrUnknown(criteria.color())
                 + "、風格=" + valueOrUnknown(criteria.styleTag())
@@ -167,6 +168,20 @@ public class ImageSampleService {
 
     private String valueOrUnknown(String value) {
         return value == null || value.isBlank() ? "未確認" : value;
+    }
+
+    private String inferBrandFromModel(String model) {
+        if (model == null || model.isBlank()) {
+            return null;
+        }
+        String normalized = model.toLowerCase(java.util.Locale.ROOT);
+        if (normalized.contains("iphone")) return "Apple";
+        if (normalized.contains("galaxy")) return "Samsung";
+        if (normalized.contains("pixel")) return "Google";
+        if (normalized.contains("xiaomi") || normalized.contains("redmi")) {
+            return "Xiaomi";
+        }
+        return null;
     }
 
     private String buildProductContext(Product product) {

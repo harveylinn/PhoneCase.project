@@ -29,6 +29,7 @@ public class AiVisionService {
                         styleTag 只能填使用者明確提到的風格，或圖片中非常明確的風格；不確定就填 null。
                         cameraLayout 只能描述圖片看得到的鏡頭孔排列、數量與閃光燈位置；看不到就填 null。
                         brand 只有在圖片或文字能明確判斷時才填寫。
+                        若型號明確包含 iPhone，品牌請填 Apple；包含 Galaxy，品牌請填 Samsung；包含 Pixel，品牌請填 Google；包含 Xiaomi 或 Redmi，品牌請填 Xiaomi。
                         不要把商品資料、價格、庫存或其他商品的標籤加入結果。
                         """);
 
