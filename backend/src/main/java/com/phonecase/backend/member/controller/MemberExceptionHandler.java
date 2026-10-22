@@ -9,6 +9,8 @@ import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
+import com.phonecase.backend.member.dto.LoginRequest;
+import com.phonecase.backend.member.exception.LoginException;
 import com.phonecase.backend.member.exception.RegistrationException;
 
 @RestControllerAdvice(assignableTypes = MemberController.class)
@@ -41,7 +43,7 @@ public class MemberExceptionHandler {
         )
         );
     }
-    @ExceptionHandler (DataIntegrityViolationException.class)
+    @ExceptionHandler(DataIntegrityViolationException.class)
     public ResponseEntity<Map<String, Object>> handleDataIntegrity(
         DataIntegrityViolationException exception
     ){
@@ -52,6 +54,17 @@ public class MemberExceptionHandler {
             )
         );
 
+    }
+
+    @ExceptionHandler(LoginException.class)
+    public ResponseEntity<Map<String,Object>> handleLogin(LoginException exception) {
+        
+        return ResponseEntity.status(401).body(
+            Map.<String,Object>of(
+                "success", false,
+                "message", exception.getMessage()
+            )
+        );
     }
 
 

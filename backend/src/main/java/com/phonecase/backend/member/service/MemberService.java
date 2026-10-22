@@ -1,26 +1,20 @@
 package com.phonecase.backend.member.service;
 
 import java.nio.charset.StandardCharsets;
-
 import org.mindrot.jbcrypt.BCrypt;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
-
+import com.phonecase.backend.member.dto.LoginRequest;
 import com.phonecase.backend.member.dto.RegisterRequest;
 import com.phonecase.backend.member.entity.Member;
+import com.phonecase.backend.member.exception.LoginException;
 import com.phonecase.backend.member.exception.RegistrationException;
 import com.phonecase.backend.member.repository.MemberRepository;
-
-import jakarta.servlet.Registration;
 
 @Service 
 public class MemberService {
     @Autowired 
     private MemberRepository memberRepository;
-
-    // public MemberService(MemberRepository memberRepository) {
-    //     this.memberRepository = memberRepository;
-    // }
 
     public Long register(RegisterRequest request){
         String account = request.account().trim();
@@ -41,7 +35,7 @@ public class MemberService {
         }
 
         String passwordHash = BCrypt.hashpw(request.password(),
-                                            BCrypt.gensalt()
+                                            BCrypt.gensalt(12)
         );
         
         Member member = new Member();
@@ -57,6 +51,28 @@ public class MemberService {
 
         return savedMember.getId();
 
+    }
+
+    public Member login(LoginRequest request) {
+        String account = request.account().trim();
+        String password = request.password();
+
+        if (password.getBytes(StandardCharsets.UTF_8).length >72) {
+            throw new LoginException("帳號或密碼錯誤。");
+        }
+
+        Member member = memberRepository.findByAccount(account)
+                        .orElseThrow(() -> new LoginException("帳號或密碼錯誤"));
+
+        if (!BCrypt.checkpw(password, member.getPasswordHash())) {
+            throw new LoginException("帳號或密碼錯誤。");
+        }
+
+        if (!"ACTIVE".equals(member.getStatus())) {
+            throw new LoginException("此帳號目前無法登入，請聯絡管理員。");
+        }
+
+        return member; 
     }
 
    

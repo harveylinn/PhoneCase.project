@@ -9,9 +9,12 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.phonecase.backend.member.dto.LoginRequest;
 import com.phonecase.backend.member.dto.RegisterRequest;
+import com.phonecase.backend.member.entity.Member;
 import com.phonecase.backend.member.service.MemberService;
 
+import io.micrometer.core.ipc.http.HttpSender.Response;
 import jakarta.validation.Valid;
 
 /* 
@@ -43,4 +46,24 @@ public class MemberController {
             )
     );
   }
+  
+
+  @PostMapping("/login")
+  public ResponseEntity<Map<String,Object>> login(@RequestBody @Valid LoginRequest request) {
+
+    Member member = memberService.login(request);
+
+    return ResponseEntity.ok(
+      Map.<String, Object>of(
+        "success", true,
+        "message", "帳密核對成功。",
+        "member",Map.of(
+          "id", member.getId(),
+          "account", member.getAccount(),
+          "name", member.getName()
+        )
+      )
+    );
+  }
+
 }
