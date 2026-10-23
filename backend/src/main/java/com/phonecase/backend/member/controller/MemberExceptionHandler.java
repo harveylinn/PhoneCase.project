@@ -10,6 +10,7 @@ import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
 import com.phonecase.backend.member.dto.LoginRequest;
+import com.phonecase.backend.member.exception.JwtAuthenticationException;
 import com.phonecase.backend.member.exception.LoginException;
 import com.phonecase.backend.member.exception.RegistrationException;
 
@@ -61,6 +62,18 @@ public class MemberExceptionHandler {
         
         return ResponseEntity.status(401).body(
             Map.<String,Object>of(
+                "success", false,
+                "message", exception.getMessage()
+            )
+        );
+    }
+
+    @ExceptionHandler(JwtAuthenticationException.class)
+    public ResponseEntity<Map<String,Object>> handleJwtAuthentication(
+        JwtAuthenticationException exception) {
+        
+        return ResponseEntity.status(401).body(
+            Map.<String, Object>of(
                 "success", false,
                 "message", exception.getMessage()
             )

@@ -31,13 +31,17 @@
 		<java.version>21</java.version>
 	</properties>
 	<dependencies>
+		<!-- AOP：供 JWT 切面集中驗證使用 -->
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter-aspectj</artifactId>
+		</dependency>
 		<!-- JWT：提供程式使用的公開 API -->
 		<dependency>
 			<groupId>io.jsonwebtoken</groupId>
 			<artifactId>jjwt-api</artifactId>
 			<version>0.12.6</version>
 		</dependency>
-
 		<!-- JWT：執行時使用的實作 -->
 		<dependency>
 			<groupId>io.jsonwebtoken</groupId>

@@ -8,6 +8,8 @@ import javax.crypto.SecretKey;
 
 import org.springframework.stereotype.Component;
 
+import io.jsonwebtoken.Claims;
+import io.jsonwebtoken.JwtException;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.security.Keys;
 
@@ -29,12 +31,31 @@ public class JwtToken {
     public String createToken(Long memberId) {
         Instant now = Instant.now();
 
-        return Jwts.builder()
+        String token = Jwts.builder()
                 .subject(memberId.toString())
                 .issuedAt(Date.from(now))
                 .expiration(Date.from(now.plusSeconds(EXPIRATION_SECONDS)))
                 .signWith(signingKey, Jwts.SIG.HS256)
                 .compact();
+        return token;
+    }
+
+    public Claims verifyToken(String token) {
+        Claims claims = Jwts.parser()
+                        .verifyWith(signingKey)
+                        .build()
+                        .parseSignedClaims(token)
+                        .getPayload();
+
+        if (claims.getExpiration() == null) {
+            throw new JwtException("Token 缺少到期時間。");
+        }
+
+        if (claims.getSubject() == null || claims.getSubject().isBlank()) {
+            throw new JwtException("Token 缺少會員身分。");
+        }
+
+        return claims;
     }
 
 }
