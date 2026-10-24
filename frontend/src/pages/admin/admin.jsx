@@ -9,6 +9,7 @@ import {
   ShoppingCart,
   PackagePlus,
   Truck,
+  Warehouse,
   TriangleAlert,
   CircleAlert,
   FileText,
@@ -204,6 +205,8 @@ const adminStyles = `
 .adm-btn-blue:hover { background: #1d4ed8; }
 .adm-btn-amber { background: var(--adm-amber); color: #fff; }
 .adm-btn-amber:hover { background: #b45309; }
+.adm-btn-violet { background: #7c3aed; color: #fff; }
+.adm-btn-violet:hover { background: #6d28d9; }
 .adm-btn-rose { background: var(--adm-rose); color: #fff; }
 .adm-btn-rose:hover { background: #be123c; }
 .adm-btn-rose-soft { background: #fff1f2; color: var(--adm-rose); border-color: #fecdd3; }
@@ -401,6 +404,8 @@ const adminStyles = `
 const emptyForm = {
   orderNo: '',
   productName: '',
+  productCode: '',
+  brand: '',
   color: '',
   model: '',
   quantity: 1,
@@ -461,6 +466,8 @@ export default function App() {
       docType: currentType,
       orderNo: formData.orderNo,
       productName: formData.productName,
+      productCode: formData.productCode,
+      brand: formData.brand,
       color: formData.color,
       model: formData.model,
       quantity: Number(formData.quantity) || 0,
@@ -693,7 +700,8 @@ function DocumentOpsCard({ onOpenModal }) {
     { name: '訂單', Icon: Receipt, iconColor: '#6366f1', btnClass: 'adm-btn-indigo' },
     { name: '採購單', Icon: ShoppingCart, iconColor: '#10b981', btnClass: 'adm-btn-emerald' },
     { name: '入庫單', Icon: PackagePlus, iconColor: '#3b82f6', btnClass: 'adm-btn-blue' },
-    { name: '出庫單', Icon: Truck, iconColor: '#f59e0b', btnClass: 'adm-btn-amber' }
+    { name: '出庫單', Icon: Truck, iconColor: '#f59e0b', btnClass: 'adm-btn-amber' },
+    { name: '庫存', Icon: Warehouse, iconColor: '#8b5cf6', btnClass: 'adm-btn-violet' }
   ];
 
   return (
@@ -782,6 +790,7 @@ function InventoryReportTable() {
         ['項次', 'c'],
         ['品名'],
         ['品號'],
+        ['品牌'],
         ['顏色'],
         ['型號'],
         ['數量', 'r'],
@@ -807,6 +816,7 @@ function OrderReportTable() {
         ['項次', 'c'],
         ['訂單編號'],
         ['品名'],
+        ['品牌'],
         ['顏色'],
         ['型號'],
         ['數量', 'r'],
@@ -889,6 +899,26 @@ function MainModal({
                     placeholder="輸入商品名稱"
                     value={formData.productName}
                     onChange={updateField('productName')}
+                    className="adm-input"
+                  />
+                </FormField>
+                <FormField label="品號">
+                  <input
+                    type="text"
+                    required
+                    placeholder="如：PC-IP15-BK"
+                    value={formData.productCode}
+                    onChange={updateField('productCode')}
+                    className="adm-input"
+                  />
+                </FormField>
+                <FormField label="品牌">
+                  <input
+                    type="text"
+                    required
+                    placeholder="如：Apple"
+                    value={formData.brand}
+                    onChange={updateField('brand')}
                     className="adm-input"
                   />
                 </FormField>

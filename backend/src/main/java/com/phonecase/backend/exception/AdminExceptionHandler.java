@@ -4,6 +4,8 @@ import com.phonecase.backend.controller.AdminDocumentController;
 import com.phonecase.backend.controller.InventoryController;
 import org.springframework.core.Ordered;
 import org.springframework.core.annotation.Order;
+import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
@@ -31,5 +33,13 @@ public class AdminExceptionHandler {
                 : exception.getReason());
         return ResponseEntity.status(exception.getStatusCode()).body(error);
     }
-}
 
+    // 資料庫限制錯誤：外鍵、長度、必填欄位等
+    @ExceptionHandler(DataIntegrityViolationException.class)
+    public ResponseEntity<Map<String, String>> handleDataIntegrityError(
+            DataIntegrityViolationException exception) {
+        Map<String, String> error = new HashMap<>();
+        error.put("message", "資料不符合資料庫限制（關聯單號不存在、仍被其他單據引用或欄位過長）");
+        return ResponseEntity.status(HttpStatus.CONFLICT).body(error);
+    }
+}

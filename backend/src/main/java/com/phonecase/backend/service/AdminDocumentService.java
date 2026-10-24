@@ -8,8 +8,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
-import java.math.BigDecimal;
 import java.util.List;
+import java.util.Objects;
 
 @Service
 public class AdminDocumentService {
@@ -18,11 +18,13 @@ public class AdminDocumentService {
     private static final String PURCHASE_ORDER = "採購單";
     private static final String STOCK_IN = "入庫單";
     private static final String STOCK_OUT = "出庫單";
+    private static final String INVENTORY = "庫存";
 
     private final SalesOrderRepository salesOrderRepository;
     private final PurchaseOrderRepository purchaseOrderRepository;
     private final StockInRepository stockInRepository;
     private final StockOutRepository stockOutRepository;
+    private final InventoryRepository inventoryRepository;
     private final InventoryService inventoryService;
 
     public AdminDocumentService(
@@ -30,11 +32,13 @@ public class AdminDocumentService {
             PurchaseOrderRepository purchaseOrderRepository,
             StockInRepository stockInRepository,
             StockOutRepository stockOutRepository,
+            InventoryRepository inventoryRepository,
             InventoryService inventoryService) {
         this.salesOrderRepository = salesOrderRepository;
         this.purchaseOrderRepository = purchaseOrderRepository;
         this.stockInRepository = stockInRepository;
         this.stockOutRepository = stockOutRepository;
+        this.inventoryRepository = inventoryRepository;
         this.inventoryService = inventoryService;
     }
 
@@ -43,13 +47,7 @@ public class AdminDocumentService {
         String docType = request.getDocType();
         DocumentRepository<BaseDocument> repository = repositoryOf(docType);
 
-        if (request.getOrderNo() == null || request.getOrderNo().isBlank()) {
-            throw new ResponseStatusException(
-                    HttpStatus.BAD_REQUEST,
-                    "單號不可空白"
-            );
-        }
-        String orderNo = request.getOrderNo().trim();
+        String orderNo = requireOrderNo(docType, request.getOrderNo());
         if (repository.existsByOrderNo(orderNo)) {
             throw new ResponseStatusException(
                     HttpStatus.CONFLICT,
@@ -60,7 +58,9 @@ public class AdminDocumentService {
         BaseDocument document = newDocument(docType);
         document.setOrderNo(orderNo);
         applyRequest(document, request);
-        applyStock(docType, document, 1);
+        applyReference(document, request.getRefNo(), true);
+        applyStock(docType, document.getProductName(), document.getModel(),
+                document.getColor(), document.getQuantity());
 
         return repository.save(document);
     }
@@ -91,7 +91,7 @@ public class AdminDocumentService {
     @Transactional(readOnly = true)
     public BaseDocument getDocument(String docType, String orderNo) {
         return repositoryOf(docType)
-                .findByOrderNo(orderNo)
+                .findByOrderNo(orderNo == null ? null : orderNo.trim())
                 .orElseThrow(() ->
                         new ResponseStatusException(
                                 HttpStatus.NOT_FOUND,
@@ -100,48 +100,147 @@ public class AdminDocumentService {
                 );
     }
 
-    // 入庫單、出庫單：先撤銷舊內容對庫存的影響，再套用新內容
+    // 入庫單、出庫單：同一品項只異動數量差額；換了品項則先撤銷舊品項再套用新品項
     @Transactional
     public BaseDocument updateDocument(String docType, String orderNo, AdminDocumentRequest request) {
         BaseDocument existingDocument = getDocument(docType, orderNo);
-        applyStock(docType, existingDocument, -1);
+
+        String oldProductName = existingDocument.getProductName();
+        String oldModel = existingDocument.getModel();
+        String oldColor = existingDocument.getColor();
+        int oldQuantity = existingDocument.getQuantity();
+
         applyRequest(existingDocument, request);
-        applyStock(docType, existingDocument, 1);
+        applyReference(existingDocument, request.getRefNo(), false);
+
+        boolean sameItem = Objects.equals(oldProductName, existingDocument.getProductName())
+                && Objects.equals(oldModel, existingDocument.getModel())
+                && Objects.equals(oldColor, existingDocument.getColor());
+        if (sameItem) {
+            applyStock(docType, oldProductName, oldModel, oldColor,
+                    existingDocument.getQuantity() - oldQuantity);
+        } else {
+            applyStock(docType, oldProductName, oldModel, oldColor, -oldQuantity);
+            applyStock(docType, existingDocument.getProductName(), existingDocument.getModel(),
+                    existingDocument.getColor(), existingDocument.getQuantity());
+        }
+
         return repositoryOf(docType).save(existingDocument);
     }
 
     // 入庫單、出庫單：刪除時撤銷該單對庫存的影響
+    // 訂單、採購單：已被出庫單、入庫單引用時不可刪除（資料表外鍵）
     @Transactional
     public void deleteDocument(String docType, String orderNo) {
         BaseDocument existingDocument = getDocument(docType, orderNo);
-        applyStock(docType, existingDocument, -1);
+        String no = existingDocument.getOrderNo();
+
+        if (existingDocument instanceof SalesOrder
+                && stockOutRepository.existsBySalesOrderNo(no)) {
+            throw new ResponseStatusException(
+                    HttpStatus.CONFLICT,
+                    "訂單 " + no + " 已有出庫單，請先刪除對應的出庫單"
+            );
+        }
+        if (existingDocument instanceof PurchaseOrder
+                && stockInRepository.existsByPurchaseNo(no)) {
+            throw new ResponseStatusException(
+                    HttpStatus.CONFLICT,
+                    "採購單 " + no + " 已有入庫單，請先刪除對應的入庫單"
+            );
+        }
+
+        applyStock(docType, existingDocument.getProductName(), existingDocument.getModel(),
+                existingDocument.getColor(), -existingDocument.getQuantity());
         repositoryOf(docType).delete(existingDocument);
     }
 
-    // direction：1 = 套用單據，-1 = 撤銷單據
-    // 只有入庫單會增加庫存、只有出庫單會減少庫存；訂單與採購單不影響庫存
-    private void applyStock(String docType, BaseDocument document, int direction) {
-        int quantity = document.getQuantity() * direction;
+    // quantity 為正數 = 套用單據，負數 = 撤銷單據
+    // 只有入庫單會增加庫存、只有出庫單會減少庫存；訂單、採購單、庫存本身不影響庫存
+    private void applyStock(String docType, String productName, String model, String color, int quantity) {
         if (STOCK_IN.equals(docType)) {
-            inventoryService.changeQuantity(
-                    document.getProductName(), document.getModel(), document.getColor(), quantity);
+            inventoryService.changeQuantity(productName, model, color, quantity);
         } else if (STOCK_OUT.equals(docType)) {
-            inventoryService.changeQuantity(
-                    document.getProductName(), document.getModel(), document.getColor(), -quantity);
+            inventoryService.changeQuantity(productName, model, color, -quantity);
         }
     }
 
     // 共用欄位，總計一律由後端以 數量 × 單價 計算
     private void applyRequest(BaseDocument document, AdminDocumentRequest request) {
-        document.setProductName(request.getProductName());
-        document.setColor(request.getColor());
-        document.setModel(request.getModel());
+        document.setProductName(request.getProductName().trim());
+        document.setColor(trimToNull(request.getColor()));
+        document.setModel(trimToNull(request.getModel()));
         document.setQuantity(request.getQuantity());
         document.setUnitPrice(request.getUnitPrice());
-        document.setTotalPrice(
-                request.getUnitPrice().multiply(BigDecimal.valueOf(request.getQuantity()))
-        );
-        document.setCustomerName(request.getCustomerName());
+        document.setTotalPrice(request.getQuantity() * request.getUnitPrice());
+        document.setCustomerName(trimToNull(request.getCustomerName()));
+    }
+
+    // 入庫單需對應採購單、出庫單需對應訂單（資料表外鍵）
+    // 新增時必填；修改時沒有傳入就沿用原本的單號
+    private void applyReference(BaseDocument document, String refNo, boolean required) {
+        String ref = trimToNull(refNo);
+
+        if (document instanceof StockIn stockIn) {
+            if (ref == null) {
+                if (required) {
+                    throw new ResponseStatusException(
+                            HttpStatus.BAD_REQUEST,
+                            "入庫單必須填寫對應的採購單號（refNo）"
+                    );
+                }
+                return;
+            }
+            if (!purchaseOrderRepository.existsByOrderNo(ref)) {
+                throw new ResponseStatusException(
+                        HttpStatus.BAD_REQUEST,
+                        "找不到採購單，單號" + ref
+                );
+            }
+            stockIn.setPurchaseNo(ref);
+        } else if (document instanceof StockOut stockOut) {
+            if (ref == null) {
+                if (required) {
+                    throw new ResponseStatusException(
+                            HttpStatus.BAD_REQUEST,
+                            "出庫單必須填寫對應的訂單號（refNo）"
+                    );
+                }
+                return;
+            }
+            if (!salesOrderRepository.existsByOrderNo(ref)) {
+                throw new ResponseStatusException(
+                        HttpStatus.BAD_REQUEST,
+                        "找不到訂單，單號" + ref
+                );
+            }
+            stockOut.setSalesOrderNo(ref);
+        }
+    }
+
+    // 單據編號為 char(10)、品號為 varchar(50)
+    private String requireOrderNo(String docType, String orderNo) {
+        String label = INVENTORY.equals(docType) ? "品號" : "單號";
+        int maxLength = INVENTORY.equals(docType) ? 50 : 10;
+
+        String no = trimToNull(orderNo);
+        if (no == null) {
+            throw new ResponseStatusException(
+                    HttpStatus.BAD_REQUEST,
+                    label + "不可空白"
+            );
+        }
+        if (no.length() > maxLength) {
+            throw new ResponseStatusException(
+                    HttpStatus.BAD_REQUEST,
+                    label + "長度不可超過 " + maxLength + " 碼"
+            );
+        }
+        return no;
+    }
+
+    private String trimToNull(String value) {
+        return value == null || value.isBlank() ? null : value.trim();
     }
 
     @SuppressWarnings("unchecked")
@@ -151,6 +250,7 @@ public class AdminDocumentService {
             case PURCHASE_ORDER -> purchaseOrderRepository;
             case STOCK_IN -> stockInRepository;
             case STOCK_OUT -> stockOutRepository;
+            case INVENTORY -> inventoryRepository;
             default -> throw invalidDocType();
         };
         return (DocumentRepository<BaseDocument>) repository;
@@ -162,6 +262,7 @@ public class AdminDocumentService {
             case PURCHASE_ORDER -> new PurchaseOrder();
             case STOCK_IN -> new StockIn();
             case STOCK_OUT -> new StockOut();
+            case INVENTORY -> new Inventory();
             default -> throw invalidDocType();
         };
     }
@@ -169,7 +270,7 @@ public class AdminDocumentService {
     private ResponseStatusException invalidDocType() {
         return new ResponseStatusException(
                 HttpStatus.BAD_REQUEST,
-                "單據類型只能是訂單、採購單、入庫單或出庫單"
+                "單據類型只能是訂單、採購單、入庫單、出庫單或庫存"
         );
     }
 }

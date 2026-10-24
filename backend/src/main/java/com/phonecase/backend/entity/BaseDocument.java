@@ -4,22 +4,15 @@ import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.Setter;
 
-import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
-// 四種單據共用的欄位，各自對應不同的資料表
+// 訂單、採購單、入庫單、出庫單、庫存共用的欄位
+// 單號（主鍵）在每張資料表的欄位名稱不同，由各子類別自行對應
+// 庫存（inventory）為中文欄位，由 Inventory 以 @AttributeOverride 改對應
 @MappedSuperclass
 @Getter
 @Setter
 public abstract class BaseDocument {
-
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
-
-    // 單號（前端欄位名稱為 orderNo）
-    @Column(name = "order_no", nullable = false, unique = true, length = 30)
-    private String orderNo;
 
     @Column(name = "product_name", nullable = false, length = 100)
     private String productName;
@@ -33,21 +26,27 @@ public abstract class BaseDocument {
     @Column(nullable = false)
     private Integer quantity;
 
-    @Column(name = "unit_price", nullable = false, precision = 10, scale = 2)
-    private BigDecimal unitPrice;
+    @Column(name = "unit_price", nullable = false)
+    private Integer unitPrice;
 
-    @Column(name = "total_price", nullable = false, precision = 12, scale = 2)
-    private BigDecimal totalPrice;
+    @Column(name = "total_price")
+    private Integer totalPrice;
 
-    // 訂單為客戶/會員名稱，其他單據為供應商名稱
-    @Column(name = "customer_name", length = 100)
+    // 訂單為客戶名稱，其他單據為供應商名稱（前端欄位名稱為 customerName）
+    @Column(name = "supplier_name", length = 100)
     private String customerName;
 
-    @Column(name = "created_at",
-            insertable = false, updatable = false)
-    private LocalDateTime createdAt;
+    // 訂單為客戶代號，其他單據為供應商代號
+    @Column(name = "supplier_id", length = 20)
+    private String customerId;
 
+    // 由資料庫自動填入（DEFAULT / ON UPDATE current_timestamp()）
     @Column(name = "updated_at",
             insertable = false, updatable = false)
     private LocalDateTime updatedAt;
+
+    // 單號（前端欄位名稱為 orderNo），由子類別對應到各自的主鍵欄位
+    public abstract String getOrderNo();
+
+    public abstract void setOrderNo(String orderNo);
 }
