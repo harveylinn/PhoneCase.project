@@ -19,6 +19,10 @@ public class SalesOrder extends BaseDocument {
     @Column(name = "order_no", length = 10)
     private String orderNo;
 
+    // 品號
+    @Column(name = "product_no", nullable = false, length = 50)
+    private String productNo;
+
     @Column(nullable = false, length = 20)
     private String status = "待處理";
 }

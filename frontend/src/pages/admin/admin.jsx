@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   Smartphone,
   ChartLine,
@@ -237,7 +237,8 @@ const adminStyles = `
 .adm-pill { font-size: 12px; font-weight: 500; padding: 4px 10px; border-radius: 999px; border: 1px solid; }
 .adm-pill.amber { background: #fffbeb; color: #b45309; border-color: #fde68a; }
 .adm-pill.rose { background: #fff1f2; color: #be123c; border-color: #fecdd3; }
-.adm-table-wrap { overflow-x: auto; }
+.adm-table-wrap { overflow: auto; max-height: 480px; }
+.adm-table-wrap .adm-table th { position: sticky; top: 0; z-index: 1; }
 .adm-table { width: 100%; border-collapse: collapse; text-align: left; font-size: 12px; }
 .adm-table th {
   padding: 12px;
@@ -401,6 +402,16 @@ const adminStyles = `
 }
 `;
 
+// 瀏覽器當地日期 yyyy-MM-dd（不用 toISOString，避免 UTC 時差造成日期少一天）
+const getLocalDateString = () => {
+  const now = new Date();
+  const month = String(now.getMonth() + 1).padStart(2, '0');
+  const day = String(now.getDate()).padStart(2, '0');
+  return `${now.getFullYear()}-${month}-${day}`;
+};
+
+const formatNumber = (value) => Number(value || 0).toLocaleString();
+
 const emptyForm = {
   orderNo: '',
   productName: '',
@@ -428,6 +439,10 @@ export default function App() {
 
   const [selectedItem, setSelectedItem] = useState(null);
   const [pendingDeleteId, setPendingDeleteId] = useState('');
+
+  // 單據新增、修改、刪除成功後遞增，讓銷售統計重新讀取
+  const [statsVersion, setStatsVersion] = useState(0);
+  const refreshStats = () => setStatsVersion((version) => version + 1);
 
   const openDocModal = (type, action) => {
     setCurrentType(type);
@@ -466,7 +481,7 @@ export default function App() {
       docType: currentType,
       orderNo: formData.orderNo,
       productName: formData.productName,
-      productCode: formData.productCode,
+      productNo: formData.productCode,
       brand: formData.brand,
       color: formData.color,
       model: formData.model,
@@ -484,6 +499,7 @@ export default function App() {
 
       if (response.ok) {
         alert(`【${currentType}】新增成功並寫入資料庫！`);
+        refreshStats();
         closeMainModal();
       } else {
         alert(`新增失敗：${await getErrorMessage(response)}`);
@@ -529,6 +545,7 @@ export default function App() {
       if (response.ok) {
         alert(`單據 ${item.orderNo} 已成功修改並傳送至資料庫！`);
         setSelectedItem(null);
+        refreshStats();
         handleSearch();
       } else {
         alert(`修改失敗：${await getErrorMessage(response)}`);
@@ -547,6 +564,7 @@ export default function App() {
       );
       if (response.ok) {
         alert(`單據 ${pendingDeleteId} 已成功從資料庫刪除！`);
+        refreshStats();
       } else {
         alert(`單據 ${pendingDeleteId} 刪除失敗：${await getErrorMessage(response)}`);
       }
@@ -566,12 +584,12 @@ export default function App() {
 
       <main className="adm-main">
         <div className="adm-top-grid">
-          <SalesStatsCard />
+          <SalesStatsCard refreshKey={statsVersion} />
           <DocumentOpsCard onOpenModal={openDocModal} />
         </div>
 
-        <InventoryReportTable />
-        <OrderReportTable />
+        <InventoryReportTable refreshKey={statsVersion} />
+        <OrderReportTable refreshKey={statsVersion} />
       </main>
 
       <footer className="adm-footer">
@@ -633,7 +651,12 @@ function Header() {
   );
 }
 
-function StatBox({ color, icon, title, tag, prefix }) {
+function StatBox({ color, icon, title, tag, prefix, data }) {
+  // 銷售數量相同的最佳單品全部列出
+  const bestSellers = (data?.bestProducts || []).map(
+    (product) => `${product.productName}（${formatNumber(data.bestQuantity)} 個）`
+  );
+
   return (
     <div className={`adm-stat-box ${color}`}>
       <div className="adm-stat-head">
@@ -645,26 +668,61 @@ function StatBox({ color, icon, title, tag, prefix }) {
       <div className="adm-stat-items">
         <div>
           <p className="adm-stat-label">{prefix}銷售金額</p>
-          <p className="adm-stat-value">-</p>
+          <p className="adm-stat-value">{data ? `$${formatNumber(data.amount)}` : '-'}</p>
         </div>
         <div>
           <p className="adm-stat-label">{prefix}銷售數量</p>
-          <p className="adm-stat-value">-</p>
+          <p className="adm-stat-value">{data ? formatNumber(data.quantity) : '-'}</p>
         </div>
         <div>
           <p className="adm-stat-label">{prefix}訂單數量</p>
-          <p className="adm-stat-value">-</p>
+          <p className="adm-stat-value">{data ? formatNumber(data.orders) : '-'}</p>
         </div>
         <div>
           <p className="adm-stat-label">最佳銷售單品</p>
-          <p className="adm-stat-best">-</p>
+          {bestSellers.length > 0 ? (
+            bestSellers.map((bestSeller) => (
+              <p key={bestSeller} className="adm-stat-best" title={bestSeller}>
+                {bestSeller}
+              </p>
+            ))
+          ) : (
+            <p className="adm-stat-best">-</p>
+          )}
         </div>
       </div>
     </div>
   );
 }
 
-function SalesStatsCard() {
+// 銷售統計只計算訂單，日期以瀏覽器當地日期送給後端
+function SalesStatsCard({ refreshKey }) {
+  const [stats, setStats] = useState(null);
+  const [statsDate, setStatsDate] = useState('');
+  const [loadFailed, setLoadFailed] = useState(false);
+
+  useEffect(() => {
+    const date = getLocalDateString();
+    setStatsDate(date);
+
+    fetch(`/api/admin/documents/stats?date=${date}`)
+      .then((response) => {
+        if (!response.ok) {
+          throw new Error(`HTTP ${response.status}`);
+        }
+        return response.json();
+      })
+      .then((data) => {
+        setStats(data);
+        setLoadFailed(false);
+      })
+      .catch((error) => {
+        console.error('Error loading sales stats:', error);
+        setStats(null);
+        setLoadFailed(true);
+      });
+  }, [refreshKey]);
+
   return (
     <div className="adm-card adm-card-pad">
       <div className="adm-card-head">
@@ -672,7 +730,7 @@ function SalesStatsCard() {
           <ChartLine size={18} color="#4f46e5" />
           銷售統計
         </h2>
-        <span className="adm-hint">即時數據待連線</span>
+        <span className="adm-hint">{loadFailed ? '無法取得銷售數據' : `統計日期：${statsDate}`}</span>
       </div>
 
       <div className="adm-stats-grid">
@@ -682,6 +740,7 @@ function SalesStatsCard() {
           title="今日銷售數據"
           tag="Today"
           prefix="今日"
+          data={stats?.today}
         />
         <StatBox
           color="blue"
@@ -689,6 +748,7 @@ function SalesStatsCard() {
           title="本月銷售數據"
           tag="This Month"
           prefix="本月"
+          data={stats?.month}
         />
       </div>
     </div>
@@ -741,7 +801,37 @@ function DocumentOpsCard({ onOpenModal }) {
   );
 }
 
-function ReportTable({ color, icon, title, desc, badge, columns }) {
+// 讀取異常報告資料，refreshKey 改變時重新讀取；失敗時 error 為 true
+function useReportData(url, refreshKey) {
+  const [rows, setRows] = useState([]);
+  const [error, setError] = useState(false);
+
+  useEffect(() => {
+    fetch(url)
+      .then((response) => {
+        if (!response.ok) {
+          throw new Error(`HTTP ${response.status}`);
+        }
+        return response.json();
+      })
+      .then((data) => {
+        setRows(data);
+        setError(false);
+      })
+      .catch((err) => {
+        console.error('Error loading report:', err);
+        setRows([]);
+        setError(true);
+      });
+  }, [url, refreshKey]);
+
+  return { rows, error };
+}
+
+const formatDateTime = (value) => (value ? value.replace('T', ' ').slice(0, 16) : '-');
+
+// rows：每列為 { key, cells }，cells 依 columns 的順序排列
+function ReportTable({ color, icon, title, desc, badge, columns, rows = [], error = false }) {
   return (
     <section className="adm-card adm-section">
       <div className="adm-section-head">
@@ -766,11 +856,23 @@ function ReportTable({ color, icon, title, desc, badge, columns }) {
             </tr>
           </thead>
           <tbody>
-            <tr>
-              <td colSpan={columns.length} className="adm-empty">
-                目前沒有資料
-              </td>
-            </tr>
+            {rows.length > 0 ? (
+              rows.map((row) => (
+                <tr key={row.key}>
+                  {row.cells.map((cell, index) => (
+                    <td key={columns[index][0]} className={columns[index][1]}>
+                      {cell ?? '-'}
+                    </td>
+                  ))}
+                </tr>
+              ))
+            ) : (
+              <tr>
+                <td colSpan={columns.length} className="adm-empty">
+                  {error ? '無法取得資料' : '目前沒有資料'}
+                </td>
+              </tr>
+            )}
           </tbody>
         </table>
       </div>
@@ -778,14 +880,37 @@ function ReportTable({ color, icon, title, desc, badge, columns }) {
   );
 }
 
-function InventoryReportTable() {
+// 庫存異常：庫存數量低於安全庫存量
+function InventoryReportTable({ refreshKey }) {
+  const { rows, error } = useReportData('/api/admin/documents/alerts/inventory', refreshKey);
+
   return (
     <ReportTable
       color="amber"
       icon={<TriangleAlert size={18} />}
       title="庫存異常報告"
       desc="庫存量低於安全庫存值或數據異常項目"
-      badge="共 0 項警示"
+      badge={`共 ${rows.length} 項警示`}
+      error={error}
+      rows={rows.map((item, index) => ({
+        key: item.orderNo,
+        cells: [
+          index + 1,
+          item.productName,
+          <span className="mono">{item.orderNo}</span>,
+          item.brand,
+          item.color,
+          item.model,
+          formatNumber(item.quantity),
+          `$${formatNumber(item.unitPrice)}`,
+          `$${formatNumber(item.totalPrice)}`,
+          formatNumber(item.safetyStock),
+          formatDateTime(item.updatedAt),
+          item.quantity <= 0
+            ? '缺貨'
+            : `低於安全庫存 ${formatNumber(item.safetyStock - item.quantity)} 個`
+        ]
+      }))}
       columns={[
         ['項次', 'c'],
         ['品名'],
@@ -804,14 +929,38 @@ function InventoryReportTable() {
   );
 }
 
-function OrderReportTable() {
+// 訂單異常：訂單日期超過 3 天仍未出貨，日期以瀏覽器當地日期送給後端
+function OrderReportTable({ refreshKey }) {
+  const { rows, error } = useReportData(
+    `/api/admin/documents/alerts/orders?date=${getLocalDateString()}`,
+    refreshKey
+  );
+
   return (
     <ReportTable
       color="rose"
       icon={<CircleAlert size={18} />}
       title="訂單異常報告"
-      desc="付款卡關、缺貨延遲或資訊異常之訂單"
-      badge="共 0 筆異常"
+      desc="訂單日期超過三天仍未出貨之訂單"
+      badge={`共 ${rows.length} 筆異常`}
+      error={error}
+      rows={rows.map(({ order, orderDate, days }, index) => ({
+        key: order.orderNo,
+        cells: [
+          index + 1,
+          <span className="mono">{order.orderNo}</span>,
+          order.productName,
+          order.brand,
+          order.color,
+          order.model,
+          formatNumber(order.quantity),
+          `$${formatNumber(order.unitPrice)}`,
+          `$${formatNumber(order.totalPrice)}`,
+          order.customerName,
+          order.customerId,
+          `${orderDate} 下單，已 ${days} 天未出貨（${order.status}）`
+        ]
+      }))}
       columns={[
         ['項次', 'c'],
         ['訂單編號'],
@@ -902,16 +1051,19 @@ function MainModal({
                     className="adm-input"
                   />
                 </FormField>
-                <FormField label="品號">
-                  <input
-                    type="text"
-                    required
-                    placeholder="如：PC-IP15-BK"
-                    value={formData.productCode}
-                    onChange={updateField('productCode')}
-                    className="adm-input"
-                  />
-                </FormField>
+                {/* 庫存的品號就是上方的主鍵，不需要另外填寫 */}
+                {type !== '庫存' && (
+                  <FormField label="品號">
+                    <input
+                      type="text"
+                      required
+                      placeholder="如：PC-IP15-BK"
+                      value={formData.productCode}
+                      onChange={updateField('productCode')}
+                      className="adm-input"
+                    />
+                  </FormField>
+                )}
                 <FormField label="品牌">
                   <input
                     type="text"

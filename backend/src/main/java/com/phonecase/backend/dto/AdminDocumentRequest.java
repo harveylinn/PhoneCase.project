@@ -17,8 +17,13 @@ public class AdminDocumentRequest {
     // 單號（庫存為品號）
     private String orderNo;
 
+    // 品號：訂單、採購單、入庫單、出庫單新增時必填；庫存的品號以 orderNo 為準
+    private String productNo;
+
     @NotBlank(message = "品名不可空白")
     private String productName;
+
+    private String brand;
 
     private String color;
 

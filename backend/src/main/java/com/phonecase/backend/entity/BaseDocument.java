@@ -8,7 +8,6 @@ import java.time.LocalDateTime;
 
 // 訂單、採購單、入庫單、出庫單、庫存共用的欄位
 // 單號（主鍵）在每張資料表的欄位名稱不同，由各子類別自行對應
-// 庫存（inventory）為中文欄位，由 Inventory 以 @AttributeOverride 改對應
 @MappedSuperclass
 @Getter
 @Setter
@@ -16,6 +15,9 @@ public abstract class BaseDocument {
 
     @Column(name = "product_name", nullable = false, length = 100)
     private String productName;
+
+    @Column(length = 50)
+    private String brand;
 
     @Column(length = 30)
     private String color;
@@ -49,4 +51,9 @@ public abstract class BaseDocument {
     public abstract String getOrderNo();
 
     public abstract void setOrderNo(String orderNo);
+
+    // 品號：訂單、採購單、入庫單、出庫單對應 product_no 欄位；庫存的品號就是主鍵（orderNo）
+    public abstract String getProductNo();
+
+    public abstract void setProductNo(String productNo);
 }

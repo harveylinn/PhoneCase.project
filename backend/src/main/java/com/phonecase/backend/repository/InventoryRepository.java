@@ -15,9 +15,9 @@ public interface InventoryRepository
     // <=> 為可比對 NULL 的等於（顏色、型號空白時存成 NULL）
     @Query(value = """
             SELECT * FROM inventory
-            WHERE `品名` = :productName
-              AND `型號` <=> :model
-              AND `顏色` <=> :color
+            WHERE product_name = :productName
+              AND model <=> :model
+              AND color <=> :color
             LIMIT 1
             FOR UPDATE
             """, nativeQuery = true)
@@ -27,4 +27,12 @@ public interface InventoryRepository
             @Param("color") String color);
 
     List<Inventory> findAllByOrderByProductNameAscModelAscColorAsc();
+
+    // 庫存異常報告：庫存數量低於安全庫存量，缺少數量多的排前面
+    @Query("""
+            SELECT i FROM Inventory i
+            WHERE i.quantity < i.safetyStock
+            ORDER BY (i.safetyStock - i.quantity) DESC, i.orderNo
+            """)
+    List<Inventory> findBelowSafetyStock();
 }

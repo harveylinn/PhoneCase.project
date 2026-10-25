@@ -4,34 +4,36 @@ import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.Setter;
 
-// 庫存：inventory 資料表為中文欄位，將共用欄位改對應到中文欄位名稱
+// 庫存：inventory 資料表與其他單據共用英文欄位名稱（中文名稱寫在欄位註解）
 // 入庫單、出庫單以 品名 + 型號 + 顏色 找到對應的品項
 @Entity
 @Table(name = "inventory")
-@AttributeOverride(name = "productName", column = @Column(name = "`品名`", nullable = false, length = 100))
-@AttributeOverride(name = "color", column = @Column(name = "`顏色`", length = 30))
-@AttributeOverride(name = "model", column = @Column(name = "`型號`", length = 50))
-@AttributeOverride(name = "quantity", column = @Column(name = "`數量`", nullable = false))
-@AttributeOverride(name = "unitPrice", column = @Column(name = "`單價`", nullable = false))
-@AttributeOverride(name = "totalPrice", column = @Column(name = "`總計`"))
-@AttributeOverride(name = "customerName", column = @Column(name = "`供應商名稱`", length = 100))
-@AttributeOverride(name = "customerId", column = @Column(name = "`供應商代號`", length = 20))
-@AttributeOverride(name = "updatedAt", column = @Column(name = "`更新時間`", insertable = false, updatable = false))
 @Getter
 @Setter
 public class Inventory extends BaseDocument {
 
     // 品號（前端欄位名稱為 orderNo）
     @Id
-    @Column(name = "`品號`", length = 50)
+    @Column(name = "product_no", length = 50)
     private String orderNo;
 
-    @Column(name = "`品牌`", length = 50)
-    private String brand;
-
-    @Column(name = "`安全庫存量`", nullable = false)
+    // 安全庫存量
+    @Column(name = "safety_stock", nullable = false)
     private Integer safetyStock = 0;
 
-    @Column(name = "`狀態`", length = 20)
+    // 狀態
+    @Column(length = 20)
     private String status;
+
+    // 庫存的品號就是主鍵，回傳與 orderNo 相同的值
+    @Override
+    public String getProductNo() {
+        return orderNo;
+    }
+
+    // 庫存的品號是主鍵，只能在新增時以 setOrderNo 設定，避免修改時改到主鍵
+    @Override
+    public void setProductNo(String productNo) {
+        throw new UnsupportedOperationException("庫存的品號為主鍵，請使用 setOrderNo");
+    }
 }

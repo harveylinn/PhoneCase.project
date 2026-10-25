@@ -19,6 +19,10 @@ public class PurchaseOrder extends BaseDocument {
     @Column(name = "purchase_no", length = 10)
     private String orderNo;
 
+    // 品號
+    @Column(name = "product_no", nullable = false, length = 50)
+    private String productNo;
+
     // 建立人（倉庫員工帳號），後台尚未有登入功能，先預設為 admin
     @Column(nullable = false, length = 50)
     private String creator = "admin";
