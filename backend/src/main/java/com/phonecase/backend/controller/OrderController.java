@@ -18,7 +18,10 @@ import java.util.Map;
 @RestController
 @RequestMapping("/api/orders")
 @CrossOrigin(
-        origins = "http://localhost:5173",
+        origins = {
+                "http://localhost:5173",
+                "http://localhost:5174"
+        },
         allowCredentials = "true"
 )
 public class OrderController {

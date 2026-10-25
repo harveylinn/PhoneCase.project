@@ -342,39 +342,39 @@ function OrderModule({
       {/* 頁面切換 */}
       {/* ================================= */}
 
-      <div
-        style={{
-          display: 'flex',
-          justifyContent: 'center',
-          gap: '15px',
-          padding: '20px',
-          background: '#f5f5f5',
-          flexWrap: 'wrap'
-        }}
-      >
-
-        <button
-          type="button"
-          onClick={() => setCurrentPage('checkout')}
+      {currentPage !== 'checkout' && (
+        <div
+          style={{
+            display: 'flex',
+            justifyContent: 'center',
+            gap: '15px',
+            padding: '20px',
+            background: '#f5f5f5',
+            flexWrap: 'wrap'
+          }}
         >
-          確認訂單
-        </button>
+          <button
+            type="button"
+            onClick={() => setCurrentPage('checkout')}
+          >
+            確認訂單
+          </button>
 
-        <button
-          type="button"
-          onClick={handleOpenOrderList}
-        >
-          我的訂單
-        </button>
+          <button
+            type="button"
+            onClick={handleOpenOrderList}
+          >
+            我的訂單
+          </button>
 
-        <button
-          type="button"
-          onClick={() => setCurrentPage('detail')}
-        >
-          訂單明細
-        </button>
-
-      </div>
+          <button
+            type="button"
+            onClick={() => setCurrentPage('detail')}
+          >
+            訂單明細
+          </button>
+        </div>
+      )}
 
       {/* ================================= */}
       {/* API 狀態 */}
@@ -393,7 +393,7 @@ function OrderModule({
 
       )}
 
-      {errorMessage && (
+      {errorMessage && currentPage !== 'checkout' && (
 
         <div
           style={{

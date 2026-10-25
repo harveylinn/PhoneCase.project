@@ -1,28 +1,25 @@
-import { useEffect, useRef, useState } from 'react'
+import { useState } from 'react'
 import type { Order, OrderStatus } from './OrderListPage'
 import { createOrder } from '../../api/orderApi'
 import type { CartItem } from '../cart/CartItem'
 import { getGuestCart, saveGuestCart } from '../../utils/cartStorage'
+import { NANTUN_STORES } from './nantunStores'
+import type { NantunStore, StoreChain } from './nantunStores'
 import './CheckoutPage.css'
 
-// ========================================
-// 綠界物流設定
-// ========================================
+const TAIWAN_COUNTIES = [
+  '臺北市', '新北市', '基隆市', '桃園市', '新竹市', '新竹縣',
+  '苗栗縣', '臺中市', '彰化縣', '南投縣', '雲林縣', '嘉義市',
+  '嘉義縣', '臺南市', '高雄市', '屏東縣', '宜蘭縣', '花蓮縣',
+  '臺東縣', '澎湖縣', '金門縣', '連江縣'
+]
 
-const ECPAY_MAP_URL =
-  'http://localhost:8080/api/logistics/ecpay/map'
-
-const ECPAY_CALLBACK_ORIGIN =
-  'https://warner-greene-smooth-correct.trycloudflare.com'
-
-type StoreChain = 'UNIMART' | 'FAMI'
-
-type SelectedStore = {
-  id: string
-  name: string
-  address: string
-  chain: StoreChain
-}
+const TAICHUNG_DISTRICTS = [
+  '中區', '東區', '南區', '西區', '北區', '北屯區', '西屯區', '南屯區',
+  '太平區', '大里區', '霧峰區', '烏日區', '豐原區', '后里區', '石岡區',
+  '東勢區', '和平區', '新社區', '潭子區', '大雅區', '神岡區', '大肚區',
+  '沙鹿區', '龍井區', '梧棲區', '清水區', '大甲區', '外埔區', '大安區'
+]
 
 type Props = {
   onCreateOrder: (order: Order) => void
@@ -91,16 +88,18 @@ function CheckoutPage({ onCreateOrder }: Props) {
   const grandTotal = productSubtotal + shippingFee
 
   // ========================================
-  // 綠界超商選店
+  // 超商門市選店
   // ========================================
 
   const [storeChain, setStoreChain] =
     useState<StoreChain>('UNIMART')
 
   const [selectedStore, setSelectedStore] =
-    useState<SelectedStore | null>(null)
+    useState<NantunStore | null>(null)
 
-  const storePopupRef = useRef<Window | null>(null)
+  const [selectedCounty, setSelectedCounty] = useState('')
+  const [selectedDistrict, setSelectedDistrict] = useState('')
+  const [selectedRoad, setSelectedRoad] = useState('')
 
   // ========================================
   // 新增：是否正在建立訂單
@@ -108,93 +107,28 @@ function CheckoutPage({ onCreateOrder }: Props) {
 
   const [isSubmitting, setIsSubmitting] = useState(false)
 
-  // ========================================
-  // 開啟綠界超商地圖
-  // ========================================
+  const availableDistricts = selectedCounty === '臺中市'
+    ? TAICHUNG_DISTRICTS
+    : []
+  const availableRoads = Array.from(new Set(
+    NANTUN_STORES
+      .filter((store) =>
+        store.county === selectedCounty &&
+        store.district === selectedDistrict &&
+        store.chain === storeChain
+      )
+      .flatMap((store) => store.roads)
+  )).sort((a, b) => a.localeCompare(b, 'zh-Hant'))
+  const storesOnSelectedRoad = NANTUN_STORES.filter((store) =>
+    store.county === selectedCounty &&
+    store.district === selectedDistrict &&
+    store.roads.includes(selectedRoad) &&
+    store.chain === storeChain
+  )
 
-  function openEcpayStoreMap() {
-
-    const url = `${ECPAY_MAP_URL}?store=${storeChain}`
-
-    const popup = window.open(
-      url,
-      'ecpayStoreMap',
-      'width=1000,height=750,scrollbars=yes'
-    )
-
-    if (!popup) {
-      alert('無法開啟選店視窗，請允許瀏覽器彈出式視窗')
-      return
-    }
-
-    storePopupRef.current = popup
-
-    popup.focus()
+  function isSelectedStore(store: NantunStore) {
+    return selectedStore?.chain === store.chain && selectedStore.id === store.id
   }
-
-  // ========================================
-  // 接收綠界選店結果
-  // ========================================
-
-  useEffect(() => {
-
-    function handleStoreMessage(event: MessageEvent) {
-
-      if (event.origin !== ECPAY_CALLBACK_ORIGIN) {
-        return
-      }
-
-      if (event.source !== storePopupRef.current) {
-        return
-      }
-
-      const data = event.data
-
-      if (!data || data.type !== 'ECPAY_STORE_SELECTED') {
-        return
-      }
-
-      const store = data.store
-
-      if (
-        !store ||
-        typeof store.id !== 'string' ||
-        typeof store.name !== 'string' ||
-        typeof store.address !== 'string' ||
-        !store.id.trim() ||
-        !store.name.trim()
-      ) {
-        return
-      }
-
-      const chain: StoreChain =
-        store.chain === 'FAMI'
-          ? 'FAMI'
-          : store.chain === 'UNIMART'
-            ? 'UNIMART'
-            : storeChain
-
-      setSelectedStore({
-        id: store.id,
-        name: store.name,
-        address: store.address,
-        chain
-      })
-
-      setStoreChain(chain)
-
-      storePopupRef.current = null
-
-      alert('超商門市選擇成功！')
-    }
-
-    window.addEventListener('message', handleStoreMessage)
-
-    return () => {
-      window.removeEventListener('message', handleStoreMessage)
-    }
-
-  }, [storeChain])
 
   // ========================================
   // 建立訂單：真正呼叫 Spring Boot
@@ -524,7 +458,13 @@ function CheckoutPage({ onCreateOrder }: Props) {
           type="radio"
           name="shipping"
           checked={shippingMethod === 'CVS'}
-          onChange={() => setShippingMethod('CVS')}
+          onChange={() => {
+            setShippingMethod('CVS')
+            setSelectedCounty('')
+            setSelectedDistrict('')
+            setSelectedRoad('')
+            setSelectedStore(null)
+          }}
         />
 
         超商取貨（NT$ 60）
@@ -553,7 +493,7 @@ function CheckoutPage({ onCreateOrder }: Props) {
 
       )}
 
-      {/* 綠界超商取貨 */}
+      {/* 超商取貨門市 */}
 
       {shippingMethod === 'CVS' && (
 
@@ -568,7 +508,7 @@ function CheckoutPage({ onCreateOrder }: Props) {
           <h3>超商取貨門市</h3>
 
           <p style={{ color: '#888', fontSize: '13px' }}>
-            綠界物流測試環境
+            請依序選擇配送縣市、區域與道路，再選擇取貨門市。
           </p>
 
           <h4>選擇超商品牌</h4>
@@ -581,6 +521,7 @@ function CheckoutPage({ onCreateOrder }: Props) {
               checked={storeChain === 'UNIMART'}
               onChange={() => {
                 setStoreChain('UNIMART')
+                setSelectedRoad('')
                 setSelectedStore(null)
               }}
             />
@@ -597,6 +538,7 @@ function CheckoutPage({ onCreateOrder }: Props) {
               checked={storeChain === 'FAMI'}
               onChange={() => {
                 setStoreChain('FAMI')
+                setSelectedRoad('')
                 setSelectedStore(null)
               }}
             />
@@ -607,6 +549,74 @@ function CheckoutPage({ onCreateOrder }: Props) {
 
           <br />
           <br />
+
+          <div
+            style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))',
+              gap: '12px',
+              marginBottom: '16px'
+            }}
+          >
+            <label>
+              縣市
+              <select
+                value={selectedCounty}
+                onChange={(event) => {
+                  const county = event.target.value
+                  setSelectedCounty(county)
+                  setSelectedDistrict('')
+                  setSelectedRoad('')
+                  setSelectedStore(null)
+                }}
+                style={{ display: 'block', width: '100%', marginTop: '6px' }}
+              >
+                <option value="">請選擇縣市</option>
+                {TAIWAN_COUNTIES.map((county) => (
+                  <option key={county} value={county}>{county}</option>
+                ))}
+              </select>
+            </label>
+
+            <label>
+              區
+              <select
+                value={selectedDistrict}
+                disabled={availableDistricts.length === 0}
+                onChange={(event) => {
+                  setSelectedDistrict(event.target.value)
+                  setSelectedRoad('')
+                  setSelectedStore(null)
+                }}
+                style={{ display: 'block', width: '100%', marginTop: '6px' }}
+              >
+                <option value="">
+                  {selectedCounty ? '請選擇區域' : '請先選擇縣市'}
+                </option>
+                {availableDistricts.map((district) => (
+                  <option key={district} value={district}>{district}</option>
+                ))}
+              </select>
+            </label>
+
+            <label>
+              道路
+              <select
+                value={selectedRoad}
+                disabled={availableRoads.length === 0}
+                onChange={(event) => {
+                  setSelectedRoad(event.target.value)
+                  setSelectedStore(null)
+                }}
+                style={{ display: 'block', width: '100%', marginTop: '6px' }}
+              >
+                <option value="">請選擇道路</option>
+                {availableRoads.map((road) => (
+                  <option key={road} value={road}>{road}</option>
+                ))}
+              </select>
+            </label>
+          </div>
 
           {selectedStore ? (
 
@@ -648,25 +658,49 @@ function CheckoutPage({ onCreateOrder }: Props) {
 
           )}
 
-          <button
-            type="button"
-            onClick={openEcpayStoreMap}
-            disabled={isSubmitting}
-            style={{
-              padding: '12px 24px',
-              background: '#198754',
-              color: 'white',
-              border: 'none',
-              borderRadius: '8px',
-              cursor: 'pointer'
-            }}
-          >
-
-            {selectedStore
-              ? '更換取貨門市'
-              : '開啟綠界選店'}
-
-          </button>
+          {storesOnSelectedRoad.length > 0 ? (
+            <div
+              role="list"
+              aria-label={`${selectedCounty}${selectedDistrict}${selectedRoad}門市清單`}
+              style={{ display: 'grid', gap: '10px', marginTop: '16px' }}
+            >
+              {storesOnSelectedRoad.map((store) => (
+                <div
+                  key={`${store.chain}-${store.id}`}
+                  role="listitem"
+                  style={{
+                    padding: '12px',
+                    border: isSelectedStore(store)
+                      ? '2px solid #198754'
+                      : '1px solid #e3e3e3',
+                    borderRadius: '8px',
+                    background: 'white'
+                  }}
+                >
+                  <strong>{store.name}</strong>
+                  <p>門市代碼：{store.id}</p>
+                  <p>{store.address}</p>
+                  <button
+                    type="button"
+                    onClick={() => setSelectedStore(store)}
+                    disabled={isSubmitting}
+                  >
+                    {isSelectedStore(store) ? '已選擇這間門市' : '選擇這間門市'}
+                  </button>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <p role="status" style={{ color: '#777' }}>
+              {!selectedCounty
+                ? '請先選擇縣市、區域與道路。'
+                : !selectedDistrict
+                  ? '請選擇區域。'
+                  : !selectedRoad
+                    ? '請選擇道路。'
+                    : '目前沒有符合條件的門市。'}
+            </p>
+          )}
 
         </div>
 

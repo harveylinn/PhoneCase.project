@@ -18,7 +18,7 @@ public class EcpayStoreController {
 
     // React 前端網址
     private static final String FRONTEND_URL =
-            "http://localhost:5173";
+        "http://localhost:5174";
 
     // 綠界測試特店編號
     @Value("${ECPAY_MERCHANT_ID:2000132}")
@@ -27,7 +27,6 @@ public class EcpayStoreController {
     // 綠界選完門市後，要回傳資料的 HTTPS 網址
     @Value("${ECPAY_LOGISTICS_REPLY_URL:}")
     private String replyUrl;
-
 
     // ========================================
     // 1. 開啟綠界超商選店頁面
