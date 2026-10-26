@@ -27,6 +27,11 @@ public class ProductRecommendationService {
         List<Product> products = productService.getAvailableProducts();
         AiVisionResult correctedCriteria = correctCriteria(criteria, question, products);
 
+        // 沒有任何可搜尋條件時，不應把所有上架商品都當成符合結果。
+        if (!hasSearchCriteria(correctedCriteria)) {
+            return List.of();
+        }
+
         return products.stream()
                 .filter(product -> product.getVariants() != null)
                 .flatMap(product -> product.getVariants().stream()
@@ -39,6 +44,17 @@ public class ProductRecommendationService {
                         .map(variant -> toRecommendation(product, variant)))
                 .limit(3)
                 .toList();
+    }
+
+    private boolean hasSearchCriteria(AiVisionResult criteria) {
+        return hasValue(criteria.brand())
+                || hasValue(criteria.model())
+                || hasValue(criteria.color())
+                || hasValue(criteria.styleTag());
+    }
+
+    private boolean hasValue(String value) {
+        return value != null && !value.isBlank() && !value.startsWith("__");
     }
 
     public List<AiProductRecommendation> findSimilar(

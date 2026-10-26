@@ -31,13 +31,12 @@ public class AiSearchService {
         }
 
         AiVisionResult criteria = aiVisionService.analyze(request);
+        // 智慧搜尋採嚴格條件比對：有輸入的條件必須全部符合。
+        // 相似商品推薦保留給圖片樣本審核流程，不在一般商品搜尋中混用，
+        // 避免使用者輸入型號與風格後，仍收到只有部分符合的商品。
         List<AiProductRecommendation> products =
                 recommendationService.findMatches(criteria, request.text());
         boolean exact = !products.isEmpty();
-
-        if (!exact) {
-            products = recommendationService.findSimilar(criteria, request.text());
-        }
 
         return aiAnswerService.format(criteria, products, exact);
     }
