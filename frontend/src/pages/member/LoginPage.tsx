@@ -1,24 +1,7 @@
 import "../../styles/member/login.css";
 import { useEffect, useState, type SubmitEvent } from "react";
+import type { MemberInfo, LoginResponse, MeResponse } from "../../types/member";
 
-interface MemberInfo {
-  id: number;
-  account: string;
-  name: string;
-}
-
-interface LoginResponse {
-  success: boolean;
-  message: string;
-  token?: string;
-  member?: MemberInfo;
-}
-
-interface MeResponse {
-  success: boolean;
-  message?: string;
-  member?: MemberInfo;
-}
 
 export default function LoginPage() {
   const [account, setAccount] = useState("");
