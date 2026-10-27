@@ -101,6 +101,17 @@ public class ProductVariantService {
         }
     }
 
+    public ProductVariant updateStatus(Long productId, Long id, String status) {
+        ProductVariant existingVariant = productVariantRepository.findById(id)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "找不到商品規格，id" + id));
+        if (!existingVariant.getProduct().getId().equals(productId)) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "此商品規格不屬於指定商品");
+        }
+        validateStatus(status);
+        existingVariant.setStatus(status);
+        return productVariantRepository.save(existingVariant);
+    }
+
     public void deleteVariant(
             Long productId,
             Long id) {

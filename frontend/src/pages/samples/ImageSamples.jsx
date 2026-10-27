@@ -1,4 +1,5 @@
 import {useEffect, useState} from 'react';
+import {Link} from 'react-router-dom';
 
 const emptyForm = {
     source: '',
@@ -154,10 +155,26 @@ export default function ImageSamples() {
 
     return (
         <main className="sample-admin">
-            <h1>圖片樣本庫</h1>
-            <p>選擇圖片即可快速加入樣本庫，之後再進行人工審核。</p>
+            <div className="admin-heading">
+                <div>
+                    <p className="eyebrow">CASELAB ADMIN · DATASET</p>
+                    <h1>圖片樣本庫</h1>
+                    <p className="muted">管理圖片來源、授權資訊、AI 描述與人工審核狀態。</p>
+                </div>
+            </div>
 
-            <form className="sample-form" onSubmit={createSample}>
+            <div className="admin-with-sidebar">
+                <aside className="admin-sidebar panel">
+                    <p className="admin-sidebar-title">後台管理</p>
+                    <Link to="/admin-products">商品系列管理</Link>
+                    <Link to="/admin-products/variants">手機品項／SKU</Link>
+                    <Link className="is-active" to="/admin/samples">圖片樣本庫</Link>
+                </aside>
+
+                <section className="sample-admin-content">
+                    <p className="sample-page-intro">選擇圖片即可快速加入樣本庫，之後再進行人工審核。</p>
+
+                    <form className="sample-form" onSubmit={createSample}>
                 <input type="file" accept="image/*" onChange={chooseFile} required/>
                 {preview && <img className="sample-upload-preview" src={preview} alt="圖片預覽"/>}
                 <input name="source" value={form.source} onChange={updateForm} placeholder="圖片來源"/>
@@ -166,11 +183,11 @@ export default function ImageSamples() {
                 <textarea name="licenseNote" value={form.licenseNote} onChange={updateForm} placeholder="授權備註"/>
                 <textarea name="aiDescription" value={form.aiDescription} onChange={updateForm} placeholder="AI 圖片描述（之後可自動產生）"/>
                 <button type="submit" disabled={saving}>{saving ? '上傳中…' : '快速新增樣本'}</button>
-            </form>
+                    </form>
 
-            {message && <p className="sample-message">{message}</p>}
+                    {message && <p className="sample-message">{message}</p>}
 
-            {loading ? <p>載入中…</p> : (
+                    {loading ? <p>載入中…</p> : (
                 <section className="sample-grid">
                     {samples.map(sample => (
                         <article className="sample-card" key={sample.id}>
@@ -216,7 +233,9 @@ export default function ImageSamples() {
                     ))}
                     {!samples.length && <p>目前沒有圖片樣本。</p>}
                 </section>
-            )}
+                    )}
+                </section>
+            </div>
         </main>
     );
 }

@@ -3,6 +3,7 @@ import ProductList from './pages/products/ProductList.jsx';
 import ProductDetail from './pages/products/ProductDetail.jsx';
 import AdminProducts from './pages/products/AdminProducts.jsx';
 import ImageSamples from './pages/samples/ImageSamples.jsx';
+import VariantsCatalog from './pages/products/VariantsCatalog.jsx';
 import AiChatWidget from './components/AiChatWidget.jsx';
 
 function Header() {
@@ -26,6 +27,7 @@ export default function App() {
             <Header/>
             <Routes>
                 <Route path="/admin-products" element={<AdminProducts/>}/>
+                <Route path="/admin-products/variants" element={<VariantsCatalog/>}/>
                 <Route path="/admin/samples" element={<ImageSamples/>}/>
                 <Route path="/products/:id" element={<ProductDetail/>}/>
                 <Route path="*" element={<ProductList/>}/>

@@ -1,4 +1,5 @@
 import {useEffect, useMemo, useState} from 'react';
+import {Link} from 'react-router-dom';
 
 async function request(url, options = {}) {
     const response = await fetch(url, {headers: {'Content-Type': 'application/json'}, ...options});
@@ -210,7 +211,14 @@ export default function AdminProducts() {
             {notice && <div className="admin-notice">{notice}</div>}{error && <div className="admin-error">{error}
             <button onClick={() => setError('')}>關閉</button>
         </div>}
-            <section className="admin-layout">
+            <div className="admin-with-sidebar">
+                <aside className="admin-sidebar panel">
+                    <p className="admin-sidebar-title">後台管理</p>
+                    <Link className="is-active" to="/admin-products">商品系列管理</Link>
+                    <Link to="/admin-products/variants">手機品項／SKU</Link>
+                    <Link to="/admin/samples">圖片樣本庫</Link>
+                </aside>
+                <section className="admin-layout">
                 <aside className="admin-list panel">
                     <div className="admin-list-tools"><input placeholder="搜尋商品" value={keyword}
                                                              onChange={event => setKeyword(event.target.value)}/><select
@@ -305,7 +313,8 @@ export default function AdminProducts() {
                         <button className="danger-button" onClick={() => deleteProduct(selected)}>刪除商品系列</button>
                     </>}
                 </section>
-            </section>
+                </section>
+            </div>
         </main>
     );
 }
