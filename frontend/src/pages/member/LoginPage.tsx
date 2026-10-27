@@ -150,6 +150,15 @@ export default function LoginPage() {
     };
   },[]);
 
+  // 登出
+  function handleLogout() {
+    localStorage.removeItem("token");
+    setCurrentMember(null);
+    setPassword("");
+    setShowPassword(false);
+    setResultMessage("已登出。");
+  }
+
   return (
     <>
       <a className="skip-link" href="#loginForm">
@@ -234,6 +243,16 @@ export default function LoginPage() {
                     ? `目前會員：${currentMember.name} (${currentMember.account})`
                     : "目前尚未確認會員身分"}
             </p>
+
+            {currentMember && (
+              <button
+              type="button"
+              onClick={handleLogout}
+              disabled={isSubmitting || isChecking}
+              >
+                登出
+              </button>
+            )}
 
             <div className="register-prompt">
               <span>還沒有帳號？</span>
