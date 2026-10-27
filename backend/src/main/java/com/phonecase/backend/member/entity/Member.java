@@ -35,10 +35,11 @@ public class Member {
     private String role;
     private String status;
     
-    @Column(name = "created_at")
+    // 由資料庫自動填入（DEFAULT / ON UPDATE current_timestamp()）
+    @Column(name = "created_at", insertable = false, updatable = false)
     private String createdAt;
     
-    @Column(name = "updated_at")
+    @Column(name = "updated_at", insertable = false, updatable = false)
     private String updatedAt;
 
 }

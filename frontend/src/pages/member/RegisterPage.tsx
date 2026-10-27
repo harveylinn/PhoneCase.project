@@ -120,7 +120,9 @@ export default function RegisterPage() {
       });
 
       if (!response.ok) {
-        setResultMessage(`請求失敗，HTTP狀態碼：${response.status}`);
+        // 後端會回傳錯誤原因，例如「此帳號已被註冊」
+        const error = await response.json().catch(() => null);
+        setResultMessage(error?.message ?? `請求失敗，HTTP狀態碼：${response.status}`);
         return;
       }
 

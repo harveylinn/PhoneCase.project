@@ -53,6 +53,7 @@ public class AdminDocumentService {
     private final StockOutRepository stockOutRepository;
     private final InventoryRepository inventoryRepository;
     private final InventoryService inventoryService;
+    private final ShopSyncService shopSyncService;
 
     public AdminDocumentService(
             SalesOrderRepository salesOrderRepository,
@@ -60,13 +61,15 @@ public class AdminDocumentService {
             StockInRepository stockInRepository,
             StockOutRepository stockOutRepository,
             InventoryRepository inventoryRepository,
-            InventoryService inventoryService) {
+            InventoryService inventoryService,
+            ShopSyncService shopSyncService) {
         this.salesOrderRepository = salesOrderRepository;
         this.purchaseOrderRepository = purchaseOrderRepository;
         this.stockInRepository = stockInRepository;
         this.stockOutRepository = stockOutRepository;
         this.inventoryRepository = inventoryRepository;
         this.inventoryService = inventoryService;
+        this.shopSyncService = shopSyncService;
     }
 
     @Transactional
@@ -89,6 +92,7 @@ public class AdminDocumentService {
         applyReference(document, request.getRefNo(), true);
         applyStock(docType, document.getProductName(), document.getModel(),
                 document.getColor(), document.getQuantity());
+        pushInventoryToShop(document);
 
         return repository.save(document);
     }
@@ -153,6 +157,7 @@ public class AdminDocumentService {
             applyStock(docType, existingDocument.getProductName(), existingDocument.getModel(),
                     existingDocument.getColor(), existingDocument.getQuantity());
         }
+        pushInventoryToShop(existingDocument);
 
         return repositoryOf(docType).save(existingDocument);
     }
@@ -176,6 +181,13 @@ public class AdminDocumentService {
             throw new ResponseStatusException(
                     HttpStatus.CONFLICT,
                     "採購單 " + no + " 已有入庫單，請先刪除對應的入庫單"
+            );
+        }
+
+        if (existingDocument instanceof Inventory && shopSyncService.isShopSku(no)) {
+            throw new ResponseStatusException(
+                    HttpStatus.CONFLICT,
+                    "品號 " + no + " 為商城商品規格，請先在商品管理刪除該規格"
             );
         }
 
@@ -252,6 +264,17 @@ public class AdminDocumentService {
         document.setUnitPrice(request.getUnitPrice());
         document.setTotalPrice(request.getQuantity() * request.getUnitPrice());
         document.setCustomerName(trimToNull(request.getCustomerName()));
+        // 訂單的客戶名稱對應到會員時，自動帶入客戶代號（M + 會員 id）
+        if (document instanceof SalesOrder) {
+            document.setCustomerId(shopSyncService.findCustomerCode(document.getCustomerName()));
+        }
+    }
+
+    // 後台直接新增、修改「庫存」時，數量同步到商城商品規格
+    private void pushInventoryToShop(BaseDocument document) {
+        if (document instanceof Inventory inventory) {
+            shopSyncService.pushStockToVariant(inventory.getOrderNo(), inventory.getQuantity());
+        }
     }
 
     // 品號：訂單、採購單、入庫單、出庫單為 product_no 欄位（varchar(50)、不可空白）

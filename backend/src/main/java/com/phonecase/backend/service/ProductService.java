@@ -2,6 +2,7 @@ package com.phonecase.backend.service;
 
 import com.phonecase.backend.dto.ProductRequest;
 import com.phonecase.backend.entity.Product;
+import com.phonecase.backend.entity.ProductVariant;
 import com.phonecase.backend.repository.ProductRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.http.HttpStatus;
@@ -15,9 +16,11 @@ import java.util.List;
 public class ProductService {
 
     private final ProductRepository productRepository;
+    private final ShopSyncService shopSyncService;
 
-    public ProductService(ProductRepository productRepository) {
+    public ProductService(ProductRepository productRepository, ShopSyncService shopSyncService) {
         this.productRepository = productRepository;
+        this.shopSyncService = shopSyncService;
     }
 
     public List<Product> getAllProducts(){
@@ -86,7 +89,10 @@ public class ProductService {
         existingProduct.setCategory(request.getCategory());
         existingProduct.setDescription(request.getDescription());
         existingProduct.setStatus(request.getStatus());
-        return productRepository.save(existingProduct);
+        Product saved = productRepository.save(existingProduct);
+        // 商品名稱、上下架同步到後台庫存
+        shopSyncService.syncProduct(saved.getId());
+        return saved;
 
     }
 
@@ -99,7 +105,11 @@ public class ProductService {
                                 "找不到商品，id" + id
                         )
                 );
+        List<String> skus = existingProduct.getVariants() == null ? List.of()
+                : existingProduct.getVariants().stream().map(ProductVariant::getSku).toList();
         productRepository.delete(existingProduct);
+        // 後台庫存保留紀錄，只清空上架狀態
+        shopSyncService.unlinkSkus(skus);
     }
 
     public Product updateStatus(Long id, String status){
@@ -112,7 +122,9 @@ public class ProductService {
             );
         }
         existingProduct.setStatus(status);
-        return productRepository.save(existingProduct);
+        Product saved = productRepository.save(existingProduct);
+        shopSyncService.syncProduct(saved.getId());
+        return saved;
     }
 
     private void validateStatus(String status) {

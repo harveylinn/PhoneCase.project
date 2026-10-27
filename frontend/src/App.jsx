@@ -17,7 +17,9 @@ function Header() {
         <Link to="/">商品專區</Link>
         <a href="#design">設計理念</a>
         <a href="#story">品牌故事</a>
-        <span className="nav-placeholder">會員／購物車</span>
+        <Link to="/login">會員</Link>
+        <Link to="/cart">購物車</Link>
+        <Link className="nav-placeholder" to="/admin">後台管理</Link>
       </nav>
     </header>
   );

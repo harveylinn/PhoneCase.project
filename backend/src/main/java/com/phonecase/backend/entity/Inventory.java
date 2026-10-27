@@ -17,11 +17,15 @@ public class Inventory extends BaseDocument {
     @Column(name = "product_no", length = 50)
     private String orderNo;
 
+    // 售價（成本為 unitPrice），尚未定價時為 null
+    @Column(name = "sale_price")
+    private Integer salePrice;
+
     // 安全庫存量
     @Column(name = "safety_stock", nullable = false)
     private Integer safetyStock = 0;
 
-    // 狀態
+    // 狀態：保留給商品頁面判斷是否上架
     @Column(length = 20)
     private String status;
 

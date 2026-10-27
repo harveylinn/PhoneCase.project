@@ -13,9 +13,11 @@ import java.util.Objects;
 public class InventoryService {
 
     private final InventoryRepository inventoryRepository;
+    private final ShopSyncService shopSyncService;
 
-    public InventoryService(InventoryRepository inventoryRepository) {
+    public InventoryService(InventoryRepository inventoryRepository, ShopSyncService shopSyncService) {
         this.inventoryRepository = inventoryRepository;
+        this.shopSyncService = shopSyncService;
     }
 
     public List<Inventory> getAllInventory() {
@@ -53,5 +55,7 @@ public class InventoryService {
         inventory.setQuantity(newQuantity);
         inventory.setTotalPrice(newQuantity * inventory.getUnitPrice());
         inventoryRepository.save(inventory);
+        // 商城商品規格的庫存一起更新（品號 = SKU）
+        shopSyncService.pushStockToVariant(inventory.getOrderNo(), newQuantity);
     }
 }
