@@ -1,0 +1,473 @@
+/* ========================================
+   01. 購物車頁面整體排版
+   ======================================== */
+
+/* 限制頁面最大寬度，並讓內容水平置中 */
+.cart-page {
+  width: 100%;
+  max-width: 900px;
+  margin: 40px auto;
+  padding: 24px;
+  box-sizing: border-box;
+  text-align: left;
+}
+
+/* 購物車主標題與下方內容的間距 */
+.cart-page h1 {
+  margin-bottom: 24px;
+}
+
+
+/* ========================================
+   02. 商品全選與勾選框
+   ======================================== */
+
+/* 全選勾選框與文字水平排列 */
+.cart-select-all {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 16px;
+  cursor: pointer;
+}
+
+/* 設定全選與單一商品勾選框的尺寸 */
+.cart-item-checkbox,
+.cart-select-all input {
+  width: 18px;
+  height: 18px;
+  accent-color: var(--accent);
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+/* 全選功能停用時顯示不可操作游標 */
+.cart-select-all input:disabled {
+  cursor: not-allowed;
+}
+
+
+/* ========================================
+   03. 商品列表
+   ======================================== */
+
+/* 商品卡片垂直排列，彼此保留間距 */
+.cart-list {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+
+/* ========================================
+   04. 商品卡片
+   ======================================== */
+
+/* 商品卡片背景、邊框、圓角與陰影 */
+.cart-item-card {
+  position: relative;
+  box-sizing: border-box;
+  min-height: 180px;
+
+  background-color: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+
+  /* 右側保留數量控制按鈕的空間 */
+  padding: 20px;
+  padding-right: 190px;
+
+  box-shadow: var(--shadow);
+}
+
+
+/* ========================================
+   05. 商品圖片與資訊
+   ======================================== */
+
+/* 勾選框、商品圖片與商品資訊水平排列 */
+.cart-item-content {
+  display: flex;
+  align-items: flex-start;
+  gap: 20px;
+}
+
+/* 商品圖片固定大小，避免被擠壓 */
+.cart-item-image {
+  width: 120px;
+  height: 120px;
+  object-fit: cover;
+  border-radius: 10px;
+  flex-shrink: 0;
+}
+
+/* 商品資訊填滿左側剩餘空間 */
+.cart-item-info {
+  flex: 1;
+  min-width: 0;
+}
+
+/* 商品名稱的字體、間距與換行 */
+.cart-item-info h2 {
+  font-size: 20px;
+  margin-bottom: 12px;
+  overflow-wrap: anywhere;
+}
+
+/* 商品單價與小計的上下間距 */
+.cart-item-info p {
+  margin: 8px 0;
+  overflow-wrap: anywhere;
+}
+
+
+/* ========================================
+   06. 數量控制區
+   ======================================== */
+
+/* 操作區覆蓋卡片右側，作為按鈕定位容器 */
+.cart-item-actions {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+
+  width: 170px;
+  margin: 0;
+
+  /* 容器不攔截滑鼠操作 */
+  pointer-events: none;
+}
+
+/* 數量控制固定在商品卡片右側中間 */
+.cart-quantity-control {
+  position: absolute;
+  top: 50%;
+  right: 20px;
+  transform: translateY(-50%);
+
+  display: flex;
+  align-items: center;
+  gap: 12px;
+
+  /* 允許加減按鈕正常點擊 */
+  pointer-events: auto;
+}
+
+/* 加號與減號的圓形按鈕 */
+.cart-icon-button {
+  width: 38px;
+  height: 38px;
+  padding: 0;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+
+  border: 1px solid var(--border);
+  border-radius: 50%;
+  background: transparent;
+  color: var(--text-h);
+  cursor: pointer;
+}
+
+/* 滑鼠移到可點擊按鈕時改變邊框 */
+.cart-icon-button:hover:not(:disabled) {
+  border-color: var(--accent);
+}
+
+/* 數量為 1 時，減號按鈕停用 */
+.cart-icon-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* 加減號中間的商品數量 */
+.cart-quantity {
+  min-width: 20px;
+  text-align: center;
+  font-weight: 600;
+  color: var(--text-h);
+}
+
+
+/* ========================================
+   07. 刪除商品按鈕
+   ======================================== */
+
+/* 垃圾桶固定在整張商品卡片右上角 */
+.cart-remove-button {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+
+  width: 28px;
+  height: 28px;
+  padding: 0;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  border: 1px solid #b91c1c;
+  border-radius: 50%;
+  background: transparent;
+  color: #ef4444;
+  cursor: pointer;
+
+  /* 恢復按鈕點擊功能 */
+  pointer-events: auto;
+}
+
+/* 縮小垃圾桶 SVG 圖示 */
+.cart-remove-button svg {
+  width: 14px;
+  height: 14px;
+}
+
+/* 滑鼠移到垃圾桶時顯示淡紅色背景 */
+.cart-remove-button:hover {
+  background: rgba(239, 68, 68, 0.1);
+}
+
+
+/* ========================================
+   08. 購物車總金額
+   ======================================== */
+
+/* 總金額區塊的背景、邊框與文字對齊 */
+.cart-summary {
+  margin-top: 24px;
+  padding: 24px;
+  background-color: var(--code-bg);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  text-align: right;
+}
+
+/* 總金額標題與數字的間距 */
+.cart-summary h2 {
+  margin: 4px 0;
+}
+
+
+/* ========================================
+   09. 平板 RWD：1024px 以下
+   ======================================== */
+
+@media (max-width: 1024px) {
+
+  /* 縮小購物車頁面間距 */
+  .cart-page {
+    margin: 24px auto;
+    padding: 20px;
+  }
+
+  /* 縮小卡片內距，保留右側操作空間 */
+  .cart-item-card {
+    padding: 16px;
+    padding-right: 175px;
+  }
+
+  /* 調整右側操作區寬度 */
+  .cart-item-actions {
+    width: 159px;
+  }
+
+  /* 數量控制維持在右側中間 */
+  .cart-quantity-control {
+    right: 16px;
+  }
+
+  /* 垃圾桶維持在整張卡片右上角 */
+  .cart-remove-button {
+    top: 10px;
+    right: 10px;
+  }
+}
+
+
+/* ========================================
+   10. 手機 RWD：768px 以下
+   ======================================== */
+
+@media (max-width: 768px) {
+
+  /* 縮小購物車頁面間距 */
+  .cart-page {
+    margin: 16px auto;
+    padding: 12px;
+  }
+
+  /* 縮小主標題 */
+  .cart-page h1 {
+    font-size: 28px;
+    margin-bottom: 16px;
+  }
+
+  /* 縮小商品卡片之間的距離 */
+  .cart-list {
+    gap: 12px;
+  }
+
+  /* 卡片保留右側數量控制空間 */
+  .cart-item-card {
+    min-height: 170px;
+    padding: 14px;
+    padding-right: 150px;
+  }
+
+  /* 縮小圖片與文字的間距 */
+  .cart-item-content {
+    gap: 12px;
+  }
+
+  /* 縮小商品圖片 */
+  .cart-item-image {
+    width: 90px;
+    height: 90px;
+  }
+
+  /* 縮小商品名稱字體 */
+  .cart-item-info h2 {
+    font-size: 18px;
+  }
+
+  /* 操作區仍固定在卡片右側 */
+  .cart-item-actions {
+    width: 136px;
+  }
+
+  /* 數量控制保持右側垂直置中 */
+  .cart-quantity-control {
+    right: 14px;
+    gap: 8px;
+  }
+
+  /* 縮小加減按鈕 */
+  .cart-icon-button {
+    width: 36px;
+    height: 36px;
+  }
+
+  /* 垃圾桶保持右上角，不跟隨加減按鈕縮放 */
+  .cart-remove-button {
+    top: 10px;
+    right: 10px;
+    width: 28px;
+    height: 28px;
+  }
+
+  /* 縮小總金額區塊 */
+  .cart-summary {
+    margin-top: 16px;
+    padding: 16px;
+  }
+
+  /* 縮小總金額字體 */
+  .cart-summary h2 {
+    font-size: 20px;
+  }
+}
+
+
+/* ========================================
+   11. 小手機 RWD：480px 以下
+   ======================================== */
+
+@media (max-width: 480px) {
+
+  /* 保留右側數量控制的空間 */
+  .cart-item-card {
+    min-height: 160px;
+    padding: 12px;
+    padding-right: 112px;
+  }
+
+  /* 縮小圖片與文字的間距 */
+  .cart-item-content {
+    gap: 8px;
+  }
+
+  /* 小手機商品圖片尺寸 */
+  .cart-item-image {
+    width: 56px;
+    height: 56px;
+  }
+
+  /* 縮小商品名稱 */
+  .cart-item-info h2 {
+    font-size: 15px;
+    margin-bottom: 8px;
+  }
+
+  /* 縮小價格字體 */
+  .cart-item-info p {
+    font-size: 13px;
+    margin: 6px 0;
+  }
+
+  /* 操作區寬度配合小手機調整 */
+  .cart-item-actions {
+    width: 100px;
+  }
+
+  /* 數量控制仍固定在右側中間 */
+  .cart-quantity-control {
+    right: 10px;
+    gap: 4px;
+  }
+
+  /* 縮小加減按鈕 */
+  .cart-icon-button {
+    width: 30px;
+    height: 30px;
+  }
+
+  /* 縮小商品數量文字 */
+  .cart-quantity {
+    min-width: 12px;
+    font-size: 13px;
+  }
+
+  /* 垃圾桶固定在右上角並稍微縮小 */
+  .cart-remove-button {
+    top: 8px;
+    right: 8px;
+    width: 26px;
+    height: 26px;
+  }
+
+  /* 小手機垃圾桶圖示尺寸 */
+  .cart-remove-button svg {
+    width: 13px;
+    height: 13px;
+  }
+}
+
+/* 購物車：前往結帳按鈕 */
+.cart-checkout-button {
+  width: 100%;
+  padding: 14px 20px;
+  margin-top: 16px;
+  border: none;
+  border-radius: 8px;
+  background-color: #222;
+  color: white;
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+/* 滑鼠移入，且按鈕沒有被停用時 */
+.cart-checkout-button:hover:not(:disabled) {
+  background-color: #444;
+}
+
+/* 沒有勾選商品時 */
+.cart-checkout-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}

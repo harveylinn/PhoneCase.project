@@ -1,0 +1,245 @@
+/* =========================
+   整個結帳頁面
+========================= */
+
+.checkout-page {
+  max-width: 900px;
+  margin: 40px auto;
+  padding: 40px;
+  background: white;
+  color: #333;
+  border-radius: 12px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+}
+
+.checkout-page h1 {
+  text-align: center;
+  margin-bottom: 30px;
+}
+
+.checkout-page h2 {
+  font-size: 22px;
+  margin: 30px 0 20px;
+}
+
+.checkout-page hr {
+  border: none;
+  border-top: 1px solid #eee;
+  margin: 25px 0;
+}
+
+
+/* =========================
+   輸入框
+========================= */
+
+.checkout-page input:not([type="radio"]) {
+  display: block;
+  width: 100%;
+  box-sizing: border-box;
+  padding: 14px;
+  margin-bottom: 15px;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  font-size: 15px;
+}
+
+.checkout-page input:focus {
+  outline: none;
+  border-color: #555;
+}
+
+.checkout-page label {
+  display: inline-block;
+  margin-right: 20px;
+  cursor: pointer;
+}
+
+
+/* =========================
+   一般按鈕
+========================= */
+
+.checkout-page button {
+  background: #333;
+  color: white;
+  padding: 12px 24px;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: 0.2s;
+}
+
+.checkout-page button:hover:not(:disabled) {
+  background: #555;
+}
+
+
+/* =========================
+   商品卡片
+========================= */
+
+.checkout-product {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  padding: 24px;
+  border: 1px solid #e5e5e5;
+  border-radius: 12px;
+  background: #fff;
+  margin-bottom: 20px;
+}
+
+.product-image {
+  width: 110px;
+  height: 110px;
+  background: #f5f5f5;
+  border-radius: 10px;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  font-size: 48px;
+  flex-shrink: 0;
+}
+
+.product-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.product-info h3 {
+  margin: 0 0 12px;
+  font-size: 18px;
+}
+
+.product-info p {
+  margin: 6px 0;
+  color: #666;
+  font-size: 14px;
+}
+
+.product-subtotal {
+  font-size: 20px;
+  font-weight: bold;
+  color: #333;
+  white-space: nowrap;
+}
+
+
+/* =========================
+   商品數量 ＋ － 按鈕
+========================= */
+
+.checkout-product .product-info button {
+  width: 36px;
+  height: 36px;
+
+  padding: 0;
+
+  background: #f5f5f5;
+  color: #333;
+
+  border: 1px solid #ddd;
+  border-radius: 6px;
+
+  font-size: 20px;
+  font-weight: bold;
+
+  cursor: pointer;
+}
+
+.checkout-product .product-info button:hover:not(:disabled) {
+  background: #e5e5e5;
+}
+
+.checkout-product .product-info button:disabled {
+  background: #fafafa;
+  color: #bbb;
+  cursor: not-allowed;
+}
+
+
+/* =========================
+   訂單金額區塊
+========================= */
+
+.checkout-summary {
+  padding: 28px;
+  background: #f8f9fa;
+  border-radius: 12px;
+  margin-bottom: 25px;
+}
+
+.summary-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+
+  margin-bottom: 18px;
+  font-size: 16px;
+}
+
+.summary-total {
+  font-size: 20px;
+  font-weight: bold;
+  margin-top: 20px;
+}
+
+.summary-total strong {
+  color: #e53935;
+  font-size: 28px;
+}
+
+
+/* =========================
+   手機版 RWD
+========================= */
+
+@media (max-width: 600px) {
+
+  .checkout-page {
+    margin: 15px;
+    padding: 20px;
+  }
+
+  .checkout-page h1 {
+    font-size: 26px;
+  }
+
+  .checkout-page h2 {
+    font-size: 20px;
+  }
+
+  .checkout-product {
+    flex-wrap: wrap;
+    gap: 15px;
+    padding: 15px;
+  }
+
+  .product-image {
+    width: 80px;
+    height: 80px;
+    font-size: 36px;
+  }
+
+  .product-info h3 {
+    font-size: 16px;
+  }
+
+  .product-subtotal {
+    width: 100%;
+    text-align: right;
+  }
+
+  .checkout-summary {
+    padding: 18px;
+  }
+
+  .summary-total strong {
+    font-size: 22px;
+  }
+
+}
