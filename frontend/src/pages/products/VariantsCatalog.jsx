@@ -13,7 +13,7 @@ export default function VariantsCatalog() {
     const [error, setError] = useState('');
     const [editing, setEditing] = useState(null);
     const [saving, setSaving] = useState(false);
-    const emptyVariant = {productId: '', brand: '', model: '', color: '', price: '', stock: 0, sku: '', status: '上架', tags: ''};
+    const emptyVariant = {productId: '', brand: '', model: '', color: '', price: '', sku: '', status: '上架', tags: ''};
     const [form, setForm] = useState(emptyVariant);
     const [page, setPage] = useState(1);
     const pageSize = 20;
@@ -68,7 +68,7 @@ export default function VariantsCatalog() {
     function openEdit(row) {
         const {product, variant} = row;
         setEditing({id: variant.id, productId: product.id});
-        setForm({productId: product.id, brand: variant.brand ?? '', model: variant.model ?? '', color: variant.color ?? '', price: variant.price ?? '', stock: variant.stock ?? 0, sku: variant.sku ?? '', status: variant.status ?? '上架', tags: variant.tags ?? ''});
+        setForm({productId: product.id, brand: variant.brand ?? '', model: variant.model ?? '', color: variant.color ?? '', price: variant.price ?? '', sku: variant.sku ?? '', status: variant.status ?? '上架', tags: variant.tags ?? ''});
         setError('');
     }
 
@@ -82,7 +82,8 @@ export default function VariantsCatalog() {
         setSaving(true);
         try {
             const {productId: _productId, ...variantFields} = form;
-            const payload = {...variantFields, price: Number(form.price), stock: Number(form.stock)};
+            // 庫存由庫存後台管理，商品品項頁不送出 stock，避免覆蓋庫存資料。
+            const payload = {...variantFields, price: Number(form.price)};
             const url = editing?.id
                 ? `/api/products/${editing.productId}/variants/${editing.id}`
                 : `/api/products/${form.productId}/variants`;
@@ -168,7 +169,7 @@ export default function VariantsCatalog() {
                 <form className="variant-editor panel" onSubmit={saveVariant}>
                     <div className="variant-editor-heading"><div><p className="eyebrow">CATALOG ITEM</p><h2>{editing.id ? '編輯手機品項' : '新增手機品項'}</h2></div><button className="variant-editor-close" type="button" onClick={() => setEditing(null)}>×</button></div>
                     {!editing.id && <label>商品系列<select name="productId" value={form.productId} onChange={updateForm} required><option value="">請選擇商品系列</option>{products.map(product => <option key={product.id} value={product.id}>{product.name}</option>)}</select></label>}
-                    <div className="variant-editor-grid"><label>品牌<input name="brand" value={form.brand} onChange={updateForm} required /></label><label>手機型號<input name="model" value={form.model} onChange={updateForm} required /></label><label>顏色<input name="color" value={form.color} onChange={updateForm} required /></label><label>價格<input name="price" type="number" min="0" value={form.price} onChange={updateForm} required /></label><label>庫存<input name="stock" type="number" min="0" value={form.stock} onChange={updateForm} required /></label><label>SKU<input name="sku" value={form.sku} onChange={updateForm} /></label><label>狀態<select name="status" value={form.status} onChange={updateForm}><option value="上架">上架</option><option value="下架">下架</option></select></label><label>Tags<input name="tags" value={form.tags} onChange={updateForm} placeholder="例如：霧面,磁吸,輕薄" /></label></div>
+                    <div className="variant-editor-grid"><label>品牌<input name="brand" value={form.brand} onChange={updateForm} required /></label><label>手機型號<input name="model" value={form.model} onChange={updateForm} required /></label><label>顏色<input name="color" value={form.color} onChange={updateForm} required /></label><label>價格<input name="price" type="number" min="0" value={form.price} onChange={updateForm} required /></label><label>SKU<input name="sku" value={form.sku} onChange={updateForm} /></label><label>狀態<select name="status" value={form.status} onChange={updateForm}><option value="上架">上架</option><option value="下架">下架</option></select></label><label>Tags<input name="tags" value={form.tags} onChange={updateForm} placeholder="例如：霧面,磁吸,輕薄" /></label></div>
                     <div className="variant-editor-actions"><button className="button button-outline" type="button" onClick={() => setEditing(null)}>取消</button><button className="button button-primary" type="submit" disabled={saving}>{saving ? '儲存中…' : '儲存品項'}</button></div>
                 </form>
             </div>}

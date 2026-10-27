@@ -22,7 +22,6 @@ const emptyVariant = {
     model: '',
     color: '',
     price: '',
-    stock: 0,
     sku: '',
     status: '上架',
     tags: '',
@@ -139,7 +138,6 @@ export default function AdminProducts() {
             model: variantForm.model,
             color: variantForm.color,
             price: Number(variantForm.price),
-            stock: Number(variantForm.stock),
             sku: variantForm.sku,
             status: variantForm.status,
             tags: variantForm.tags
@@ -188,7 +186,6 @@ export default function AdminProducts() {
             model: variant.model ?? '',
             color: variant.color ?? '',
             price: variant.price ?? '',
-            stock: variant.stock ?? 0,
             sku: variant.sku ?? '',
             status: variant.status ?? '上架',
             tags: variant.tags ?? '',
@@ -286,10 +283,7 @@ export default function AdminProducts() {
                             required/></label><label>顏色<input name="color" value={variantForm.color}
                                                                 onChange={updateVariantField} required/></label><label>價格<input
                             name="price" type="number" min="0" value={variantForm.price} onChange={updateVariantField}
-                            required/></label><label>庫存<input name="stock" type="number" min="0"
-                                                                value={variantForm.stock} onChange={updateVariantField}
-                                                                required/>
-                        </label>
+                            required/></label>
                             <label>SKU<input name="sku" value={variantForm.sku} onChange={updateVariantField} required/>
                             </label>
                             <label className="wide">商品標籤
