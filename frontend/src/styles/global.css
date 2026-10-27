@@ -398,6 +398,7 @@ textarea::placeholder {
 
 .product-card {
     overflow: hidden;
+    cursor: pointer;
     border: 1px solid var(--line);
     border-radius: 12px;
     background: #fff;
@@ -1205,6 +1206,86 @@ textarea::placeholder {
     margin-top: 18px;
     padding-top: 22px;
     border-top: 1px solid var(--line);
+}
+
+.image-url-field {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.product-editor-heading {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+}
+
+.product-editor-heading h2 {
+    margin: 0;
+}
+
+.image-url-field input {
+    flex: 1;
+    min-width: 0;
+}
+
+.image-preview-backdrop {
+    position: fixed;
+    inset: 0;
+    z-index: 1000;
+    display: grid;
+    place-items: center;
+    padding: 24px;
+    background: rgba(10, 30, 58, 0.58);
+}
+
+.image-preview-modal {
+    width: min(560px, 100%);
+    max-height: min(760px, 90vh);
+    overflow: auto;
+    border-radius: 18px;
+    background: #fff;
+    box-shadow: 0 24px 70px rgba(10, 30, 58, 0.28);
+}
+
+.image-preview-heading {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 18px 22px;
+    border-bottom: 1px solid #e5ebf2;
+}
+
+.image-preview-heading h2 {
+    margin: 0;
+    font-size: 1.15rem;
+}
+
+.image-preview-close {
+    border: 0;
+    background: transparent;
+    color: #17345d;
+    cursor: pointer;
+    font-size: 1.8rem;
+    line-height: 1;
+}
+
+.image-preview-content {
+    display: grid;
+    justify-items: center;
+    gap: 14px;
+    padding: 26px;
+    text-align: center;
+}
+
+.image-preview-content img {
+    display: block;
+    max-width: 100%;
+    max-height: 62vh;
+    object-fit: contain;
+    border-radius: 12px;
+    background: #f4f7fa;
 }
 
 .variant-form h3 {

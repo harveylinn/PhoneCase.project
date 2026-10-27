@@ -14,7 +14,8 @@ const emptyProduct = {
     name: '',
     category: '手機殼',
     description: '',
-    status: '上架'
+    status: '上架',
+    sampleImageUrl: ''
 };
 
 const emptyVariant = {
@@ -28,17 +29,33 @@ const emptyVariant = {
     imageUrl: ''
 };
 
+const stylePreviewImages = [
+    {names: ['solidx', 'solidsuit'], url: 'https://res.cloudinary.com/gpjb7mz7/image/upload/v1793135679/Solidx.webp'},
+    {names: ['clearx'], url: 'https://res.cloudinary.com/gpjb7mz7/image/upload/v1793135689/Clearx.webp'},
+    {names: ['modnx'], url: 'https://res.cloudinary.com/gpjb7mz7/image/upload/v1793135690/Modnx.webp'},
+    {names: ['airx'], url: 'https://res.cloudinary.com/gpjb7mz7/image/upload/v1793135674/Airx.webp'},
+    {names: ['bumper'], url: 'https://res.cloudinary.com/gpjb7mz7/image/upload/v1793135691/Bumper.webp'},
+    {names: ['clear'], url: 'https://res.cloudinary.com/gpjb7mz7/image/upload/v1793135690/Clear.webp'}
+];
+
+function getStylePreviewUrl(name) {
+    const normalized = (name ?? '').toLowerCase().replace(/[^a-z0-9]/g, '');
+    return stylePreviewImages.find(item => item.names.some(alias => normalized.includes(alias)))?.url ?? '';
+}
+
 export default function AdminProducts() {
     const [products, setProducts] = useState([]);
     const [selected, setSelected] = useState(null);
     const [productForm, setProductForm] = useState(emptyProduct);
     const [variantForm, setVariantForm] = useState(emptyVariant);
     const [editingVariantId, setEditingVariantId] = useState(null);
+    const [previewImageUrl, setPreviewImageUrl] = useState('');
     const [keyword, setKeyword] = useState('');
     const [status, setStatus] = useState('all');
     const [notice, setNotice] = useState('');
     const [error, setError] = useState('');
     const [loading, setLoading] = useState(true);
+    const stylePreviewUrl = getStylePreviewUrl(productForm.name);
 
     async function loadProducts() {
         setLoading(true);
@@ -73,7 +90,8 @@ export default function AdminProducts() {
             name: product.name ?? '',
             category: product.category ?? '',
             description: product.description ?? '',
-            status: product.status ?? '上架'
+            status: product.status ?? '上架',
+            sampleImageUrl: ''
         });
         resetVariant();
     }
@@ -81,6 +99,7 @@ export default function AdminProducts() {
     function resetVariant() {
         setEditingVariantId(null);
         setVariantForm(emptyVariant);
+        setPreviewImageUrl('');
     }
 
     function updateProductField(event) {
@@ -93,11 +112,24 @@ export default function AdminProducts() {
 
     async function saveProduct(event) {
         event.preventDefault();
+        const {sampleImageUrl, ...productPayload} = productForm;
+        const resolvedSampleImageUrl = sampleImageUrl?.trim() || getStylePreviewUrl(productForm.name);
         try {
             const saved = await request(selected ? `/api/products/${selected.id}` : '/api/products', {
                 method: selected ? 'PUT' : 'POST',
-                body: JSON.stringify(productForm)
+                body: JSON.stringify(productPayload)
             });
+            if (!selected && resolvedSampleImageUrl) {
+                await request('/api/image-samples', {
+                    method: 'POST',
+                    body: JSON.stringify({
+                        imageUrl: resolvedSampleImageUrl,
+                        source: 'Cloudinary',
+                        licenseType: '待確認',
+                        productId: saved.id
+                    })
+                });
+            }
             showNotice('商品系列已儲存');
             await loadProducts();
             const refreshed = selected ? saved : saved;
@@ -191,6 +223,7 @@ export default function AdminProducts() {
             tags: variant.tags ?? '',
             imageUrl: image?.imageUrl ?? ''
         });
+        setPreviewImageUrl('');
     }
 
     return (
@@ -230,7 +263,13 @@ export default function AdminProducts() {
                         <strong>{product.name}</strong><span>{product.variants?.length ?? 0} 筆規格 · {product.status}</span>
                     </button>)}</aside>
                 <section className="admin-editor panel">
-                    <h2>{selected ? `編輯：${selected.name}` : '新增商品系列'}</h2>
+                    <div className="product-editor-heading">
+                        <h2>{selected ? `編輯：${selected.name}` : '新增商品系列'}</h2>
+                        {stylePreviewUrl && <button className="button button-outline" type="button"
+                                                    onClick={() => setPreviewImageUrl(stylePreviewUrl)}>
+                            預覽款式圖片
+                        </button>}
+                    </div>
                     <form onSubmit={saveProduct} className="admin-form"><label>商品名稱<input name="name"
                                                                                               value={productForm.name}
                                                                                               onChange={updateProductField}
@@ -243,6 +282,19 @@ export default function AdminProducts() {
                     </select></label><label className="wide">商品描述<textarea name="description"
                                                                                value={productForm.description}
                                                                                onChange={updateProductField} rows="3"/></label>
+                        {!selected && <label className="wide">AI 範例圖 Cloudinary URL
+                            <div className="image-url-field">
+                                <input name="sampleImageUrl" value={productForm.sampleImageUrl || stylePreviewUrl}
+                                       onChange={updateProductField}
+                                       placeholder="貼上此款式的 Cloudinary 圖片 URL"/>
+                                {getStylePreviewUrl(productForm.name) && <button className="button button-outline"
+                                                                                  type="button"
+                                                                                  onClick={() => setPreviewImageUrl(getStylePreviewUrl(productForm.name))}>
+                                    預覽固定款式圖
+                                </button>}
+                            </div>
+                            <span className="form-help">儲存商品後會自動加入圖片樣本庫，狀態為待審核。</span>
+                        </label>}
                         <button className="button button-primary" type="submit">儲存商品系列</button>
                     </form>
                     {selected && <>
@@ -298,10 +350,19 @@ export default function AdminProducts() {
                                 name="status" value={variantForm.status} onChange={updateVariantField}>
                                 <option value="上架">上架</option>
                                 <option value="下架">下架</option>
-                            </select></label><label className="wide">圖片路徑<input name="imageUrl"
-                                                                                    value={variantForm.imageUrl}
-                                                                                    onChange={updateVariantField}
-                                                                                    placeholder="/images/xxx.webp"/></label>
+                            </select></label><label className="wide">圖片路徑
+                                <div className="image-url-field">
+                                    <input name="imageUrl"
+                                           value={variantForm.imageUrl}
+                                           onChange={updateVariantField}
+                                           placeholder="貼上 Cloudinary 圖片 URL"/>
+                                    <button className="button button-outline" type="button"
+                                            disabled={!variantForm.imageUrl.trim()}
+                                            onClick={() => setPreviewImageUrl(variantForm.imageUrl.trim())}>
+                                        預覽圖片
+                                    </button>
+                                </div>
+                            </label>
                             <button className="button button-primary" type="submit">儲存規格</button>
                         </form>
                         <button className="danger-button" onClick={() => deleteProduct(selected)}>刪除商品系列</button>
@@ -309,6 +370,22 @@ export default function AdminProducts() {
                 </section>
                 </section>
             </div>
+            {previewImageUrl && <div className="image-preview-backdrop" role="presentation"
+                                     onMouseDown={event => event.target === event.currentTarget && setPreviewImageUrl('')}>
+                <div className="image-preview-modal" role="dialog" aria-modal="true" aria-label="圖片預覽">
+                    <div className="image-preview-heading">
+                        <h2>手機殼圖片預覽</h2>
+                        <button className="image-preview-close" type="button"
+                                onClick={() => setPreviewImageUrl('')} aria-label="關閉預覽">×</button>
+                    </div>
+                    <div className="image-preview-content">
+                        <img src={previewImageUrl} alt="手機殼預覽" onError={event => {
+                            event.currentTarget.style.display = 'none';
+                        }}/>
+                        <p className="muted">如果圖片沒有顯示，請確認 Cloudinary URL 可以公開存取。</p>
+                    </div>
+                </div>
+            </div>}
         </main>
     );
 }
