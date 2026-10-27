@@ -1,43 +1,81 @@
-<!DOCTYPE html>
-<html lang="en">
-
+﻿<!DOCTYPE html>
+<html lang="zh-TW">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Document</title>
+    <title>個人資料 | 手機殼商城</title>
+    <link rel="stylesheet" href="./css/profile.css">
+    <script src="./js/profile.js" defer></script>
 </head>
-
 <body>
-    <main>
-        <header">
-            <h1>會員中心</h1>
-            <p>會員資料為靜態範例，後續可由會員功能組串接 API。</p>
-            </header>
-            <div>
-                <div>
-                    <section>
-                        <h2>會員基本資料</h2>
-                        <dl>
-                            <dt>帳號</dt>
-                            <dd>demo-member</dd>
-                            <dt>姓名</dt>
-                            <dd>展示會員</dd>
-                            <dt>Email</dt>
-                            <dd>member@example.com</dd>
-                            <dt>電話</dt>
-                            <dt>通訊地址</dt>
-                            <dd>尚未設定</dd>
-                        </dl>
-                    </section>
-                </div>
-                <div>
-                    <nav aria-label="會員功能"><a href="edit-profile.html">修改會員資料</a>
-                        <a href="orders.html">我的訂單</a>
-                        <a href="login.html">登出（返回登入頁）</a>
-                    </nav>
-                </div>
-            </div>
-    </main>
+    <div class="page-shell">
+        <a class="skip-link" href="#profileHeading">跳至個人資料</a>
+        <header class="site-header">
+            <a class="site-brand" href="../index.html">手機殼商城</a>
+            <nav class="site-nav" aria-label="主要導覽">
+                <a href="../index.html">首頁</a>
+                <a href="../phonecaseitemv2.html">商品</a>
+                <a href="./profile.html" aria-current="page">會員中心</a>
+                <button class="nav-button" type="button" data-unavailable="購物車">購物車</button>
+                <a href="./login.html">登入</a>
+            </nav>
+        </header>
+        <main class="member-layout">
+            <aside class="member-sidebar" aria-label="會員中心">
+                <h2>會員中心</h2>
+                <nav class="member-nav" aria-label="會員功能">
+                    <a class="is-active" href="./profile.html" aria-current="page">個人資料</a>
+                    <button class="nav-button" type="button" data-unavailable="我的訂單">我的訂單</button>
+                    <a href="./login.html">登出</a>
+                </nav>
+            </aside>
+            <section class="profile-panel" aria-labelledby="profileHeading">
+                <h1 id="profileHeading" tabindex="-1">個人資料</h1>
+                <form id="profileForm" action="#" method="post">
+                    <div class="profile-fields">
+                        <div class="form-group">
+                            <label for="account">帳號 <span class="field-note">（僅顯示）</span></label>
+                            <input class="readonly-field" type="text" id="account" name="account" value="demo-member" autocomplete="username" readonly>
+                        </div>
+                        <div class="form-group" data-db-field="hashpassword">
+                            <span class="field-label" id="passwordInfoLabel">密碼雜湊</span>
+                            <p class="readonly-field field-display" id="hashpassword" aria-labelledby="passwordInfoLabel">由系統管理，不提供檢視或修改。</p>
+                        </div>
+                        <div class="form-group">
+                            <label for="name">姓名</label>
+                            <input type="text" id="name" name="name" value="範例會員" autocomplete="name" required aria-describedby="nameError">
+                            <span class="field-error" id="nameError" hidden></span>
+                        </div>
+                        <div class="form-group">
+                            <label for="phonenumber">電話</label>
+                            <input type="tel" id="phonenumber" name="phonenumber" value="0912345678" autocomplete="tel" required aria-describedby="phonenumberError">
+                            <span class="field-error" id="phonenumberError" hidden></span>
+                        </div>
+                        <div class="form-group full-width">
+                            <label for="email">電子郵件 <span class="field-note">（僅顯示）</span></label>
+                            <input class="readonly-field" type="email" id="email" name="email" value="demo@example.com" readonly aria-readonly="true">
+                        </div>
+                        <div class="form-group full-width">
+                            <label for="address">通訊地址</label>
+                            <textarea id="address" name="address" rows="2" autocomplete="street-address" placeholder="請輸入通訊地址（選填）"></textarea>
+                        </div>
+                        <div class="form-group">
+                            <label for="createdTime">建立時間 <span class="field-note">（僅顯示）</span></label>
+                            <input class="readonly-field" type="text" id="createdTime" name="createdtime" value="尚未載入" readonly>
+                        </div>
+                        <div class="form-group">
+                            <label for="updateTime">更新時間 <span class="field-note">（僅顯示）</span></label>
+                            <input class="readonly-field" type="text" id="updateTime" name="updatetime" value="尚未載入" readonly>
+                        </div>
+                    </div>
+                    <div class="form-footer">
+                        <p class="save-result" id="saveResult" role="status" aria-live="polite">更新後顯示儲存結果。</p>
+                        <button class="save-button" id="saveButton" type="submit" disabled>儲存資料</button>
+                    </div>
+                </form>
+            </section>
+        </main>
+        <footer class="site-footer">手機殼商城網站 / 版權所有</footer>
+    </div>
 </body>
-
 </html>
