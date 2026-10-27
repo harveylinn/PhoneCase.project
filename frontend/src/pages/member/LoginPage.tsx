@@ -1,5 +1,5 @@
 import "../../styles/member/login.css";
-import { useState, type SubmitEvent } from "react";
+import { useEffect, useState, type SubmitEvent } from "react";
 
 interface MemberInfo {
   id: number;
@@ -26,13 +26,16 @@ export default function LoginPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [resultMessage, setResultMessage] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [isChecking, setIsChecking] = useState(false);
+  const [isChecking, setIsChecking] = useState(
+    () => Boolean(localStorage.getItem("token")),
+  );
+
   const [currentMember, setCurrentMember] = useState<MemberInfo | null>(null);
 
   async function handleSubmit(event: SubmitEvent<HTMLFormElement>) {
     event.preventDefault();
 
-    if (isSubmitting) {
+    if (isSubmitting || isChecking) {
       return;
     }
 
@@ -71,7 +74,15 @@ export default function LoginPage() {
         return;
       }
 
+      if (!data.member) {
+        setResultMessage("登入回應缺少會員資料，請稍後再試。");
+        return;
+      }
+
       localStorage.setItem("token", data.token);
+      setCurrentMember(data.member);
+      setPassword("");
+      setShowPassword(false);
 
       setResultMessage(data.message ?? "登入成功。");
     } catch {
@@ -81,60 +92,63 @@ export default function LoginPage() {
     }
   }
 
-  async function checkCurrentMember() {
-    if (isChecking) {
-      return;
-    }
-
-    setResultMessage("");
-
+  useEffect(() => {
     const token = localStorage.getItem("token");
 
-    if (!token) {
-      setCurrentMember(null);
-      setResultMessage("尚未登入，請先登入。");
+    if(!token) {
       return;
     }
 
-    setIsChecking(true);
+    let active = true;
 
-    try {
-      const response = await fetch("/api/member/me", {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
+    async function restoreMember() {
+      try{
+        const response = await fetch("/api/member/me",{
+          headers:{
+            Authorization: `Bearer ${token}`,
+          },
+        });
 
-      if (response.status === 401) {
-        localStorage.removeItem("token");
-        setCurrentMember(null);
-        setResultMessage("登入已失效，請重新登入。");
-        return;
+        if (!active) {
+          return;
+        }
+
+        if (response.status === 401) {
+          localStorage.removeItem("token");
+          setCurrentMember(null);
+          setResultMessage("登入已失效，請重新登入。");
+          return;
+        }
+
+        const data: MeResponse = await response.json();
+
+        if (!active) {
+          return;
+        }
+
+        if (!response.ok || data.success !== true || !data.member) {
+          setResultMessage("無法確認會員身分。");
+          return;
+        }
+
+        setCurrentMember(data.member);
+      } catch {
+        if (active) {
+          setResultMessage("無法確認會員身分，請確認網路與後端服務。");
+        }
+      }finally {
+        if (active) {
+          setIsChecking(false);
+        }
       }
-
-      const data: MeResponse = await response.json();
-
-      if (!response.ok || data.success !== true) {
-        setResultMessage(data.message ?? "無法確認會員身分。");
-        return;
-      }
-
-      if (!data.member) {
-        setResultMessage("會員資料回應不完整。");
-        return;
-      }
-
-      setCurrentMember(data.member);
-
-      setResultMessage(
-        `身分確認成功:${data.member.name} (${data.member.account})`,
-      );
-    } catch {
-      setResultMessage("無法確認會員身分，請確認網路與後端服務。");
-    } finally {
-      setIsChecking(false);
     }
-  }
+
+    void restoreMember();
+
+    return () => {
+      active = false;
+    };
+  },[]);
 
   return (
     <>
@@ -200,7 +214,7 @@ export default function LoginPage() {
                 className="login-button"
                 id="loginButton"
                 type="submit"
-                disabled={isSubmitting}
+                disabled={isSubmitting || isChecking}
               >
                 <span>{isSubmitting ? "登入中..." : "登入"}</span>
                 <span>→</span>
@@ -213,16 +227,10 @@ export default function LoginPage() {
                 {resultMessage}
               </p>
             </form>
-            {/* 測試按鈕區 */}
-            <button
-              type="button"
-              onClick={checkCurrentMember}
-              disabled={isChecking || isSubmitting}
-            >
-              {isChecking ? "確認中..." : "確認登入身分"}
-            </button>
             <p>
-                {currentMember
+                {isChecking
+                  ? "正在確認登入身分..."
+                  : currentMember
                     ? `目前會員：${currentMember.name} (${currentMember.account})`
                     : "目前尚未確認會員身分"}
             </p>
