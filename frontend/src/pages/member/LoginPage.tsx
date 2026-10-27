@@ -142,12 +142,6 @@ export default function LoginPage() {
         跳至登入表單
       </a>
       <header className="site-header">
-        <a className="brand" href="/" aria-label="PhoneCase 首頁">
-          <span className="brand-mark" aria-hidden="true">
-            P<span>·</span>
-          </span>
-          PhoneCase<span className="brand-dot">.</span>
-        </a>
         <a className="home-link" href="/">
           <span aria-hidden="true">←</span> 返回首頁
         </a>
