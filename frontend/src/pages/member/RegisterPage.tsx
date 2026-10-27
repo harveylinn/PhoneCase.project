@@ -1,6 +1,19 @@
 import { useState, type SubmitEvent } from "react";
 import "../../styles/member/register.css";
 
+interface RegisterResponse {
+  success: boolean;
+  message: string;
+  memberId?: number;
+  errors?: {
+    account?: string;
+    password?: string;
+    name?: string;
+    phone?: string;
+    email?: string;
+  };
+}
+
 export default function RegisterPage() {
   const [account, setAccount] = useState("");
   const [email, setEmail] = useState("");
@@ -119,20 +132,31 @@ export default function RegisterPage() {
         body: JSON.stringify(registerData),
       });
 
-      if (!response.ok) {
-        setResultMessage(`請求失敗，HTTP狀態碼：${response.status}`);
+      const data: RegisterResponse = await response.json();
+
+      if (!response.ok || data.success !== true) {
+        //後端若有提供欄位錯誤，就顯示在對應欄位下方。
+        //符號??表示：null 或undefined時 使用右邊值(空字串)
+        setAccountError(data.errors?.account ?? "");
+        setPasswordError(data.errors?.password ?? "");
+        setNameError(data.errors?.name ?? "");
+        setTelError(data.errors?.phone ?? "");
+        setEmailError(data.errors?.email ?? "");
+
+        setResultMessage(
+          data.message ?? `註冊失敗，HTTP狀態碼:${response.status}`,
+        );
+
         return;
       }
 
-      const data = await response.json();
-
-      if (data.success === true) {
-        setResultMessage(data.message ?? "後端已收到資料。");
-      } else {
-        setResultMessage(data.message ?? "後端未能完成請求。");
-      }
+      //清空表單後，再顯示成功訊息。
+      handleClear();
+      setResultMessage(data.message ?? "註冊成功，請登入");
     } catch {
-      setResultMessage("無法完成請求，請確認後端已啟動及回應格式正確");
+      setResultMessage(
+        "無法取得有效回應，請確認網路與後端服務，再確認註冊結果",
+      );
     } finally {
       setIsSubmitting(false);
     }
@@ -144,12 +168,6 @@ export default function RegisterPage() {
         跳至註冊表單
       </a>
       <header className="site-header">
-        <a className="brand" href="/index">
-          <span className="brand-mark">
-            P<span>·</span>
-          </span>
-          PhoneCase<span className="brand-dot">.</span>
-        </a>
         <a className="back-link" href="/login">
           <span>←</span> 返回登入
         </a>
