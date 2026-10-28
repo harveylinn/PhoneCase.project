@@ -1,59 +1,55 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="zh-TW">
 
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <link rel="stylesheet" href="style.css">
-    <title>PhoneCase</title>
-
+    <meta name="theme-color" content="#f7f4ef">
+    <title>會員登入 | PhoneCase</title>
+    <link rel="stylesheet" href="./css/login.css">
+    <script src="./js/login.js" defer></script>
 </head>
+
 <body>
-   
-
-    <main>
-
-           <h1>會員登入</h1>
-        <hr>
-        <form action="" method="">
-            <div> <label class="form-label" for="account">帳號</label><input type="text" id="account" name="account"
-                    autocomplete="username" required>
+    <a class="skip-link" href="#loginForm">跳至登入表單</a>
+    <header class="site-header">
+        <a class="brand" href="../index.html" aria-label="PhoneCase 首頁"><span class="brand-mark"
+                aria-hidden="true">P<span>·</span></span>PhoneCase<span class="brand-dot">.</span></a>
+        <a class="home-link" href="../index.html"><span aria-hidden="true">←</span> 返回首頁</a>
+    </header>
+    <main class="login-layout">
+        <section class="form-panel" aria-labelledby="loginHeading">
+            <div class="form-content">
+                <span class="eyebrow">YOUR PERSONAL SPACE</span>
+                <h1 id="loginHeading">會員登入<span class="welcome-dot">。</span></h1>
+                <form id="loginForm" action="#" method="post">
+                    <div class="form-group">
+                        <label for="account">帳號</label>
+                        <input type="text" id="account" name="account" autocomplete="username" placeholder="請輸入會員帳號"
+                            required>
+                    </div>
+                    <div class="form-group">
+                        <div class="label-row"><label for="password">密碼</label><a href="./forget.html">忘記密碼？</a></div>
+                        <div class="password-field">
+                            <input type="password" id="password" name="password" autocomplete="current-password"
+                                placeholder="請輸入密碼" required>
+                            <button class="password-toggle" type="button" id="passwordToggle" aria-controls="password"
+                                aria-pressed="false" hidden>顯示</button>
+                        </div>
+                        <p class="caps-warning" id="capsWarning" hidden>大寫鎖定已開啟，請確認密碼大小寫。</p>
+                    </div>
+                    <button class="login-button" id="loginButton" type="submit" disabled><span>登入</span><span
+                            aria-hidden="true">→</span></button>
+                    <p class="form-status" id="loginStatus" role="status" aria-live="polite" hidden></p>
+                </form>
+                <div class="register-prompt"><span>還沒有帳號？</span><a href="./register.html">註冊會員 <span
+                            aria-hidden="true">↗</span></a></div>
             </div>
-            <div>
-                <label class="form-label" for="password">密碼</label><input type="password" id="password" name="password"
-                    autocomplete="current-password" required>
-            </div>
-            <button class="btn btn-primary" type="submit">登入</button>
-            <br>
-            <a href="forgot-password.html">忘記密碼</a> <a href="register.html">註冊</a>
-        </form>
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+        </section>
     </main>
-
-        </div>
-        <div class="Copyright">
-            <p>&copy; Copyright 2026 個人網站, 保留所有權利</p>
-        </div>
+    <footer class="site-footer">
+        <p>&copy; 2026 PhoneCase. 保留所有權利。</p><span>YOUR CASE. YOUR STYLE.</span>
     </footer>
 </body>
 
+</html>
