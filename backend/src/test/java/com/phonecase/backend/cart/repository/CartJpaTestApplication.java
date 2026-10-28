@@ -5,7 +5,9 @@ import com.phonecase.backend.cart.entity.CartItem;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.boot.persistence.autoconfigure.EntityScan;
 import org.springframework.data.jpa.repository.config.EnableJpaRepositories;
+import org.springframework.context.annotation.Profile;
 
+@Profile("test")
 @SpringBootApplication(
         scanBasePackages = "com.phonecase.backend.cart.repository.testonly"
 )
