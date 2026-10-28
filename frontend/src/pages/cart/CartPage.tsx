@@ -2,13 +2,11 @@ import { useEffect, useState } from 'react'
 import type { CartItem } from './CartItem'
 import './CartPage.css'
 import CartItemCard from './CartItemCard'
-import {
-    getGuestCart,
-    saveGuestCart,
-    addToGuestCart
-} from '../../utils/cartStorage'
+import { getGuestCart, saveGuestCart, } from '../../utils/cartStorage'
+import { useNavigate } from 'react-router-dom'
 
 function CartPage() {
+    const navigate = useNavigate()
 
     // 初始化購物車，從 localStorage 讀取資料
     const [cartItems, setCartItems] = useState<CartItem[]>(getGuestCart)
@@ -19,22 +17,6 @@ function CartPage() {
         saveGuestCart(cartItems)
     }, [cartItems])
 
-
-    // 暫時模擬商品頁加入購物車
-    const testAddToCart = () => {
-        addToGuestCart({
-            variantId: 3,
-            name: '奶茶色手機殼',
-            brand: 'Apple',
-            model: 'iPhone 15',
-            color: '奶茶色',
-            price: 590,
-            imageUrl: 'https://placehold.co/300x300.png?text=Milk+Tea+Case'
-        })
-
-        // 同步更新 React 畫面
-        setCartItems(getGuestCart())
-    }
 
 
     // 增加商品數量
@@ -102,15 +84,24 @@ function CartPage() {
         )
     }
 
+    // 暫時開放訪客前往結帳頁，供訂單組員測試
+    const handleCheckout = () => {
+        const selectedItems = cartItems.filter(
+            item => item.selected
+        )
+
+        if (selectedItems.length === 0) {
+            return
+        }
+
+        navigate('/checkout')
+    }
+
 
     return (
         <div className="cart-page">
             <h1>我的購物車</h1>
 
-            {/* 暫時測試商品頁加入購物車 */}
-            <button type="button" onClick={testAddToCart}>
-                測試：加入奶茶色手機殼
-            </button>
 
             <label className="cart-select-all">
                 <input
@@ -142,8 +133,15 @@ function CartPage() {
             <div className="cart-summary">
                 <h2>購物車總金額</h2>
                 <h2>NT$ {totalPrice.toLocaleString('en-US')}</h2>
+                <button
+                    type="button"
+                    className="cart-checkout-button"
+                    onClick={handleCheckout}
+                    disabled={!cartItems.some(item => item.selected)}
+                >
+                    前往結帳
+                </button>
             </div>
-
 
         </div>
     )

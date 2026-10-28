@@ -1,106 +1,70 @@
-<!DOCTYPE html>
-<html lang="en">
-
+﻿<!DOCTYPE html>
+<html lang="zh-TW">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>註冊會員</title>
-  <link rel="stylesheet" href="./css/member.css">
+  <meta name="theme-color" content="#f7f4ef">
+  <title>會員註冊 | PhoneCase</title>
+  <link rel="stylesheet" href="./css/register.css">
+  <script src="./js/register.js" defer></script>
 </head>
-
 <body>
-  <main class="register-container">
-    <h1>會員註冊</h1>
-    <hr>
-
-    <p>請填寫以下資料建立會員帳號</p>
-    <form id="registerForm">
-
-      <div class="form-group">
-        <label for="account">帳號</label>
-        <input type="text" id="account" name="account" placeholder="請輸入帳號">
-        <span class="error-message" id="accountError"></span>
-      </div>
-
-
-      <div class="form-group">
-        <label for="password">密碼</label>
-        <input type="password" id="password" name="password" placeholder="請輸入密碼">
-        <span class="error-message" id="passwordError"></span>
-      </div>
-
-
-      <div class="form-group">
-        <label for="confirmPassword">確認密碼</label>
-        <input type="password" id="confirmPassword" placeholder="請再次輸入密碼">
-        <span class="error-message" id="confirmPasswordError"></span>
-      </div>
-
-
-      <div class="form-group">
-        <label for="name">姓名</label>
-        <input type="text" id="name" name="name" placeholder="請輸入姓名">
-      </div>
-
-
-      <div class="form-group">
-        <label for="email">Email</label>
-        <input type="email" id="email" name="email" placeholder="example@email.com">
-      </div>
-
-
-      <div class="form-group">
-        <label for="tel">電話</label>
-        <input type="tel" id="tel" name="tel" placeholder="0912345678">
-      </div>
-
-
-      <button type="submit">
-        註冊
-      </button>
-      <button type="reset">清除</button>
-
-      <p id="result"></p>
-
-    </form>
-
-
-    <script src="./js/register.js"></script>
-    
+  <a class="skip-link" href="#registerForm">跳至註冊表單</a>
+  <header class="site-header">
+    <a class="brand" href="../index.html" aria-label="PhoneCase 首頁"><span class="brand-mark" aria-hidden="true">P<span>·</span></span>PhoneCase<span class="brand-dot">.</span></a>
+    <a class="back-link" href="./login.html"><span aria-hidden="true">←</span> 返回登入</a>
+  </header>
+  <main class="register-layout">
+    <section class="register-container" aria-labelledby="registerHeading">
+      <span class="eyebrow">JOIN PHONECASE</span>
+      <h1 id="registerHeading">建立你的帳號<span>。</span></h1>
+      <p class="form-intro">歡迎加入！請填寫以下資料，所有欄位皆為必填。</p>
+      <form id="registerForm" action="/api/register" method="post">
+        <fieldset id="registerFields">
+          <legend class="sr-only">會員註冊資料</legend>
+          <div class="form-grid">
+            <div class="form-group full-width">
+              <label for="account">帳號</label>
+              <input type="text" id="account" name="account" placeholder="請輸入會員帳號" autocomplete="username" required aria-describedby="accountError">
+              <span class="error-message" id="accountError" hidden></span>
+            </div>
+            <div class="form-group">
+              <label for="password">密碼</label>
+              <div class="password-field"><input type="password" id="password" name="password" placeholder="請設定密碼" autocomplete="new-password" minlength="8" required aria-describedby="passwordHint passwordError passwordCapsWarning"><button class="password-toggle" type="button" id="passwordToggle" aria-label="顯示密碼" aria-controls="password" aria-pressed="false" hidden>顯示</button></div>
+              <span class="field-hint" id="passwordHint">至少 8 個字元。</span>
+              <span class="caps-warning" id="passwordCapsWarning" role="status" hidden>大寫鎖定已開啟。</span>
+              <span class="error-message" id="passwordError" hidden></span>
+            </div>
+            <div class="form-group">
+              <label for="confirmPassword">確認密碼</label>
+              <div class="password-field"><input type="password" id="confirmPassword" name="confirmPassword" placeholder="請再次輸入密碼" autocomplete="new-password" required aria-describedby="confirmPasswordError confirmPasswordCapsWarning"><button class="password-toggle" type="button" id="confirmPasswordToggle" aria-label="顯示確認密碼" aria-controls="confirmPassword" aria-pressed="false" hidden>顯示</button></div>
+              <span class="caps-warning" id="confirmPasswordCapsWarning" role="status" hidden>大寫鎖定已開啟。</span>
+              <span class="error-message" id="confirmPasswordError" hidden></span>
+            </div>
+            <div class="form-group">
+              <label for="name">姓名</label>
+              <input type="text" id="name" name="name" placeholder="請輸入姓名" autocomplete="name" required aria-describedby="nameError">
+              <span class="error-message" id="nameError" hidden></span>
+            </div>
+            <div class="form-group">
+              <label for="tel">電話</label>
+              <input type="tel" id="tel" name="tel" placeholder="例：0912345678" autocomplete="tel" required aria-describedby="telHint telError">
+              <span class="field-hint" id="telHint">7–15 位數字，可包含國碼及連字號。</span>
+              <span class="error-message" id="telError" hidden></span>
+            </div>
+            <div class="form-group full-width">
+              <label for="email">電子郵件</label>
+              <input type="email" id="email" name="email" placeholder="example@email.com" autocomplete="email" required aria-describedby="emailError">
+              <span class="error-message" id="emailError" hidden></span>
+            </div>
+          </div>
+          <div class="form-actions"><button class="submit-button" type="submit" id="submitBtn" disabled><span id="submitLabel">建立帳號</span><span aria-hidden="true">→</span></button><button class="reset-button" type="reset">清除</button></div>
+        </fieldset>
+        <p class="form-result" id="result" role="status" aria-live="polite" hidden></p>
+      </form>
+      <p class="login-prompt">已經有帳號了？ <a href="./login.html">前往登入 <span aria-hidden="true">↗</span></a></p>
+    </section>
   </main>
-
+  <footer class="site-footer"><p>&copy; 2026 PhoneCase. 保留所有權利。</p><span>MADE FOR YOUR EVERYDAY</span></footer>
 </body>
-
 </html>
-
-<!-- <form action="">
-      <div>
-        <label for="account">帳號</label>
-        <input type="text" id="account" name="account">
-        <span id="accountError">accountError</span>
-      </div>
-      <div>
-        <label for="password">密碼</label>
-        <input type="text" id="password" name="password">
-        <span id="passwordError">passwordError</span>
-      </div>
-      <div>
-        <label for="confirmPassword">確認密碼</label>
-        <input type="text" id="confirmPassword">
-        <span id="confirmPasswordError">confirmPasswordError</span>
-      </div>
-      <div>
-        <label for="name">姓名</label>
-        <input type="text" id="name" name="name">
-      </div>
-      <div>
-        <label for="email">Email</label>
-        <input type="email" id="email" name="email">
-      </div>
-      <div>
-        <label for="tel">聯絡電話</label>
-        <input type="tel" id="tel" name="tel">
-      </div>
-      <button type="submit" id="submitBtn">註冊</button>
-      <button type="reset">清空</button>
-    </form> -->

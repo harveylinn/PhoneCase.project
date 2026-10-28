@@ -1,4 +1,3 @@
-
 /* ========================================
    01. 購物車頁面整體排版
    ======================================== */
@@ -445,4 +444,30 @@
     width: 13px;
     height: 13px;
   }
+}
+
+/* 購物車：前往結帳按鈕 */
+.cart-checkout-button {
+  width: 100%;
+  padding: 14px 20px;
+  margin-top: 16px;
+  border: none;
+  border-radius: 8px;
+  background-color: #222;
+  color: white;
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+/* 滑鼠移入，且按鈕沒有被停用時 */
+.cart-checkout-button:hover:not(:disabled) {
+  background-color: #444;
+}
+
+/* 沒有勾選商品時 */
+.cart-checkout-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }

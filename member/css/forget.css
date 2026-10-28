@@ -1,0 +1,14 @@
+﻿/* 共用 login.css 的品牌、卡片及表單樣式，維持會員頁視覺一致。 */
+.forget-layout .form-intro { line-height: 1.9; margin-top: 14px; }
+.forget-layout input { font-size: 16px; }
+.forget-layout input[aria-invalid="true"] { border-color: #a13f2e; background: #fffaf7; }
+.forget-layout input[aria-invalid="true"]:focus { box-shadow: 0 0 0 3px #a13f2e19; }
+.forget-layout .field-hint, .forget-layout .field-error { margin: 8px 0 0; font-size: 11px; line-height: 1.7; }
+.forget-layout .field-hint { color: var(--muted); }
+.forget-layout .field-error { color: #a13f2e; }
+.forget-layout .login-button { letter-spacing: 1px; }
+.forget-layout .register-prompt { flex-wrap: wrap; }
+.signup-prompt { margin: 18px 0 0; text-align: center; color: var(--muted); font-size: 12px; line-height: 1.8; }
+.signup-prompt a { color: var(--ink); font-weight: 650; text-underline-offset: 4px; }
+.signup-prompt a:hover { color: var(--accent); text-decoration: underline; }
+@media (max-width: 360px) { .desktop-break { display: none; } }

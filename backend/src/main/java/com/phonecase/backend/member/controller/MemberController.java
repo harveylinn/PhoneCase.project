@@ -2,17 +2,25 @@ package com.phonecase.backend.member.controller;
 
 import java.util.Map;
 
-import org.mindrot.jbcrypt.BCrypt;
-import org.springframework.http.HttpStatus;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.phonecase.backend.member.dto.LoginRequest;
 import com.phonecase.backend.member.dto.RegisterRequest;
 import com.phonecase.backend.member.entity.Member;
-import com.phonecase.backend.member.repository.MemberRepository;
+import com.phonecase.backend.member.security.CheckJwt;
+import com.phonecase.backend.member.security.JwtToken;
+import com.phonecase.backend.member.service.MemberService;
+
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.validation.Valid;
+import org.springframework.web.bind.annotation.GetMapping;
+
+
 
 /*
 前端註冊資料格式:
@@ -28,49 +36,64 @@ import com.phonecase.backend.member.repository.MemberRepository;
 @RestController
 @RequestMapping("/api/member")
 public class MemberController {
+  @Autowired
+  private MemberService memberService;
+  @Autowired
+  private JwtToken jwtToken;
 
-    private final MemberRepository memberRepository;
+  @PostMapping("/register")
+  public ResponseEntity<Map<String, Object>> register(@RequestBody @Valid RegisterRequest request) {
+    Long memberId = memberService.register(request);
 
-    public MemberController(MemberRepository memberRepository) {
-        this.memberRepository = memberRepository;
-    }
+    return ResponseEntity.status(201).body(
+            Map.<String,Object>of(
+              "success", true,
+              "message", "註冊成功，請登入。",
+              "memberId", memberId
+            )
+    );
+  }
 
-    // 註冊後寫入 members，後台 CRM 會以客戶代號 M + 會員 id 對應訂單
-    @PostMapping("/register")
-    public ResponseEntity<Map<String, Object>> register(@RequestBody RegisterRequest request) {
-        String account = trim(request.account());
-        String email = trim(request.email());
-        String name = trim(request.name());
 
-        if (account == null || email == null || name == null
-                || request.password() == null || request.password().length() < 8) {
-            return fail(HttpStatus.BAD_REQUEST, "帳號、姓名、Email 不可空白，密碼至少 8 碼");
+  @PostMapping("/login")
+  public ResponseEntity<Map<String,Object>> login(
+    @RequestBody @Valid LoginRequest request) {
+
+    Member member = memberService.login(request);
+
+    String token = jwtToken.createToken(member.getId());
+
+    return ResponseEntity.ok(
+      Map.<String, Object>of(
+        "success", true,
+        "message", "登入成功。",
+        "token", token,
+        "member",Map.of(
+          "id", member.getId(),
+          "account", member.getAccount(),
+          "name", member.getName()
+        )
+      )
+    );
+  }
+
+  @CheckJwt
+  @GetMapping("/me")
+  public ResponseEntity<Map<String,Object>> me(HttpServletRequest request){
+
+          Long memberId = (Long) request.getAttribute("authenticatedMemberId");
+
+          Member member = memberService.getCurrentMember(memberId);
+
+          return ResponseEntity.ok(
+            Map.<String, Object>of("success",true,
+                                                          "member", Map.of(
+                                                                      "id",member.getId(),
+                                                                      "account", member.getAccount(),
+                                                                      "name", member.getName()
+                                                          )
+          )
+        );
         }
-        if (memberRepository.existsByAccount(account)) {
-            return fail(HttpStatus.CONFLICT, "此帳號已被註冊");
-        }
-        if (memberRepository.existsByEmail(email)) {
-            return fail(HttpStatus.CONFLICT, "此 Email 已被註冊");
-        }
 
-        Member member = new Member();
-        member.setAccount(account);
-        member.setEmail(email);
-        member.setName(name);
-        member.setPhone(trim(request.phone()));
-        member.setPasswordHash(BCrypt.hashpw(request.password(), BCrypt.gensalt()));
-        member.setRole("CUSTOMER");
-        member.setStatus("ACTIVE");
-        memberRepository.save(member);
-
-        return ResponseEntity.ok(Map.<String, Object>of("success", true, "message", "註冊成功，歡迎加入 CASELAB！"));
-    }
-
-    private ResponseEntity<Map<String, Object>> fail(HttpStatus status, String message) {
-        return ResponseEntity.status(status).body(Map.<String, Object>of("success", false, "message", message));
-    }
-
-    private String trim(String value) {
-        return value == null || value.isBlank() ? null : value.trim();
-    }
 }
