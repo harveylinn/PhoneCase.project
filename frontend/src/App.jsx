@@ -6,6 +6,8 @@ import CartPage from './pages/cart/CartPage';
 import RegisterPage from './pages/member/RegisterPage';
 import LoginPage from './pages/member/LoginPage';
 import ProfilePage from './pages/member/ProfilePage';
+import { useAuth } from './auth/useAuth';
+import MemberRoute from './auth/MemberRoute';
 import Admin from './pages/admin/admin.jsx';
 import CheckOutPage from './pages/order/CheckoutPage.tsx'
 import { useEffect, useState } from 'react';
@@ -15,6 +17,7 @@ import OrderModule from './pages/order/OrderModule';
 
 // 首頁欄
 function Header() {
+  const { currentMember, status, logout } = useAuth();
   const [cartCount, setCartCount] = useState(getGuestCartCount);
 
   useEffect(() => {
@@ -35,11 +38,19 @@ function Header() {
     <header className="site-header">
       <Link className="brand" to="/">CASELAB</Link>
 
-      <nav className="header-nav">
+      <nav className="header-nav" style={{ flexWrap: 'wrap', alignItems: 'center' }}>
         <Link to="/">商品專區</Link>
         <a href="#design">設計理念</a>
         <a href="#story">品牌故事</a>
         <Link to="/cart" className="header-cart-link">購物車 ({cartCount})</Link>
+        {status === 'checking' && <span>身分確認中…</span>}
+        {currentMember ? <>
+          <Link to="/profile" style={{ maxWidth: '12rem', overflowWrap: 'anywhere' }}>會員中心：{currentMember.name}</Link>
+          <button type="button" onClick={logout}>登出</button>
+        </> : <>
+          <Link to="/login">登入</Link>
+          <Link to="/register">註冊</Link>
+        </>}
       </nav>
     </header>
   );
@@ -59,7 +70,7 @@ export default function App() {
 
         <Route path="/register" element={<RegisterPage />} />
         <Route path="/login" element={<LoginPage />} />
-        <Route path="/profile" element={<ProfilePage />} />
+        <Route path="/profile" element={<MemberRoute><ProfilePage /></MemberRoute>} />
 
         <Route path="/checkout" element={<OrderModule />} />
         <Route path="/orderdetail" element={<OrderModule initialPage="list" />} />
