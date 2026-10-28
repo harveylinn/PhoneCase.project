@@ -33,9 +33,11 @@ public class ShopSyncService {
 
     private static final DateTimeFormatter ORDER_DATE_PREFIX = DateTimeFormatter.ofPattern("yyMMdd");
 
-    // 商城訂單狀態 → 後台訂單狀態
+    // 商城訂單狀態（OrderService）→ 後台訂單狀態
+    // PENDING_SHIPMENT：貨到付款下單、或信用卡付款完成，等待出貨
     private static final String ORDER_STATUS_CASE = """
             CASE o.order_status
+                WHEN 'PENDING_SHIPMENT' THEN '處理中'
                 WHEN 'PAID' THEN '處理中'
                 WHEN 'SHIPPED' THEN '已出貨'
                 WHEN 'COMPLETED' THEN '已完成'

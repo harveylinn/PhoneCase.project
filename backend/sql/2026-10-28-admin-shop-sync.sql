@@ -15,5 +15,10 @@ ALTER TABLE sales_order
   ADD COLUMN source_order_item_id bigint(20) DEFAULT NULL COMMENT '來源商城訂單明細 (order_item.id)' AFTER status,
   ADD UNIQUE KEY uk_sales_order_source_item (source_order_item_id);
 
+-- cart_items：補上主鍵、自動編號與唯一索引（CartItem 實體使用 IDENTITY 與 uk_cart_member_variant）
+ALTER TABLE cart_items
+  MODIFY id bigint(20) NOT NULL AUTO_INCREMENT PRIMARY KEY,
+  ADD UNIQUE KEY uk_cart_member_variant (member_id, variant_id);
+
 -- 客戶代號統一為 M + 4 碼會員 id（例如 M0006），對應 members.id
 -- 商品規格匯入庫存、商城訂單轉入訂單由後端 ShopSyncService 在啟動時自動完成
