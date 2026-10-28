@@ -4,6 +4,8 @@ import java.nio.charset.StandardCharsets;
 import org.mindrot.jbcrypt.BCrypt;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+import com.phonecase.backend.member.dto.UpdateProfileRequest;
 import com.phonecase.backend.member.dto.LoginRequest;
 import com.phonecase.backend.member.dto.RegisterRequest;
 import com.phonecase.backend.member.entity.Member;
@@ -77,8 +79,28 @@ public class MemberService {
     }
 
     public Member getCurrentMember(Long memberId) {
-        return memberRepository.findById(memberId)
+        if (memberId == null) throw new JwtAuthenticationException("請重新登入。");
+        Member member = memberRepository.findById(memberId)
                 .orElseThrow(() -> new JwtAuthenticationException("會員不存在，請重新登入。"));
+        if (!"ACTIVE".equals(member.getStatus())) {
+            throw new JwtAuthenticationException("此帳號目前無法使用。");
+        }
+        return member;
+    }
+
+    @Transactional
+    public Member updateProfile(Long memberId, UpdateProfileRequest request) {
+        Member member = getCurrentMember(memberId);
+        if (request.name() != null) member.setName(request.name().trim());
+        if (request.phone() != null) {
+            String phone = request.phone().trim();
+            member.setPhone(phone.isEmpty() ? null : phone);
+        }
+        if (request.defaultAddress() != null) {
+            String address = request.defaultAddress().trim();
+            member.setDefaultAddress(address.isEmpty() ? null : address);
+        }
+        return memberRepository.save(member);
     }
 
 
