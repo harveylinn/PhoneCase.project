@@ -9,6 +9,7 @@ import com.phonecase.backend.repository.ProductVariantRepository;
 import org.junit.jupiter.api.Test;
 
 import java.util.Optional;
+import jakarta.persistence.EntityManager;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -28,9 +29,12 @@ class CartServiceTest {
                 mock(ProductVariantRepository.class);
 
         // Step 2：建立真正的 CartService
+        EntityManager entityManager = mock(EntityManager.class);
+
         CartService cartService = new CartService(
                 cartItemRepository,
-                productVariantRepository
+                productVariantRepository,
+                entityManager
         );
 
         // Step 3：準備假的商品規格
@@ -44,7 +48,7 @@ class CartServiceTest {
         when(cartItemRepository.findByMemberIdAndVariantId(1L, 101L))
                 .thenReturn(Optional.empty());
 
-        when(cartItemRepository.save(any(CartItem.class)))
+        when(cartItemRepository.saveAndFlush(any(CartItem.class)))
                 .thenAnswer(invocation -> invocation.getArgument(0));
 
         // Step 5：真正執行 CartService.addItem()
@@ -56,7 +60,7 @@ class CartServiceTest {
         assertEquals(2, result.getQuantity());
 
         // Step 7：確認有呼叫 save()
-        verify(cartItemRepository).save(any(CartItem.class));
+        verify(cartItemRepository).saveAndFlush(any(CartItem.class));
     }
 
 
@@ -71,9 +75,12 @@ class CartServiceTest {
                 mock(ProductVariantRepository.class);
 
         // Step 2：建立真正的 CartService
+        EntityManager entityManager = mock(EntityManager.class);
+
         CartService cartService = new CartService(
                 cartItemRepository,
-                productVariantRepository
+                productVariantRepository,
+                entityManager
         );
 
         // Step 3：準備商品規格，庫存為 10
@@ -93,7 +100,7 @@ class CartServiceTest {
         when(cartItemRepository.findByMemberIdAndVariantId(1L, 101L))
                 .thenReturn(Optional.of(existingItem));
 
-        when(cartItemRepository.save(any(CartItem.class)))
+        when(cartItemRepository.saveAndFlush(any(CartItem.class)))
                 .thenAnswer(invocation -> invocation.getArgument(0));
 
         // Step 6：再加入 2 件
@@ -103,7 +110,7 @@ class CartServiceTest {
         assertEquals(5, result.getQuantity());
 
         // Step 8：確認 save() 被呼叫一次
-        verify(cartItemRepository).save(any(CartItem.class));
+        verify(cartItemRepository).saveAndFlush(any(CartItem.class));
     }
 
 
@@ -118,9 +125,12 @@ class CartServiceTest {
                 mock(ProductVariantRepository.class);
 
         // Step 2：建立 CartService
+        EntityManager entityManager = mock(EntityManager.class);
+
         CartService cartService = new CartService(
                 cartItemRepository,
-                productVariantRepository
+                productVariantRepository,
+                entityManager
         );
 
         // Step 3：設定商品庫存只有 4 件
@@ -166,9 +176,12 @@ class CartServiceTest {
                 mock(ProductVariantRepository.class);
 
         // Step 2：建立真正的 CartService
+        EntityManager entityManager = mock(EntityManager.class);
+
         CartService cartService = new CartService(
                 cartItemRepository,
-                productVariantRepository
+                productVariantRepository,
+                entityManager
         );
 
         // Step 3：模擬商品規格不存在
