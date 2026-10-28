@@ -48,6 +48,11 @@ export type CreateOrderResponse = {
 
 const API_URL = 'http://localhost:8080/api/orders'
 
+function getAuthHeaders(): Record<string, string> {
+  const token = localStorage.getItem('token')
+  return token ? { Authorization: `Bearer ${token}` } : {}
+}
+
 // ========================================
 // 5. 建立訂單
 // ========================================
@@ -60,7 +65,8 @@ export async function createOrder(
     method: 'POST',
 
     headers: {
-      'Content-Type': 'application/json'
+      'Content-Type': 'application/json',
+      ...getAuthHeaders(),
     },
 
     credentials: 'include',
@@ -91,7 +97,8 @@ export async function getOrders(): Promise<Order[]> {
   const response = await fetch(API_URL, {
     method: 'GET',
 
-    credentials: 'include'
+    credentials: 'include',
+    headers: getAuthHeaders(),
   })
 
   if (!response.ok) {
@@ -121,7 +128,8 @@ export async function cancelOrder(
     {
       method: 'POST',
 
-      credentials: 'include'
+      credentials: 'include',
+      headers: getAuthHeaders(),
     }
   )
 

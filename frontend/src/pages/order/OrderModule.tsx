@@ -408,6 +408,10 @@ function OrderModule({
 
           <p>{errorMessage}</p>
 
+          {errorMessage.includes('登入') && (
+            <p><a href="/login">前往會員登入</a></p>
+          )}
+
           <button
             type="button"
             onClick={() => void refreshOrders()}
@@ -569,8 +573,13 @@ function OrderModule({
                 style={{
                   display: 'flex',
                   alignItems: 'center',
+                  width: '100%',
+                  minWidth: 0,
                   gap: '12px',
                   padding: '12px 0',
+                  margin: 0,
+                  textAlign: 'left',
+                  lineHeight: 1.5,
                   cursor: 'pointer'
                 }}
               >
@@ -581,12 +590,30 @@ function OrderModule({
                   value={reason}
                   checked={cancelReason === reason}
                   disabled={isCancelling}
+                  style={{
+                    display: 'block',
+                    flex: '0 0 18px',
+                    width: '18px',
+                    minWidth: '18px',
+                    height: '18px',
+                    margin: 0,
+                    padding: 0
+                  }}
                   onChange={(e) => {
                     setCancelReason(e.target.value)
                   }}
                 />
 
-                <span>{reason}</span>
+                <span
+                  style={{
+                    flex: 1,
+                    minWidth: 0,
+                    whiteSpace: 'normal',
+                    overflowWrap: 'anywhere'
+                  }}
+                >
+                  {reason}
+                </span>
 
               </label>
 

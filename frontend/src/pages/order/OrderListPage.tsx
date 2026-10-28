@@ -132,6 +132,57 @@ function OrderListPage({
   const [expandedOrderId, setExpandedOrderId] =
     useState<string | null>(null)
 
+  async function openEcpayPayment(orderNumber: string) {
+    const token = localStorage.getItem('token')
+    if (!token) {
+      alert('登入狀態已失效，請重新登入後再試')
+      return
+    }
+
+    // 先在點擊當下開啟分頁，避免瀏覽器封鎖非同步彈出視窗。
+    const paymentWindow = window.open('', '_blank')
+    if (!paymentWindow) {
+      alert('付款頁面遭瀏覽器封鎖，請允許此網站開啟彈出式視窗')
+      return
+    }
+
+    paymentWindow.opener = null
+    paymentWindow.document.write('<p>正在準備綠界測試付款頁面…</p>')
+
+    try {
+      const response = await fetch(
+        `http://localhost:8080/api/payment/ecpay/order/${encodeURIComponent(orderNumber)}`,
+        {
+          headers: { Authorization: `Bearer ${token}` },
+          credentials: 'include'
+        }
+      )
+      const body = await response.text()
+
+      if (!response.ok) {
+        let message = `付款頁面建立失敗：HTTP ${response.status}`
+        try {
+          const errorData = JSON.parse(body) as { message?: string }
+          message = errorData.message || message
+        } catch {
+          // 保留 HTTP 狀態訊息，避免把非 JSON 回應直接顯示給使用者。
+        }
+        throw new Error(message)
+      }
+
+      if (!response.headers.get('content-type')?.includes('text/html')) {
+        throw new Error('付款服務沒有回傳綠界付款頁面')
+      }
+
+      paymentWindow.document.open()
+      paymentWindow.document.write(body)
+      paymentWindow.document.close()
+    } catch (error) {
+      paymentWindow.close()
+      alert(error instanceof Error ? error.message : '無法開啟綠界測試付款頁面')
+    }
+  }
+
   // 狀態選項
   const statusOptions = [
     '全部',
@@ -484,13 +535,7 @@ function OrderListPage({
 
     <button
       type="button"
-      onClick={() => {
-        window.open(
-          `http://localhost:8080/api/payment/ecpay/order/${encodeURIComponent(order.id)}`,
-          '_blank',
-          'noopener,noreferrer'
-        )
-      }}
+      onClick={() => void openEcpayPayment(order.id)}
       style={{
         padding: '10px 20px',
         border: 'none',

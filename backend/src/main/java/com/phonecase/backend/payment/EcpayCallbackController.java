@@ -140,17 +140,17 @@ public class EcpayCallbackController {
 
         System.out.println("付款狀態碼：" + rtnCode);
 
-        // ========================================
-        // 8. 排除綠界模擬付款通知
-        // ========================================
+        // Stage 的模擬交易只允許在官方測試特店下更新本機測試訂單。
+        // 正式特店若收到此旗標，不得因此將訂單標記為已付款。
+        if ("1".equals(simulatePaid) && !"2000132".equals(merchantId)) {
+            System.out.println("正式特店拒絕模擬付款通知");
+            return ResponseEntity
+                    .badRequest()
+                    .body("0|SIMULATION_NOT_ALLOWED");
+        }
 
         if ("1".equals(simulatePaid)) {
-
-            System.out.println(
-                    "這是綠界模擬付款通知，不更新 MySQL"
-            );
-
-            return ResponseEntity.ok("1|OK");
+            System.out.println("收到綠界 Stage 模擬付款通知，依測試結果更新本機訂單");
         }
 
         // ========================================
