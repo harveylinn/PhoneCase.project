@@ -55,6 +55,9 @@ form[aria-busy="true"] .submit-button > span[aria-hidden="true"] { display: none
 .form-result { background: #f6eee5; color: #814a31; padding: 12px 14px; border-radius: 8px; font-size: 12px; line-height: 1.8; overflow-wrap: anywhere; margin: 16px 0 0; }
 .form-result[data-state="success"] { background: #edf2e8; color: #36533e; }
 .form-result[data-state="pending"] { background: #f0f2ea; color: #52634f; }
+.registration-success { padding: 12px 0; }
+.registration-success p { color: var(--muted); line-height: 1.8; }
+.registration-success .submit-button { width: 100%; margin-top: 24px; }
 .login-prompt { border-top: 1px solid #ecebe5; padding-top: 22px; margin: 26px 0 0; text-align: center; color: var(--muted); font-size: 12px; }
 .login-prompt a { font-weight: 650; color: var(--ink); margin-left: 5px; text-decoration: underline; text-underline-offset: 4px; }
 .site-footer { padding: 26px 0; color: #717a70; font-size: 10px; }

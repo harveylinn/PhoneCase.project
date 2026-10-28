@@ -1,15 +1,22 @@
 import "../../styles/member/login.css";
 import { useState, type SubmitEvent } from "react";
-import { Navigate, useNavigate } from "react-router-dom";
+import { Navigate, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../../auth/useAuth";
 
 export default function LoginPage() {
   const { login, status, error, retry } = useAuth();
   const navigate = useNavigate();
+  const navigationState: unknown = useLocation().state;
   const [account, setAccount] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
-  const [resultMessage, setResultMessage] = useState("");
+  const [resultMessage, setResultMessage] = useState(() => {
+    if (typeof navigationState === "object" && navigationState !== null
+      && "registrationSuccess" in navigationState && navigationState.registrationSuccess === true) {
+      return "註冊成功，請使用帳號與密碼登入。";
+    }
+    return "";
+  });
   const [isSubmitting, setIsSubmitting] = useState(false);
   const isChecking = status === 'checking';
   async function handleSubmit(event: SubmitEvent<HTMLFormElement>) {

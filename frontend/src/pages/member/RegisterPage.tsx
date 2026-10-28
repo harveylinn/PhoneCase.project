@@ -1,4 +1,5 @@
-import { useState, type SubmitEvent } from "react";
+import { useEffect, useState, type SubmitEvent } from "react";
+import { useNavigate } from "react-router-dom";
 import "../../styles/member/register.css";
 
 interface RegisterResponse {
@@ -15,6 +16,7 @@ interface RegisterResponse {
 }
 
 export default function RegisterPage() {
+  const navigate = useNavigate();
   const [account, setAccount] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -30,6 +32,19 @@ export default function RegisterPage() {
   const [telError, setTelError] = useState("");
   const [emailError, setEmailError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [registrationSuccess, setRegistrationSuccess] = useState(false);
+
+  useEffect(() => {
+    if (!registrationSuccess) return;
+    const timer = window.setTimeout(() => {
+      navigate("/login", {
+        replace: true,
+        state: { registrationSuccess: true },
+      });
+    }, 1500);
+    // 提前前往登入或離開註冊頁時，取消尚未執行的導頁。
+    return () => window.clearTimeout(timer);
+  }, [registrationSuccess, navigate]);
 
   function handleClear() {
     setAccount("");
@@ -51,7 +66,7 @@ export default function RegisterPage() {
   async function handleSubmit(event: SubmitEvent<HTMLFormElement>) {
     event.preventDefault();
 
-    if (isSubmitting) {
+    if (isSubmitting || registrationSuccess) {
       return;
     }
     setResultMessage("");
@@ -150,9 +165,7 @@ export default function RegisterPage() {
         return;
       }
 
-      //清空表單後，再顯示成功訊息。
-      handleClear();
-      setResultMessage(data.message ?? "註冊成功，請登入");
+      setRegistrationSuccess(true);
     } catch {
       setResultMessage(
         "無法取得有效回應，請確認網路與後端服務，再確認註冊結果",
@@ -171,13 +184,25 @@ export default function RegisterPage() {
         <section className="register-container">
           <span className="eyebrow">JOIN PHONECASE</span>
           <h1 id="registerHeading">
-            建立你的帳號<span>。</span>
+            {registrationSuccess ? "註冊成功" : "建立你的帳號"}<span>。</span>
           </h1>
-          <p className="form-intro">
+          {registrationSuccess && (
+            <div className="registration-success">
+              <p>註冊成功！即將前往登入頁。</p>
+              <p>約 1.5 秒後自動跳轉，也可以立即前往登入。</p>
+              <button className="submit-button" type="button" onClick={() => navigate("/login", {
+                replace: true,
+                state: { registrationSuccess: true },
+              })}>
+                立即前往登入 <span>→</span>
+              </button>
+            </div>
+          )}
+          <p className="form-intro" hidden={registrationSuccess}>
             歡迎加入！請填寫以下資料，所有欄位皆為必填。
           </p>
-          <form id="registerForm" onSubmit={handleSubmit} noValidate>
-            <fieldset id="registerFields" disabled={isSubmitting}>
+          <form id="registerForm" onSubmit={handleSubmit} noValidate hidden={registrationSuccess}>
+            <fieldset id="registerFields" disabled={isSubmitting || registrationSuccess}>
               <legend className="sr-only">會員註冊資料</legend>
               <div className="form-grid">
                 <div className="form-group full-width">
@@ -364,7 +389,7 @@ export default function RegisterPage() {
               {resultMessage}
             </p>
           </form>
-          <p className="login-prompt">
+          <p className="login-prompt" hidden={registrationSuccess}>
             已經有帳號了？{" "}
             <a href="/login">
               前往登入 <span>↗</span>
