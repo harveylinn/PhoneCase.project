@@ -1891,6 +1891,32 @@ textarea::placeholder {
     text-align: center;
 }
 
+.ai-chat-quick-actions {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 8px;
+    margin: -4px auto 0;
+    max-width: 320px;
+}
+
+.ai-chat-quick-actions button {
+    padding: 9px 12px;
+    border: 1px solid #d7e0ea;
+    border-radius: 999px;
+    color: var(--navy);
+    background: #fff;
+    cursor: pointer;
+    font: inherit;
+    font-size: 13px;
+}
+
+.ai-chat-quick-actions button:hover {
+    border-color: var(--coral);
+    color: var(--coral);
+    background: #fff7f6;
+}
+
 .ai-chat-message {
     max-width: 90%;
     padding: 13px 16px;

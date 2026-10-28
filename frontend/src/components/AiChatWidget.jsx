@@ -9,6 +9,36 @@ export default function AiChatWidget() {
     const [imageFile, setImageFile] = useState(null);
     const [imagePreview, setImagePreview] = useState('');
 
+    const quickQuestions = [
+        '我想找適合我的手機殼',
+        '想查詢訂單',
+        '我想詢問退換貨',
+    ];
+
+    function handleQuickQuestion(question) {
+        if (loading) return;
+
+        if (question === '想查詢訂單') {
+            setMessages(current => [
+                ...current,
+                {role: 'user', content: question},
+                {role: 'assistant', content: '訂單查詢功能即將開放。請先登入會員，或提供訂單編號讓客服協助你。'},
+            ]);
+            return;
+        }
+
+        if (question === '我想詢問退換貨') {
+            setMessages(current => [
+                ...current,
+                {role: 'user', content: question},
+                {role: 'assistant', content: '退換貨需要人工客服確認訂單狀況。請保留訂單編號，客服會協助你處理。'},
+            ]);
+            return;
+        }
+
+        setText(question);
+    }
+
     async function handleSubmit(event) {
         event.preventDefault();
 
@@ -127,9 +157,18 @@ export default function AiChatWidget() {
 
                     <div className="ai-chat-messages">
                         {messages.length === 0 && (
-                            <p className="ai-chat-welcome">
-                                你好！可以詢問手機型號、材質、價格或防護功能。
-                            </p>
+                            <>
+                                <p className="ai-chat-welcome">
+                                    你好！我可以協助商品推薦、圖片搜尋與常見問題。
+                                </p>
+                                <div className="ai-chat-quick-actions" aria-label="常見問題">
+                                    {quickQuestions.map(question => (
+                                        <button key={question} type="button" onClick={() => handleQuickQuestion(question)}>
+                                            {question}
+                                        </button>
+                                    ))}
+                                </div>
+                            </>
                         )}
 
                         {messages.map((message, index) => (
