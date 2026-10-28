@@ -1900,6 +1900,15 @@ textarea::placeholder {
     max-width: 320px;
 }
 
+.ai-chat-scope-note {
+    max-width: 300px;
+    margin: -8px auto 0;
+    color: #7b8794;
+    font-size: 12px;
+    line-height: 1.6;
+    text-align: center;
+}
+
 .ai-chat-quick-actions button {
     padding: 9px 12px;
     border: 1px solid #d7e0ea;
