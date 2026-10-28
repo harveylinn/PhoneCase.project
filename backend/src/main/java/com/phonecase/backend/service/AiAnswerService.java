@@ -15,11 +15,11 @@ public class AiAnswerService {
                          boolean exact) {
         StringBuilder answer = new StringBuilder();
 
-        if (criteria.reason() != null && !criteria.reason().isBlank()) {
-            answer.append("分析條件：")
-                    .append(criteria.reason())
-                    .append("\n\n");
-        }
+        answer.append("圖片分析結果：")
+                .append("品牌 ").append(valueOrUnknown(criteria.brand()))
+                .append("、型號 ").append(valueOrUnknown(criteria.model()))
+                .append("、顏色／透明度 ").append(valueOrUnknown(criteria.color()))
+                .append("\n\n");
 
         if (products.isEmpty()) {
             answer.append("目前還無法找到符合的商品。\n");

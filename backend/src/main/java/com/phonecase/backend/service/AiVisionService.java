@@ -27,6 +27,9 @@ public class AiVisionService {
                         回傳 JSON 欄位：brand、model、color、styleTag、cameraLayout、reason。
                         無法確認的欄位必須是 null，不可以猜測。
                         reason 必須使用繁體中文，簡短說明你實際辨識到的條件；不要照抄使用者原文，也不要輸出英文分析句子。
+                        color 只描述手機殼本身的顏色或透明度，不要把手機本體、背景或反光的顏色當成手機殼顏色。
+                        如果手機殼是透明材質或能清楚看到手機原色，color 請填「透明」。
+                        如果只能看出手機型號的大致系列、無法確認完整型號，model 必須填 null，不能把推測寫進 model 或 reason。
                         styleTag 只能填使用者明確提到的風格，或圖片中非常明確的風格；不確定就填 null。
                         cameraLayout 只能描述圖片看得到的鏡頭孔排列、數量與閃光燈位置；看不到就填 null。
                         brand 只有在圖片或文字能明確判斷時才填寫。
