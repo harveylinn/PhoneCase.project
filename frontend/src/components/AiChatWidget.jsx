@@ -71,7 +71,8 @@ export default function AiChatWidget() {
             const answer = await searchProductsWithAi(
                 actualQuestion,
                 imageBase64,
-                imageFile?.type
+                imageFile?.type,
+                imageFile?.name
             );
 
             setMessages([

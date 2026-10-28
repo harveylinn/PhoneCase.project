@@ -43,9 +43,14 @@ public class AiVisionService {
                 String text = request.hasQuestion()
                         ? request.text()
                         : "請分析這張圖片中的手機型號、顏色與手機殼風格。";
+                if (request.imageFileName() != null && !request.imageFileName().isBlank()) {
+                    text += "\n圖片檔名提供的輔助 metadata（只能用來交叉確認，不可取代圖片辨識）："
+                            + request.imageFileName();
+                }
+                final String analysisText = text;
 
                 return promptRequest.user(user -> user
-                                .text(text)
+                                .text(analysisText)
                                 .media(
                                         MimeTypeUtils.parseMimeType(request.imageMimeType()),
                                         new ByteArrayResource(imageBytes)

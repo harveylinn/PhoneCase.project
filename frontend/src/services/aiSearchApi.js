@@ -1,7 +1,8 @@
 export async function searchProductsWithAi(
     text,
     imageBase64 = null,
-    imageMimeType = null
+    imageMimeType = null,
+    imageFileName = null
 ) {
     const body = {
         text,
@@ -10,6 +11,7 @@ export async function searchProductsWithAi(
     if (imageBase64) {
         body.imageBase64 = imageBase64;
         body.imageMimeType = imageMimeType;
+        body.imageFileName = imageFileName;
     }
 
     const response = await fetch('/api/ai/search', {
