@@ -105,13 +105,14 @@ public class ProductRecommendationService {
                 .distinct()
                 .toList());
 
-        String color = findQuestionValue(normalizedQuestion, products.stream()
+        List<String> availableColors = products.stream()
                 .filter(product -> product.getVariants() != null)
                 .flatMap(product -> product.getVariants().stream())
                 .map(variant -> variant.getColor())
                 .filter(Objects::nonNull)
                 .distinct()
-                .toList());
+                .toList();
+        String color = findQuestionColor(normalizedQuestion, availableColors);
 
         String tag = findQuestionValue(normalizedQuestion, products.stream()
                 .filter(product -> product.getVariants() != null)
@@ -123,6 +124,12 @@ public class ProductRecommendationService {
                 .filter(value -> !value.isBlank())
                 .distinct()
                 .toList());
+
+        String correctedColor = color != null
+                ? color
+                : hasColorRequest(normalizedQuestion)
+                ? "__NO_MATCHING_COLOR__"
+                : validValue(normalizedColor, products, ValueType.COLOR);
 
         String correctedTag = tag != null
                 ? tag
@@ -141,7 +148,7 @@ public class ProductRecommendationService {
         return new AiVisionResult(
                 resolvedBrand,
                 resolvedModel,
-                color != null ? color : validValue(normalizedColor, products, ValueType.COLOR),
+                correctedColor,
                 correctedTag,
                 criteria.cameraLayout(),
                 criteria.reason()
@@ -151,6 +158,60 @@ public class ProductRecommendationService {
     private boolean hasStyleRequest(String question) {
         return question != null
                 && (question.contains("風") || question.contains("風格"));
+    }
+
+    /** 判斷使用者是否明確指定顏色，避免找不到顏色時退化成只比對品牌。 */
+    private boolean hasColorRequest(String question) {
+        return question != null && (question.contains("色")
+                || question.contains("藍")
+                || question.contains("紅")
+                || question.contains("綠")
+                || question.contains("白")
+                || question.contains("黑")
+                || question.contains("透明")
+                || question.contains("blue")
+                || question.contains("black")
+                || question.contains("white"));
+    }
+
+    /** 將自然語言顏色對應到資料庫實際存在的顏色名稱。 */
+    private String findQuestionColor(String question, List<String> values) {
+        String direct = findQuestionValue(question, values);
+        if (direct != null) return direct;
+
+        String[][] aliases = {
+                {"藍", "blue"},
+                {"黑", "black"},
+                {"白", "white"},
+                {"紅", "red"},
+                {"綠", "green"},
+                {"粉", "pink"},
+                {"透明", "clear", "transparent"}
+        };
+        for (String[] aliasGroup : aliases) {
+            boolean requested = false;
+            for (String alias : aliasGroup) {
+                if (question != null && question.toLowerCase(Locale.ROOT).contains(alias)) {
+                    requested = true;
+                    break;
+                }
+            }
+            if (requested) {
+                return values.stream()
+                        .filter(value -> containsAny(value, aliasGroup))
+                        .max(Comparator.comparingInt(String::length))
+                        .orElse(null);
+            }
+        }
+        return null;
+    }
+
+    private boolean containsAny(String value, String[] keywords) {
+        String normalized = value.toLowerCase(Locale.ROOT);
+        for (String keyword : keywords) {
+            if (normalized.contains(keyword.toLowerCase(Locale.ROOT))) return true;
+        }
+        return false;
     }
 
     private String findQuestionValue(String question, List<String> values) {
