@@ -163,15 +163,10 @@ export default function RegisterPage() {
   }
 
   return (
-    <>
+    <div className="member-register">
       <a className="skip-link" href="#registerForm">
         跳至註冊表單
       </a>
-      <header className="site-header">
-        <a className="back-link" href="/login">
-          <span>←</span> 返回登入
-        </a>
-      </header>
       <main className="register-layout">
         <section className="register-container">
           <span className="eyebrow">JOIN PHONECASE</span>
@@ -381,6 +376,6 @@ export default function RegisterPage() {
         <p>&copy; 2026 PhoneCase. 保留所有權利。</p>
         <span>MADE FOR YOUR EVERYDAY</span>
       </footer>
-    </>
+    </div>
   );
 }

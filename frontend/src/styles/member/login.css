@@ -1,4 +1,5 @@
-:root {
+.member-login {
+& {
     color-scheme: light;
     --ink: #293c38;
     --muted: #737c76;
@@ -13,12 +14,12 @@
     box-sizing: border-box;
 }
 
-body {
+& {
     margin: 0;
     min-height: 100vh;
 }
 
-#root {
+& {
     min-height:100vh;
     display: flex;
     flex-direction: column;
@@ -421,4 +422,5 @@ input:focus {
     *::after {
         transition: none !important;
     }
+}
 }

@@ -5,6 +5,7 @@ import java.util.Map;
 
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.ResponseEntity;
+import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
@@ -18,6 +19,11 @@ import com.phonecase.backend.member.exception.RegistrationException;
 @RestControllerAdvice(assignableTypes = MemberController.class)
 public class MemberExceptionHandler {
 
+    @ExceptionHandler(HttpMessageNotReadableException.class)
+    public ResponseEntity<Map<String, Object>> handleUnreadable(HttpMessageNotReadableException exception) {
+        return ResponseEntity.badRequest().body(Map.of("success", false, "message", "JSON 格式或欄位不正確，只能修改姓名、電話與地址。"));
+    }
+
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public ResponseEntity<Map<String, Object>> handleValidation(MethodArgumentNotValidException exception) {
         Map<String, String> errors = new LinkedHashMap<>();
@@ -27,7 +33,7 @@ public class MemberExceptionHandler {
         }
 
         Map<String, Object> responseData = Map.of("success", false,
-                                        "message", "請檢查註冊資料",
+                                        "message", "請檢查輸入資料",
                                         "errors", errors);
 
         return ResponseEntity.badRequest().body(responseData);
