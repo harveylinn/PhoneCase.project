@@ -22,11 +22,21 @@ public class AiAnswerService {
         }
 
         if (products.isEmpty()) {
-            answer.append("找不到完全符合的商品。\n")
-                    .append("目前分析條件：")
-                    .append(valueOrUnknown(criteria.model()))
-                    .append("、")
-                    .append(valueOrUnknown(criteria.color()));
+            answer.append("目前還無法找到符合的商品。\n");
+
+            if (isBlank(criteria.brand()) && isBlank(criteria.model())) {
+                answer.append("請先告訴我手機品牌與型號，例如：iPhone 17 Pro 或 Samsung Galaxy S25。\n");
+            } else if (isBlank(criteria.model())) {
+                answer.append("請再提供完整的手機型號，我才能精準推薦。\n");
+            } else {
+                answer.append("目前分析條件：")
+                        .append(valueOrUnknown(criteria.brand()))
+                        .append("、")
+                        .append(valueOrUnknown(criteria.model()))
+                        .append("、")
+                        .append(valueOrUnknown(criteria.color()))
+                        .append("。\n");
+            }
 
             if (criteria.styleTag() != null && !criteria.styleTag().isBlank()) {
                 answer.append("、").append(criteria.styleTag());
@@ -62,5 +72,9 @@ public class AiAnswerService {
 
     private String valueOrUnknown(String value) {
         return value == null || value.isBlank() ? "未確認" : value;
+    }
+
+    private boolean isBlank(String value) {
+        return value == null || value.isBlank();
     }
 }
