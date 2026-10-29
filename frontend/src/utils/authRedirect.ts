@@ -1,5 +1,5 @@
 type ReturnLocation = { pathname: string; search: string; hash: string };
-const DEFAULT_RETURN_TO = '/profile';
+const DEFAULT_RETURN_TO = '/';
 const BASE_URL = 'https://return.invalid';
 
 // 目的地來自網址，須驗證後才交給 Router，避免外站跳轉及驗證頁循環。
