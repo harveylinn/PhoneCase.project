@@ -38,8 +38,13 @@ export default function AiChatWidget() {
             return;
         }
 
-        const actualQuestion =
-            question || '請分析這張圖片，並根據商品資料提供建議。';
+        const conversationContext = messages
+            .slice(-6)
+            .map(message => `${message.role === 'user' ? '使用者' : '客服'}：${message.content}`)
+            .join('\n');
+        const actualQuestion = conversationContext
+            ? `以下是前面的對話：\n${conversationContext}\n最新問題：${question || '請分析這張圖片，並根據商品資料提供建議。'}`
+            : question || '請分析這張圖片，並根據商品資料提供建議。';
 
         const nextMessages = [
             ...messages,
