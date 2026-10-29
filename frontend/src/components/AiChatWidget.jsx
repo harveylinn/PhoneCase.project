@@ -40,6 +40,8 @@ export default function AiChatWidget() {
 
         const conversationContext = messages
             .slice(-6)
+            // 只傳使用者說過的內容，避免 AI 回覆中的「顏色未確認」被誤判成搜尋條件。
+            .filter(message => message.role === 'user')
             .map(message => `${message.role === 'user' ? '使用者' : '客服'}：${message.content}`)
             .join('\n');
         const actualQuestion = conversationContext
