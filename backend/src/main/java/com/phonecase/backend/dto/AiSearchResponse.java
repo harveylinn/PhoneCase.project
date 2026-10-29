@@ -1,4 +1,9 @@
 package com.phonecase.backend.dto;
 
-public record AiSearchResponse(String answer) {
+import java.util.List;
+
+public record AiSearchResponse(
+        String answer,
+        List<AiProductRecommendation> products
+) {
 }

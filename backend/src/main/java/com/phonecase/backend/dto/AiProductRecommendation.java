@@ -12,6 +12,7 @@ public record AiProductRecommendation(
         String color,
         String tags,
         BigDecimal price,
-        Integer stock
+        Integer stock,
+        String imageUrl
 ) {
 }

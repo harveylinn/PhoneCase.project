@@ -322,10 +322,18 @@ public class ProductRecommendationService {
     }
 
     private AiProductRecommendation toRecommendation(Product product, ProductVariant variant) {
+        String imageUrl = null;
+        if (variant.getImages() != null && !variant.getImages().isEmpty()) {
+            imageUrl = variant.getImages().stream()
+                    .filter(image -> Boolean.TRUE.equals(image.getIsPrimary()))
+                    .findFirst()
+                    .orElse(variant.getImages().get(0))
+                    .getImageUrl();
+        }
         return new AiProductRecommendation(
                 product.getId(), variant.getId(), variant.getSku(), product.getName(),
                 variant.getBrand(), variant.getModel(), variant.getColor(),
-                variant.getTags(), variant.getPrice(), variant.getStock()
+                variant.getTags(), variant.getPrice(), variant.getStock(), imageUrl
         );
     }
 }

@@ -3,6 +3,7 @@ package com.phonecase.backend.service;
 import com.phonecase.backend.dto.AiProductRecommendation;
 import com.phonecase.backend.dto.AiSearchRequest;
 import com.phonecase.backend.dto.AiVisionResult;
+import com.phonecase.backend.dto.AiSearchResponse;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -25,7 +26,7 @@ public class AiSearchService {
         this.aiAnswerService = aiAnswerService;
     }
 
-    public String search(AiSearchRequest request) {
+    public AiSearchResponse search(AiSearchRequest request) {
         if (request == null || (!request.hasQuestion() && !request.hasImage())) {
             throw new IllegalArgumentException("請輸入問題或上傳圖片");
         }
@@ -38,6 +39,9 @@ public class AiSearchService {
                 recommendationService.findMatches(criteria, request.text());
         boolean exact = !products.isEmpty();
 
-        return aiAnswerService.format(criteria, products, exact);
+        return new AiSearchResponse(
+                aiAnswerService.format(criteria, products, exact),
+                products
+        );
     }
 }

@@ -28,5 +28,5 @@ export async function searchProductsWithAi(
         throw new Error(data.message || 'AI 搜尋失敗');
     }
 
-    return data.answer;
+    return data;
 }

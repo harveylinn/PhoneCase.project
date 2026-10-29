@@ -1,5 +1,7 @@
 import {useState} from 'react';
+import {Link} from 'react-router-dom';
 import {searchProductsWithAi} from '../services/aiSearchApi.js';
+import {addToGuestCart} from '../utils/cartStorage';
 
 export default function AiChatWidget() {
     const [open, setOpen] = useState(false);
@@ -65,7 +67,7 @@ export default function AiChatWidget() {
                 ? await fileToBase64(imageFile)
                 : null;
 
-            const answer = await searchProductsWithAi(
+            const result = await searchProductsWithAi(
                 actualQuestion,
                 imageBase64,
                 imageFile?.type,
@@ -74,7 +76,7 @@ export default function AiChatWidget() {
 
             setMessages([
                 ...nextMessages,
-                { role: 'assistant', content: answer },
+                {role: 'assistant', content: result.answer, products: result.products ?? []},
             ]);
 
             setImageFile(null);
@@ -178,6 +180,35 @@ export default function AiChatWidget() {
                                 key={`${message.role}-${index}`}
                             >
                                 {message.content}
+                                {message.products?.length > 0 && (
+                                    <div className="ai-chat-product-list">
+                                        {message.products.map(product => (
+                                            <article className="ai-chat-product-card" key={product.variantId}>
+                                                {product.imageUrl && <img src={product.imageUrl} alt={`${product.productName} ${product.model}`} />}
+                                                <div className="ai-chat-product-info">
+                                                    <strong>{product.productName}</strong>
+                                                    <span>{product.model} · {product.color}</span>
+                                                    <b>NT$ {Number(product.price).toLocaleString()}</b>
+                                                    <div className="ai-chat-product-actions">
+                                                        <Link to={`/products/${product.productId}?variantId=${product.variantId}`}>查看</Link>
+                                                        <button type="button" onClick={() => {
+                                                            addToGuestCart({
+                                                                variantId: product.variantId,
+                                                                name: product.productName,
+                                                                brand: product.brand,
+                                                                model: product.model,
+                                                                color: product.color,
+                                                                price: Number(product.price),
+                                                                imageUrl: product.imageUrl ?? '',
+                                                            });
+                                                            setMessages(current => [...current, {role: 'assistant', content: `${product.productName} 已加入購物車。`}]);
+                                                        }}>加入購物車</button>
+                                                    </div>
+                                                </div>
+                                            </article>
+                                        ))}
+                                    </div>
+                                )}
                             </div>
                         ))}
 

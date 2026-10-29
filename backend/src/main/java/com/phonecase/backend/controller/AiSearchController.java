@@ -17,6 +17,6 @@ public class AiSearchController {
 
     @PostMapping("/search")
     public AiSearchResponse search(@RequestBody AiSearchRequest request) {
-        return new AiSearchResponse(aiSearchService.search(request));
+        return aiSearchService.search(request);
     }
 }
