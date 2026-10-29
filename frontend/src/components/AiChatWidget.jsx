@@ -11,31 +11,11 @@ export default function AiChatWidget() {
 
     const quickQuestions = [
         '我想找適合我的手機殼',
-        '想查詢訂單',
-        '我想詢問退換貨',
         '聯絡人工客服',
     ];
 
     function handleQuickQuestion(question) {
         if (loading) return;
-
-        if (question === '想查詢訂單') {
-            setMessages(current => [
-                ...current,
-                {role: 'user', content: question},
-                {role: 'assistant', content: '訂單查詢功能即將開放。請先登入會員，或提供訂單編號讓客服協助你。'},
-            ]);
-            return;
-        }
-
-        if (question === '我想詢問退換貨') {
-            setMessages(current => [
-                ...current,
-                {role: 'user', content: question},
-                {role: 'assistant', content: '退換貨需要人工客服確認訂單狀況。請保留訂單編號，客服會協助你處理。'},
-            ]);
-            return;
-        }
 
         if (question === '聯絡人工客服') {
             setMessages(current => [
@@ -173,7 +153,7 @@ export default function AiChatWidget() {
                                     你好！我可以協助商品推薦、圖片搜尋與常見問題。
                                 </p>
                                 <p className="ai-chat-scope-note">
-                                    商品推薦由 AI 協助；訂單、付款與退款問題會轉由人工客服處理。
+                                    目前提供商品推薦與圖片搜尋；人工客服功能尚未連接。
                                 </p>
                                 <div className="ai-chat-quick-actions" aria-label="常見問題">
                                     {quickQuestions.map(question => (
