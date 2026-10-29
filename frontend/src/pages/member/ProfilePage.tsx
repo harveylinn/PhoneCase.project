@@ -78,7 +78,7 @@ export default function ProfilePage() {
         <h2>會員中心</h2>
         <nav className="profile-nav">
           <Link className="is-active" to="/profile">個人資料</Link>
-          <div className="profile-nav-unavailable">我的訂單 <small>尚未整合</small></div>
+          <Link to="/orderlist">我的訂單</Link>
           <button type="button" onClick={logout}>登出</button>
           <Link to="/">返回首頁</Link>
         </nav>

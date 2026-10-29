@@ -339,44 +339,6 @@ function OrderModule({
     <div>
 
       {/* ================================= */}
-      {/* 頁面切換 */}
-      {/* ================================= */}
-
-      {currentPage !== 'checkout' && (
-        <div
-          style={{
-            display: 'flex',
-            justifyContent: 'center',
-            gap: '15px',
-            padding: '20px',
-            background: '#f5f5f5',
-            flexWrap: 'wrap'
-          }}
-        >
-          <button
-            type="button"
-            onClick={() => setCurrentPage('checkout')}
-          >
-            確認訂單
-          </button>
-
-          <button
-            type="button"
-            onClick={handleOpenOrderList}
-          >
-            我的訂單
-          </button>
-
-          <button
-            type="button"
-            onClick={() => setCurrentPage('detail')}
-          >
-            訂單明細
-          </button>
-        </div>
-      )}
-
-      {/* ================================= */}
       {/* API 狀態 */}
       {/* ================================= */}
 
@@ -458,6 +420,29 @@ function OrderModule({
       {currentPage === 'detail' && (
 
         <>
+
+          <div
+            style={{
+              maxWidth: '900px',
+              margin: '28px auto -24px',
+              boxSizing: 'border-box'
+            }}
+          >
+            <button
+              type="button"
+              onClick={handleOpenOrderList}
+              style={{
+                padding: '9px 14px',
+                border: '1px solid #ddd',
+                borderRadius: '6px',
+                background: 'white',
+                color: '#333',
+                cursor: 'pointer'
+              }}
+            >
+              ← 返回我的訂單
+            </button>
+          </div>
 
           <OrderDetailPage
             order={selectedOrder}
