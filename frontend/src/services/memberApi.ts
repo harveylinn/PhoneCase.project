@@ -12,7 +12,9 @@ function isMember(value: unknown): value is MemberInfo {
     && typeof value.account === 'string' && typeof value.name === 'string'
     && typeof value.email === 'string'
     && (typeof value.phone === 'string' || value.phone === null)
-    && (typeof value.defaultAddress === 'string' || value.defaultAddress === null);
+    && (typeof value.defaultAddress === 'string' || value.defaultAddress === null)
+    && (typeof value.createdAt === 'string' || value.createdAt === null)
+    && (typeof value.updatedAt === 'string' || value.updatedAt === null);
 }
 // 網路錯誤不等於 token 失效。保留 HTTP 狀態供 Provider 判斷 401 / 403。
 async function readResponse(response: Response) {

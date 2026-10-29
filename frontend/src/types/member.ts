@@ -5,6 +5,8 @@ export interface MemberInfo {
     email: string;
     phone: string | null;
     defaultAddress: string | null;
+    createdAt: string | null;
+    updatedAt: string | null;
 }
 
 export interface ProfileUpdate {

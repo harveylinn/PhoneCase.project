@@ -110,6 +110,8 @@ public class MemberController {
     data.put("email", member.getEmail());
     data.put("phone", member.getPhone());
     data.put("defaultAddress", member.getDefaultAddress());
+    data.put("createdAt", member.getCreatedAt());
+    data.put("updatedAt", member.getUpdatedAt());
     return data;
   }
 }

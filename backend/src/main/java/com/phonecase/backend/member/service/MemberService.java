@@ -1,6 +1,7 @@
 package com.phonecase.backend.member.service;
 
 import java.nio.charset.StandardCharsets;
+import jakarta.persistence.EntityManager;
 import org.mindrot.jbcrypt.BCrypt;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -18,6 +19,8 @@ import com.phonecase.backend.member.repository.MemberRepository;
 public class MemberService {
     @Autowired
     private MemberRepository memberRepository;
+    @Autowired
+    private EntityManager entityManager;
 
     public Long register(RegisterRequest request){
         String account = request.account().trim();
@@ -100,7 +103,10 @@ public class MemberService {
             String address = request.defaultAddress().trim();
             member.setDefaultAddress(address.isEmpty() ? null : address);
         }
-        return memberRepository.save(member);
+        Member savedMember = memberRepository.saveAndFlush(member);
+        // 時間由資料庫管理，寫入後重新讀取，讓回應帶回最新 updated_at。
+        entityManager.refresh(savedMember);
+        return savedMember;
     }
 
 
