@@ -1,4 +1,4 @@
-import { Link, Route, Routes } from 'react-router-dom';
+import { Link, Route, Routes, useLocation } from 'react-router-dom';
 import { useEffect, useState } from 'react';
 import ProductList from './pages/products/ProductList.jsx';
 import ProductDetail from './pages/products/ProductDetail.jsx';
@@ -52,6 +52,11 @@ function Header() {
 
 // 分頁
 export default function App() {
+  const location = useLocation();
+  const isAdminRoute = location.pathname === '/admin'
+    || location.pathname.startsWith('/admin-products')
+    || location.pathname.startsWith('/admin/samples');
+
   return (
     <>
       <Header />
@@ -75,7 +80,7 @@ export default function App() {
         <Route path="/admin/samples" element={<ImageSamples />} />
         <Route path="*" element={<ProductList />} />
       </Routes>
-      <AiChatWidget />
+      {!isAdminRoute && <AiChatWidget />}
     </>
   );
 }
