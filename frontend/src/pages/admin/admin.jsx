@@ -146,6 +146,52 @@ const adminStyles = `
 .adm-stat-value { color: var(--adm-navy); font-size: 20px; font-weight: 800; }
 .adm-stat-best { color: var(--adm-coral); font-size: 13px; font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
+/* ---------- Sales trend ---------- */
+.adm-trend {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  margin-top: 16px;
+  padding: 18px;
+  border-radius: 12px;
+  border: 1px solid var(--adm-border);
+}
+.adm-trend-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 10px; }
+.adm-trend-sum { margin-left: 10px; color: var(--adm-muted); font-size: 12px; }
+.adm-trend-tabs { display: flex; gap: 4px; padding: 3px; border-radius: 999px; background: var(--adm-soft); }
+.adm-trend-tab {
+  padding: 4px 14px;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--adm-muted);
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+}
+.adm-trend-tab.is-active { background: #fff; color: var(--adm-coral); box-shadow: 0 1px 3px rgba(18, 43, 80, 0.12); }
+.adm-trend-chart { position: relative; flex: 1; display: flex; align-items: flex-end; min-height: 160px; }
+.adm-trend-chart svg { width: 100%; height: auto; display: block; overflow: visible; }
+.adm-trend-grid { stroke: var(--adm-border-soft); stroke-width: 1; }
+.adm-trend-axis { fill: var(--adm-faint); font-size: 11px; }
+.adm-trend-bar { fill: #ffb3af; transition: fill 0.15s; }
+.adm-trend-bar.is-hover { fill: var(--adm-coral); }
+.adm-trend-tip {
+  position: absolute;
+  top: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  background: var(--adm-navy);
+  color: #fff;
+  font-size: 12px;
+  white-space: nowrap;
+  pointer-events: none;
+}
+.adm-trend-tip strong { font-size: 12px; }
+
 /* ---------- Document ops ---------- */
 .adm-doc-list { display: flex; flex-direction: column; gap: 10px; }
 .adm-doc-row {
@@ -779,12 +825,154 @@ function SalesStatsCard({ refreshKey }) {
           data={stats?.month}
         />
       </div>
+
+      <SalesTrendChart refreshKey={refreshKey} />
+    </div>
+  );
+}
+
+// 銷售趨勢圖：每日 = 近 30 天、每月 = 近 12 個月，長條為銷售金額
+const trendModes = [
+  ['daily', '每日'],
+  ['monthly', '每月']
+];
+
+function SalesTrendChart({ refreshKey }) {
+  const [trend, setTrend] = useState(null);
+  const [loadFailed, setLoadFailed] = useState(false);
+  const [mode, setMode] = useState('daily');
+  const [hoverIndex, setHoverIndex] = useState(null);
+
+  useEffect(() => {
+    fetch(`/api/admin/documents/stats/trend?date=${getLocalDateString()}`)
+      .then((response) => {
+        if (!response.ok) {
+          throw new Error(`HTTP ${response.status}`);
+        }
+        return response.json();
+      })
+      .then((data) => {
+        setTrend(data);
+        setLoadFailed(false);
+      })
+      .catch((error) => {
+        console.error('Error loading sales trend:', error);
+        setTrend(null);
+        setLoadFailed(true);
+      });
+  }, [refreshKey]);
+
+  const points = trend?.[mode] || [];
+  const total = points.reduce((sum, point) => sum + point.amount, 0);
+  const maxAmount = Math.max(...points.map((point) => point.amount), 0);
+
+  // 座標軸上限取整，讓刻度好讀
+  const step = maxAmount > 0 ? 10 ** Math.floor(Math.log10(maxAmount)) : 1;
+  const axisMax = maxAmount > 0 ? Math.ceil(maxAmount / step) * step : 1000;
+  const ticks = [0, 0.5, 1].map((ratio) => axisMax * ratio);
+
+  const width = 640;
+  const height = 200;
+  const pad = { top: 12, right: 8, bottom: 26, left: 52 };
+  const plotW = width - pad.left - pad.right;
+  const plotH = height - pad.top - pad.bottom;
+  const slot = points.length ? plotW / points.length : plotW;
+  const barW = Math.max(2, slot * 0.62);
+  const y = (value) => pad.top + plotH - (value / axisMax) * plotH;
+  const shortLabel = (label) => (mode === 'daily' ? label.slice(5).replace('-', '/') : label.replace('-', '/'));
+  // 每日顯示約 6 個日期標籤，每月全部顯示
+  const labelEvery = mode === 'daily' ? 5 : 1;
+  const hovered = hoverIndex != null ? points[hoverIndex] : null;
+
+  return (
+    <div className="adm-trend">
+      <div className="adm-trend-head">
+        <div>
+          <span className="adm-stat-title">銷售趨勢</span>
+          <span className="adm-trend-sum">
+            {mode === 'daily' ? '近 30 天' : '近 12 個月'}合計 ${formatNumber(total)}
+          </span>
+        </div>
+        <div className="adm-trend-tabs">
+          {trendModes.map(([key, label]) => (
+            <button
+              key={key}
+              onClick={() => {
+                setMode(key);
+                setHoverIndex(null);
+              }}
+              className={`adm-trend-tab ${mode === key ? 'is-active' : ''}`}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <div className="adm-trend-chart">
+        {loadFailed ? (
+          <p className="adm-empty">無法取得銷售趨勢</p>
+        ) : (
+          <svg viewBox={`0 0 ${width} ${height}`} role="img" aria-label="銷售金額趨勢圖">
+            {ticks.map((tick) => (
+              <g key={tick}>
+                <line x1={pad.left} x2={width - pad.right} y1={y(tick)} y2={y(tick)} className="adm-trend-grid" />
+                <text x={pad.left - 8} y={y(tick) + 4} textAnchor="end" className="adm-trend-axis">
+                  {tick >= 10000 ? `${formatNumber(tick / 1000)}k` : formatNumber(tick)}
+                </text>
+              </g>
+            ))}
+            {points.map((point, index) => {
+              const x = pad.left + slot * index + (slot - barW) / 2;
+              const barH = pad.top + plotH - y(point.amount);
+              return (
+                <g
+                  key={point.label}
+                  onMouseEnter={() => setHoverIndex(index)}
+                  onMouseLeave={() => setHoverIndex(null)}
+                >
+                  <rect x={pad.left + slot * index} y={pad.top} width={slot} height={plotH} fill="transparent" />
+                  <rect
+                    x={x}
+                    y={pad.top + plotH - Math.max(barH, point.amount > 0 ? 2 : 0)}
+                    width={barW}
+                    height={Math.max(barH, point.amount > 0 ? 2 : 0)}
+                    rx={Math.min(3, barW / 2)}
+                    className={`adm-trend-bar ${hoverIndex === index ? 'is-hover' : ''}`}
+                  />
+                  {(index % labelEvery === 0 || index === points.length - 1) && (
+                    <text x={x + barW / 2} y={height - 8} textAnchor="middle" className="adm-trend-axis">
+                      {shortLabel(point.label)}
+                    </text>
+                  )}
+                </g>
+              );
+            })}
+          </svg>
+        )}
+        {hovered && (
+          <div
+            className="adm-trend-tip"
+            style={{
+              left: `${((pad.left + slot * (hoverIndex + 0.5)) / width) * 100}%`,
+              // 右半邊的長條提示框往左展開，避免超出卡片
+              transform: hoverIndex >= points.length / 2 ? 'translateX(calc(-100% - 8px))' : 'translateX(8px)'
+            }}
+          >
+            <strong>{hovered.label}</strong>
+            <span>銷售金額 ${formatNumber(hovered.amount)}</span>
+            <span>
+              銷售數量 {formatNumber(hovered.quantity)}・訂單 {formatNumber(hovered.orders)}
+            </span>
+          </div>
+        )}
+      </div>
     </div>
   );
 }
 
 function DocumentOpsCard({ onOpenModal }) {
-  const docTypes = ['訂單', '採購單', '入庫單', '出庫單', '庫存'];
+  const docTypes = ['庫存', '採購單', '入庫單', '出庫單', '訂單'];
 
   return (
     <div className="adm-card adm-card-pad">
@@ -818,9 +1006,9 @@ function DocumentOpsCard({ onOpenModal }) {
   );
 }
 
-// 簡易 CRM：會員消費概況與分群（VIP / 一般 / 新客 / 沉睡 / 未下單）
-const crmSegments = ['全部', 'VIP', '一般', '新客', '沉睡', '未下單'];
-const segmentClass = { VIP: 'vip', 一般: 'regular', 新客: 'new', 沉睡: 'dormant', 未下單: 'none' };
+// 簡易 CRM：會員消費概況與分群（VIP / 一般 / 新客 / 非活躍 / 未下單）
+const crmSegments = ['全部', 'VIP', '一般', '新客', '非活躍', '未下單'];
+const segmentClass = { VIP: 'vip', 一般: 'regular', 新客: 'new', 非活躍: 'dormant', 未下單: 'none' };
 
 function CrmSection({ refreshKey }) {
   const [report, setReport] = useState(null);
@@ -874,7 +1062,7 @@ function CrmSection({ refreshKey }) {
       <div className="adm-section-head">
         <div className="adm-section-title">
           <h2>會員 CRM</h2>
-          <p>依會員消費紀錄自動分群：VIP 累計消費滿 $30,000、沉睡超過 60 天未下單、新客首購 30 天內</p>
+          <p>依會員消費紀錄自動分群：VIP 累計消費滿 $30,000、非活躍為超過 60 天未下單、新客首購 30 天內</p>
         </div>
         <input
           type="text"

@@ -43,6 +43,13 @@ public class AdminDocumentController {
         return adminDocumentService.getSalesStats(date);
     }
 
+    // 銷售趨勢：近 30 天每日、近 12 個月每月，date 為瀏覽器日期，格式 yyyy-MM-dd
+    @GetMapping("/stats/trend")
+    public AdminDocumentService.SalesTrend getSalesTrend(
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date) {
+        return adminDocumentService.getSalesTrend(date);
+    }
+
     // 庫存異常報告：庫存數量低於安全庫存量
     @GetMapping("/alerts/inventory")
     public List<Inventory> getInventoryAlerts() {

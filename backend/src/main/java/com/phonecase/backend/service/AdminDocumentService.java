@@ -12,7 +12,10 @@ import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 @Service
 public class AdminDocumentService {
@@ -37,6 +40,18 @@ public class AdminDocumentService {
     }
 
     public record BestProduct(String productNo, String productName) {
+    }
+
+    // 銷售趨勢：daily = 近 30 天、monthly = 近 12 個月（沒有訂單的日期、月份補 0）
+    private static final int TREND_DAYS = 30;
+    private static final int TREND_MONTHS = 12;
+    private static final DateTimeFormatter ORDER_MONTH_PREFIX = DateTimeFormatter.ofPattern("yyMM");
+
+    public record SalesTrend(List<TrendPoint> daily, List<TrendPoint> monthly) {
+    }
+
+    // label 顯示用日期（yyyy-MM-dd 或 yyyy-MM）
+    public record TrendPoint(String label, long amount, long quantity, long orders) {
     }
 
     // 訂單異常報告：訂單日期超過 3 天仍未出貨
@@ -222,6 +237,43 @@ public class AdminDocumentService {
                 summary.getOrders().longValue(),
                 bestQuantity,
                 bestProducts);
+    }
+
+    // 銷售趨勢只計算訂單（sales_order），日期由前端依瀏覽器日期傳入
+    @Transactional(readOnly = true)
+    public SalesTrend getSalesTrend(LocalDate date) {
+        List<LocalDate> days = Stream.iterate(date.minusDays(TREND_DAYS - 1), day -> day.plusDays(1))
+                .limit(TREND_DAYS)
+                .toList();
+        List<LocalDate> months = Stream.iterate(date.withDayOfMonth(1).minusMonths(TREND_MONTHS - 1),
+                        month -> month.plusMonths(1))
+                .limit(TREND_MONTHS)
+                .toList();
+
+        return new SalesTrend(
+                trendOf(days, ORDER_DATE_PREFIX, DateTimeFormatter.ISO_LOCAL_DATE),
+                trendOf(months, ORDER_MONTH_PREFIX, DateTimeFormatter.ofPattern("yyyy-MM")));
+    }
+
+    private List<TrendPoint> trendOf(List<LocalDate> periods, DateTimeFormatter prefixFormat,
+            DateTimeFormatter labelFormat) {
+        String from = periods.get(0).format(prefixFormat);
+        String to = periods.get(periods.size() - 1).format(prefixFormat);
+
+        Map<String, SalesOrderRepository.SalesTrendRow> rows = salesOrderRepository
+                .summarizeTrend(from.length(), from, to).stream()
+                .collect(Collectors.toMap(SalesOrderRepository.SalesTrendRow::getPeriod, row -> row));
+
+        return periods.stream()
+                .map(period -> {
+                    SalesOrderRepository.SalesTrendRow row = rows.get(period.format(prefixFormat));
+                    String label = period.format(labelFormat);
+                    return row == null
+                            ? new TrendPoint(label, 0, 0, 0)
+                            : new TrendPoint(label, row.getAmount().longValue(),
+                                    row.getQuantity().longValue(), row.getOrders().longValue());
+                })
+                .toList();
     }
 
     // 庫存異常報告：庫存數量低於安全庫存量的品項全部列出

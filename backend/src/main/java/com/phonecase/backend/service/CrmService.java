@@ -25,7 +25,7 @@ public class CrmService {
             LocalDate firstOrderDate, LocalDate lastOrderDate, Long daysSinceLastOrder, String segment) {
     }
 
-    // members 會員數、buyers 有消費會員、newMembers 本月新會員、vip VIP 會員、dormant 沉睡會員
+    // members 會員數、buyers 有消費會員、newMembers 本月新會員、vip VIP 會員、dormant 非活躍會員
     // averageOrder 平均客單價、repeatRate 回購率（%）
     public record CrmSummary(long members, long buyers, long newMembers, long vip, long dormant,
             long averageOrder, long repeatRate) {
@@ -97,20 +97,20 @@ public class CrmService {
                 buyers,
                 newMembers,
                 customers.stream().filter(c -> "VIP".equals(c.segment())).count(),
-                customers.stream().filter(c -> "沉睡".equals(c.segment())).count(),
+                customers.stream().filter(c -> "非活躍".equals(c.segment())).count(),
                 totalOrders == 0 ? 0 : Math.round((double) totalSpending / totalOrders),
                 buyers == 0 ? 0 : Math.round(repeaters * 100.0 / buyers));
 
         return new CrmReport(summary, customers);
     }
 
-    // 分群優先順序：未下單 → 沉睡 → VIP → 新客 → 一般
+    // 分群優先順序：未下單 → 非活躍 → VIP → 新客 → 一般
     private String segmentOf(long orders, long spending, LocalDate firstOrder, Long daysSince, LocalDate date) {
         if (orders == 0) {
             return "未下單";
         }
         if (daysSince != null && daysSince > DORMANT_DAYS) {
-            return "沉睡";
+            return "非活躍";
         }
         if (spending >= VIP_SPENDING) {
             return "VIP";

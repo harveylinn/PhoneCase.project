@@ -44,6 +44,23 @@ public interface SalesOrderRepository extends DocumentRepository<SalesOrder> {
             """, nativeQuery = true)
     List<BestSeller> findBestSellersByOrderNoPrefix(@Param("prefix") String prefix);
 
+    // 銷售趨勢：依訂單編號前 length 碼分組（6 = 每日 YYMMDD、4 = 每月 YYMM），只取 from ~ to 區間
+    @Query(value = """
+            SELECT LEFT(order_no, :length) AS period,
+                   COALESCE(SUM(total_price), 0) AS amount,
+                   COALESCE(SUM(quantity), 0) AS quantity,
+                   COUNT(*) AS orders
+            FROM sales_order
+            WHERE order_no REGEXP '^[0-9]{6}'
+              AND LEFT(order_no, :length) BETWEEN :from AND :to
+            GROUP BY LEFT(order_no, :length)
+            ORDER BY period
+            """, nativeQuery = true)
+    List<SalesTrendRow> summarizeTrend(
+            @Param("length") int length,
+            @Param("from") String from,
+            @Param("to") String to);
+
     // 訂單異常報告：訂單日期（訂單編號前 6 碼 YYMMDD）早於 cutoff，且狀態不是已出貨的訂單
     @Query(value = """
             SELECT * FROM sales_order
@@ -57,6 +74,13 @@ public interface SalesOrderRepository extends DocumentRepository<SalesOrder> {
             @Param("shippedStatuses") List<String> shippedStatuses);
 
     interface SalesSummary {
+        Number getAmount();
+        Number getQuantity();
+        Number getOrders();
+    }
+
+    interface SalesTrendRow {
+        String getPeriod();
         Number getAmount();
         Number getQuantity();
         Number getOrders();
