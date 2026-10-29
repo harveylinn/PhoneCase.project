@@ -25,9 +25,9 @@ public class Inventory extends BaseDocument {
     @Column(name = "safety_stock", nullable = false)
     private Integer safetyStock = 0;
 
-    // 狀態：保留給商品頁面判斷是否上架
-    @Column(length = 20)
-    private String status;
+    // 狀態：未上架 / 上架 / 下架，由商品頁面上架並填入售價後同步為上架
+    @Column(length = 20, nullable = false)
+    private String status = "未上架";
 
     // 庫存的品號就是主鍵，回傳與 orderNo 相同的值
     @Override

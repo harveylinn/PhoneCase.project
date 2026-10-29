@@ -21,7 +21,7 @@ import java.util.Set;
 // 商城的 order / order_item 目前沒有 JPA 實體（由其他組員負責），這裡以 JdbcTemplate 直接讀寫，避免重複對應同一張表
 //
 // 對應規則：
-//   商品規格 product_variants.sku   ↔ 庫存 inventory.product_no（品名 = 商品名稱、售價 = 規格價格、狀態 = 上架 / 下架）
+//   商品規格 product_variants.sku   ↔ 庫存 inventory.product_no（品名 = 商品名稱、售價 = 規格價格、狀態 = 上架 / 下架 / 未上架）
 //   會員 members.id                 ↔ 客戶代號 M + 4 碼會員 id（例如 M0006）
 //   商城訂單明細 order_item.id       → 訂單 sales_order.source_order_item_id（一個明細一張訂單）
 //
@@ -43,6 +43,15 @@ public class ShopSyncService {
                 WHEN 'COMPLETED' THEN '已完成'
                 WHEN 'CANCELLED' THEN '已取消'
                 ELSE '待處理'
+            END""";
+
+    // 庫存狀態：商品下架 → 下架；規格未填售價（0）→ 未上架；其餘依規格狀態（上架 / 下架）
+    // 不在商城販售（沒有對應規格）的庫存一律為未上架
+    private static final String INVENTORY_STATUS_CASE = """
+            CASE
+                WHEN p.status = '下架' THEN '下架'
+                WHEN v.price IS NULL OR v.price <= 0 THEN '未上架'
+                ELSE v.status
             END""";
 
     // 新規格尚未有採購成本時，先以售價 40% 預估，之後可在「庫存」修改成本
@@ -106,12 +115,12 @@ public class ShopSyncService {
         jdbcTemplate.update(updateInventoryFromVariantSql("AND p.id = ?"), productId);
     }
 
-    // 商品規格刪除後呼叫：保留庫存與單據紀錄，只清空狀態（不在商城販售）
+    // 商品規格刪除後呼叫：保留庫存與單據紀錄，狀態改為未上架（不在商城販售）
     @Transactional
     public synchronized void unlinkSkus(List<String> skus) {
         for (String sku : skus) {
             jdbcTemplate.update("""
-                    UPDATE inventory SET status = NULL
+                    UPDATE inventory SET status = '未上架'
                     WHERE product_no = ?
                       AND NOT EXISTS (SELECT 1 FROM product_variants v WHERE v.sku = inventory.product_no)
                     """, sku);
@@ -162,10 +171,10 @@ public class ShopSyncService {
 
         changed += jdbcTemplate.update(updateInventoryFromVariantSql(""));
 
-        // 商城已刪除的規格：保留庫存，只清空狀態
+        // 商城已刪除的規格：保留庫存，狀態改為未上架
         changed += jdbcTemplate.update("""
-                UPDATE inventory SET status = NULL
-                WHERE status IS NOT NULL
+                UPDATE inventory SET status = '未上架'
+                WHERE NOT (status <=> '未上架')
                   AND NOT EXISTS (SELECT 1 FROM product_variants v WHERE v.sku = inventory.product_no)
                 """);
         return changed;
@@ -177,10 +186,10 @@ public class ShopSyncService {
                                        unit_price, sale_price, total_price, safety_stock, status)
                 SELECT p.name, v.sku, v.brand, v.color, v.model, v.stock,
                        %1$s, ROUND(v.price), v.stock * %1$s, 10,
-                       CASE WHEN p.status = '下架' THEN '下架' ELSE v.status END
+                       %3$s
                 FROM product_variants v JOIN products p ON p.id = v.product_id
                 WHERE NOT EXISTS (SELECT 1 FROM inventory i WHERE i.product_no = v.sku) %2$s
-                """.formatted(ESTIMATED_COST, condition);
+                """.formatted(ESTIMATED_COST, condition, INVENTORY_STATUS_CASE);
     }
 
     // 品名、品牌、型號、顏色、售價、狀態以商品頁為準（數量另外處理）
@@ -191,11 +200,11 @@ public class ShopSyncService {
                 JOIN products p ON p.id = v.product_id
                 SET i.product_name = p.name, i.brand = v.brand, i.model = v.model, i.color = v.color,
                     i.sale_price = ROUND(v.price),
-                    i.status = CASE WHEN p.status = '下架' THEN '下架' ELSE v.status END
+                    i.status = %1$s
                 WHERE NOT (i.product_name <=> p.name AND i.brand <=> v.brand AND i.model <=> v.model
                            AND i.color <=> v.color AND i.sale_price <=> ROUND(v.price)
-                           AND i.status <=> CASE WHEN p.status = '下架' THEN '下架' ELSE v.status END) %s
-                """.formatted(condition);
+                           AND i.status <=> %1$s) %2$s
+                """.formatted(INVENTORY_STATUS_CASE, condition);
     }
 
     // 商城訂單明細尚未建立後台訂單的，依下單日期產生 YYMMDDNNNN 訂單編號
