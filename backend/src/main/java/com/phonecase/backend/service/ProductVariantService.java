@@ -39,9 +39,10 @@ public class ProductVariantService {
         variant.setModel(request.getModel());
         variant.setColor(request.getColor());
         variant.setPrice(request.getPrice());
-        variant.setStock(request.getStock());
+        variant.setStock(request.getStock() == null ? 0 : request.getStock());
         variant.setSku(request.getSku());
         variant.setStatus(request.getStatus());
+        variant.setTags(request.getTags());
         Product product = productRepository
                 .findById(productId)
                 .orElseThrow(() ->
@@ -84,9 +85,12 @@ public class ProductVariantService {
         existingVariant.setModel(request.getModel());
         existingVariant.setColor(request.getColor());
         existingVariant.setPrice(request.getPrice());
-        existingVariant.setStock(request.getStock());
+        if (request.getStock() != null) {
+            existingVariant.setStock(request.getStock());
+        }
         existingVariant.setSku(request.getSku());
         existingVariant.setStatus(request.getStatus());
+        existingVariant.setTags(request.getTags());
         return productVariantRepository.save(existingVariant);
     }
 
@@ -97,6 +101,17 @@ public class ProductVariantService {
                     "商品狀態只能是上架或下架"
             );
         }
+    }
+
+    public ProductVariant updateStatus(Long productId, Long id, String status) {
+        ProductVariant existingVariant = productVariantRepository.findById(id)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "找不到商品規格，id" + id));
+        if (!existingVariant.getProduct().getId().equals(productId)) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "此商品規格不屬於指定商品");
+        }
+        validateStatus(status);
+        existingVariant.setStatus(status);
+        return productVariantRepository.save(existingVariant);
     }
 
     public void deleteVariant(

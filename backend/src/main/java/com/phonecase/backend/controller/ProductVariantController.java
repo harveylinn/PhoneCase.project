@@ -38,6 +38,14 @@ public class ProductVariantController {
         productVariantService.deleteVariant(productId, id);
     }
 
+    @PatchMapping("/{id}/status")
+    public ProductVariant updateStatus(
+            @PathVariable("productId") Long productId,
+            @PathVariable("id") Long id,
+            @RequestParam String status) {
+        return productVariantService.updateStatus(productId, id, status);
+    }
+
 
 
 }
