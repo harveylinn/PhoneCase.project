@@ -62,4 +62,7 @@ public class ProductVariant {
     )
     @JsonManagedReference("variant-images")
     private List<ProductImage> images = new ArrayList<>();
+
+    @Column(length = 500)
+    private String tags;
 }

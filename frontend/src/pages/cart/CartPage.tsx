@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import type { CartItem } from './CartItem'
 import './CartPage.css'
 import CartItemCard from './CartItemCard'
@@ -12,9 +12,24 @@ function CartPage() {
     const [cartItems, setCartItems] = useState<CartItem[]>(getGuestCart)
 
 
+    const savingCart = useRef(false)
+
+    useEffect(() => {
+        const syncCart = () => {
+            if (!savingCart.current) setCartItems(getGuestCart())
+        }
+        window.addEventListener('cartUpdated', syncCart)
+        return () => window.removeEventListener('cartUpdated', syncCart)
+    }, [])
+
     // 當購物車資料改變時，透過共用函式保存
     useEffect(() => {
-        saveGuestCart(cartItems)
+        savingCart.current = true
+        try {
+            saveGuestCart(cartItems)
+        } finally {
+            savingCart.current = false
+        }
     }, [cartItems])
 
 

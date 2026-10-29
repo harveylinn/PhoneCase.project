@@ -13,11 +13,13 @@ import java.util.Optional;
 public interface ProductRepository
         extends JpaRepository<Product, Long> {
     @EntityGraph(attributePaths = {
-            "variants",
-            "variants.images"
+            "variants"
     })
     Optional<Product> findById(Long id);
 
+    @EntityGraph(attributePaths = {
+            "variants"
+    })
     List<Product> findByStatus(String status);
 
     List<Product> findByNameContainingIgnoreCase(String name);

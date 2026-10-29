@@ -44,4 +44,15 @@ public class GlobalExceptionHandler {
                 : exception.getReason());
         return error;
     }
+
+    @ExceptionHandler(IllegalArgumentException.class)
+    @ResponseStatus(HttpStatus.BAD_REQUEST)
+    public Map<String, String> handleIllegalArgumentError(
+            IllegalArgumentException exception) {
+        Map<String, String> error = new HashMap<>();
+        error.put("message", exception.getMessage() == null
+                ? "請求資料格式錯誤"
+                : exception.getMessage());
+        return error;
+    }
 }
