@@ -1,26 +1,25 @@
-import { useEffect, useRef, useState } from 'react'
+import { useState } from 'react'
 import type { Order, OrderStatus } from './OrderListPage'
 import { createOrder } from '../../api/orderApi'
+import type { CartItem } from '../cart/CartItem'
+import { getGuestCart, saveGuestCart } from '../../utils/cartStorage'
+import { NANTUN_STORES } from './nantunStores'
+import type { NantunStore, StoreChain } from './nantunStores'
 import './CheckoutPage.css'
 
-// ========================================
-// 綠界物流設定
-// ========================================
+const TAIWAN_COUNTIES = [
+  '臺北市', '新北市', '基隆市', '桃園市', '新竹市', '新竹縣',
+  '苗栗縣', '臺中市', '彰化縣', '南投縣', '雲林縣', '嘉義市',
+  '嘉義縣', '臺南市', '高雄市', '屏東縣', '宜蘭縣', '花蓮縣',
+  '臺東縣', '澎湖縣', '金門縣', '連江縣'
+]
 
-const ECPAY_MAP_URL =
-  'http://localhost:8080/api/logistics/ecpay/map'
-
-const ECPAY_CALLBACK_ORIGIN =
-  'https://warner-greene-smooth-correct.trycloudflare.com'
-
-type StoreChain = 'UNIMART' | 'FAMI'
-
-type SelectedStore = {
-  id: string
-  name: string
-  address: string
-  chain: StoreChain
-}
+const TAICHUNG_DISTRICTS = [
+  '中區', '東區', '南區', '西區', '北區', '北屯區', '西屯區', '南屯區',
+  '太平區', '大里區', '霧峰區', '烏日區', '豐原區', '后里區', '石岡區',
+  '東勢區', '和平區', '新社區', '潭子區', '大雅區', '神岡區', '大肚區',
+  '沙鹿區', '龍井區', '梧棲區', '清水區', '大甲區', '外埔區', '大安區'
+]
 
 type Props = {
   onCreateOrder: (order: Order) => void
@@ -73,32 +72,34 @@ function CheckoutPage({ onCreateOrder }: Props) {
     useState<'CREDIT_CARD' | 'COD'>('CREDIT_CARD')
 
   // ========================================
-  // 測試商品
+  // 從訪客購物車讀取已勾選商品
   // ========================================
 
-  const [quantity, setQuantity] = useState(2)
+  const [selectedItems] = useState<CartItem[]>(
+    () => getGuestCart().filter((item) => item.selected)
+  )
 
-  const productName = '透明防摔手機殼'
-  const productModel = 'iPhone 17 Pro'
-  const productPrice = 590
-
-  const productSubtotal = productPrice * quantity
+  const productSubtotal = selectedItems.reduce(
+    (sum, item) => sum + item.price * item.quantity,
+    0
+  )
 
   const shippingFee = shippingMethod === 'HOME' ? 80 : 60
-
   const grandTotal = productSubtotal + shippingFee
 
   // ========================================
-  // 綠界超商選店
+  // 超商門市選店
   // ========================================
 
   const [storeChain, setStoreChain] =
     useState<StoreChain>('UNIMART')
 
   const [selectedStore, setSelectedStore] =
-    useState<SelectedStore | null>(null)
+    useState<NantunStore | null>(null)
 
-  const storePopupRef = useRef<Window | null>(null)
+  const [selectedCounty, setSelectedCounty] = useState('')
+  const [selectedDistrict, setSelectedDistrict] = useState('')
+  const [selectedRoad, setSelectedRoad] = useState('')
 
   // ========================================
   // 新增：是否正在建立訂單
@@ -106,93 +107,28 @@ function CheckoutPage({ onCreateOrder }: Props) {
 
   const [isSubmitting, setIsSubmitting] = useState(false)
 
-  // ========================================
-  // 開啟綠界超商地圖
-  // ========================================
+  const availableDistricts = selectedCounty === '臺中市'
+    ? TAICHUNG_DISTRICTS
+    : []
+  const availableRoads = Array.from(new Set(
+    NANTUN_STORES
+      .filter((store) =>
+        store.county === selectedCounty &&
+        store.district === selectedDistrict &&
+        store.chain === storeChain
+      )
+      .flatMap((store) => store.roads)
+  )).sort((a, b) => a.localeCompare(b, 'zh-Hant'))
+  const storesOnSelectedRoad = NANTUN_STORES.filter((store) =>
+    store.county === selectedCounty &&
+    store.district === selectedDistrict &&
+    store.roads.includes(selectedRoad) &&
+    store.chain === storeChain
+  )
 
-  function openEcpayStoreMap() {
-
-    const url = `${ECPAY_MAP_URL}?store=${storeChain}`
-
-    const popup = window.open(
-      url,
-      'ecpayStoreMap',
-      'width=1000,height=750,scrollbars=yes'
-    )
-
-    if (!popup) {
-      alert('無法開啟選店視窗，請允許瀏覽器彈出式視窗')
-      return
-    }
-
-    storePopupRef.current = popup
-
-    popup.focus()
+  function isSelectedStore(store: NantunStore) {
+    return selectedStore?.chain === store.chain && selectedStore.id === store.id
   }
-
-  // ========================================
-  // 接收綠界選店結果
-  // ========================================
-
-  useEffect(() => {
-
-    function handleStoreMessage(event: MessageEvent) {
-
-      if (event.origin !== ECPAY_CALLBACK_ORIGIN) {
-        return
-      }
-
-      if (event.source !== storePopupRef.current) {
-        return
-      }
-
-      const data = event.data
-
-      if (!data || data.type !== 'ECPAY_STORE_SELECTED') {
-        return
-      }
-
-      const store = data.store
-
-      if (
-        !store ||
-        typeof store.id !== 'string' ||
-        typeof store.name !== 'string' ||
-        typeof store.address !== 'string' ||
-        !store.id.trim() ||
-        !store.name.trim()
-      ) {
-        return
-      }
-
-      const chain: StoreChain =
-        store.chain === 'FAMI'
-          ? 'FAMI'
-          : store.chain === 'UNIMART'
-            ? 'UNIMART'
-            : storeChain
-
-      setSelectedStore({
-        id: store.id,
-        name: store.name,
-        address: store.address,
-        chain
-      })
-
-      setStoreChain(chain)
-
-      storePopupRef.current = null
-
-      alert('超商門市選擇成功！')
-    }
-
-    window.addEventListener('message', handleStoreMessage)
-
-    return () => {
-      window.removeEventListener('message', handleStoreMessage)
-    }
-
-  }, [storeChain])
 
   // ========================================
   // 建立訂單：真正呼叫 Spring Boot
@@ -239,6 +175,12 @@ function CheckoutPage({ onCreateOrder }: Props) {
     // 5. 準備送給 Java 後端的資料
     // ========================================
 
+    const orderItems = getGuestCart().filter((item) => item.selected)
+    if (orderItems.length === 0) {
+      alert('購物車沒有已勾選的商品，請先回購物車選擇商品')
+      return
+    }
+
     const orderData = {
 
       receiverName: receiverName.trim(),
@@ -275,15 +217,11 @@ function CheckoutPage({ onCreateOrder }: Props) {
           ? selectedStore?.address
           : undefined,
 
-      // 商品明細
-      items: [
-        {
-          productName,
-          modelName: productModel,
-          color: '透明',
-          quantity
-        }
-      ]
+      // 只傳商品規格 ID 和數量，金額與商品資料由後端查詢
+      items: orderItems.map((item) => ({
+        variantId: item.variantId,
+        quantity: item.quantity
+      }))
 
     }
 
@@ -306,6 +244,17 @@ function CheckoutPage({ onCreateOrder }: Props) {
       // 7. 使用後端回傳的訂單資料
       // ========================================
 
+      const orderProductName = orderItems
+        .map((item) => item.name)
+        .join('、')
+      const orderModel = orderItems
+        .map((item) => (item.brand + ' ' + item.model).trim())
+        .join('、')
+      const orderQuantity = orderItems.reduce(
+        (sum, item) => sum + item.quantity,
+        0
+      )
+
       const newOrder: Order = {
 
         // 使用 MySQL 訂單編號，不再使用前端時間戳
@@ -313,11 +262,11 @@ function CheckoutPage({ onCreateOrder }: Props) {
 
         date: new Date().toLocaleDateString('sv-SE'),
 
-        productName,
+        productName: orderProductName,
 
-        model: productModel,
+        model: orderModel,
 
-        quantity,
+        quantity: orderQuantity,
 
         // 使用後端計算的真正金額
         total: result.totalAmount,
@@ -360,6 +309,20 @@ function CheckoutPage({ onCreateOrder }: Props) {
             ? selectedStore?.address
             : undefined
 
+      }
+
+      // 訂單成功後只移除本次已購買的規格，保留未勾選商品。
+      const purchasedVariantIds = new Set(
+        orderItems.map((item) => item.variantId)
+      )
+      try {
+        saveGuestCart(
+          getGuestCart().filter(
+            (item) => !purchasedVariantIds.has(item.variantId)
+          )
+        )
+      } catch (cartError) {
+        console.error('訂單已建立，但更新購物車失敗：', cartError)
       }
 
       // ========================================
@@ -407,55 +370,41 @@ function CheckoutPage({ onCreateOrder }: Props) {
 
       <h2>商品資訊</h2>
 
-      <div className="checkout-product">
+      {selectedItems.length === 0 ? (
+        <p role="status">購物車目前沒有已勾選商品。</p>
+      ) : (
+        selectedItems.map((item) => (
+          <div className="checkout-product" key={item.variantId}>
+            <div className="product-image">
+              {item.imageUrl ? (
+                <img
+                  src={item.imageUrl}
+                  alt={item.name}
+                  style={{
+                    maxWidth: '100%',
+                    maxHeight: '100%',
+                    objectFit: 'contain'
+                  }}
+                />
+              ) : (
+                '📱'
+              )}
+            </div>
 
-        <div className="product-image">
-          📱
-        </div>
+            <div className="product-info">
+              <h3>{item.name}</h3>
+              <p>適用型號：{item.brand} {item.model}</p>
+              <p>顏色：{item.color}</p>
+              <p>單價：NT$ {item.price.toLocaleString()}</p>
+              <p>數量：{item.quantity}</p>
+            </div>
 
-        <div className="product-info">
-
-          <h3>{productName}</h3>
-
-          <p>適用型號：{productModel}</p>
-
-          <p>顏色：透明</p>
-
-          <p>單價：NT$ {productPrice}</p>
-
-          <div style={{ marginTop: '15px' }}>
-
-            <span>數量：</span>
-
-            <button
-              type="button"
-              disabled={quantity <= 1 || isSubmitting}
-              onClick={() => setQuantity(quantity - 1)}
-            >
-              －
-            </button>
-
-            <span style={{ margin: '0 15px' }}>
-              {quantity}
-            </span>
-
-            <button
-              type="button"
-              disabled={isSubmitting}
-              onClick={() => setQuantity(quantity + 1)}
-            >
-              ＋
-            </button>
-
+            <div className="product-subtotal">
+              NT$ {(item.price * item.quantity).toLocaleString()}
+            </div>
           </div>
-
-        </div>
-
-        <div className="product-subtotal">
-          NT$ {productSubtotal.toLocaleString()}
-        </div>
-
-      </div>
+        ))
+      )}
 
       <hr />
 
@@ -509,7 +458,13 @@ function CheckoutPage({ onCreateOrder }: Props) {
           type="radio"
           name="shipping"
           checked={shippingMethod === 'CVS'}
-          onChange={() => setShippingMethod('CVS')}
+          onChange={() => {
+            setShippingMethod('CVS')
+            setSelectedCounty('')
+            setSelectedDistrict('')
+            setSelectedRoad('')
+            setSelectedStore(null)
+          }}
         />
 
         超商取貨（NT$ 60）
@@ -538,7 +493,7 @@ function CheckoutPage({ onCreateOrder }: Props) {
 
       )}
 
-      {/* 綠界超商取貨 */}
+      {/* 超商取貨門市 */}
 
       {shippingMethod === 'CVS' && (
 
@@ -553,7 +508,7 @@ function CheckoutPage({ onCreateOrder }: Props) {
           <h3>超商取貨門市</h3>
 
           <p style={{ color: '#888', fontSize: '13px' }}>
-            綠界物流測試環境
+            請依序選擇配送縣市、區域與道路，再選擇取貨門市。
           </p>
 
           <h4>選擇超商品牌</h4>
@@ -566,6 +521,7 @@ function CheckoutPage({ onCreateOrder }: Props) {
               checked={storeChain === 'UNIMART'}
               onChange={() => {
                 setStoreChain('UNIMART')
+                setSelectedRoad('')
                 setSelectedStore(null)
               }}
             />
@@ -582,6 +538,7 @@ function CheckoutPage({ onCreateOrder }: Props) {
               checked={storeChain === 'FAMI'}
               onChange={() => {
                 setStoreChain('FAMI')
+                setSelectedRoad('')
                 setSelectedStore(null)
               }}
             />
@@ -592,6 +549,74 @@ function CheckoutPage({ onCreateOrder }: Props) {
 
           <br />
           <br />
+
+          <div
+            style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))',
+              gap: '12px',
+              marginBottom: '16px'
+            }}
+          >
+            <label>
+              縣市
+              <select
+                value={selectedCounty}
+                onChange={(event) => {
+                  const county = event.target.value
+                  setSelectedCounty(county)
+                  setSelectedDistrict('')
+                  setSelectedRoad('')
+                  setSelectedStore(null)
+                }}
+                style={{ display: 'block', width: '100%', marginTop: '6px' }}
+              >
+                <option value="">請選擇縣市</option>
+                {TAIWAN_COUNTIES.map((county) => (
+                  <option key={county} value={county}>{county}</option>
+                ))}
+              </select>
+            </label>
+
+            <label>
+              區
+              <select
+                value={selectedDistrict}
+                disabled={availableDistricts.length === 0}
+                onChange={(event) => {
+                  setSelectedDistrict(event.target.value)
+                  setSelectedRoad('')
+                  setSelectedStore(null)
+                }}
+                style={{ display: 'block', width: '100%', marginTop: '6px' }}
+              >
+                <option value="">
+                  {selectedCounty ? '請選擇區域' : '請先選擇縣市'}
+                </option>
+                {availableDistricts.map((district) => (
+                  <option key={district} value={district}>{district}</option>
+                ))}
+              </select>
+            </label>
+
+            <label>
+              道路
+              <select
+                value={selectedRoad}
+                disabled={availableRoads.length === 0}
+                onChange={(event) => {
+                  setSelectedRoad(event.target.value)
+                  setSelectedStore(null)
+                }}
+                style={{ display: 'block', width: '100%', marginTop: '6px' }}
+              >
+                <option value="">請選擇道路</option>
+                {availableRoads.map((road) => (
+                  <option key={road} value={road}>{road}</option>
+                ))}
+              </select>
+            </label>
+          </div>
 
           {selectedStore ? (
 
@@ -633,25 +658,49 @@ function CheckoutPage({ onCreateOrder }: Props) {
 
           )}
 
-          <button
-            type="button"
-            onClick={openEcpayStoreMap}
-            disabled={isSubmitting}
-            style={{
-              padding: '12px 24px',
-              background: '#198754',
-              color: 'white',
-              border: 'none',
-              borderRadius: '8px',
-              cursor: 'pointer'
-            }}
-          >
-
-            {selectedStore
-              ? '更換取貨門市'
-              : '開啟綠界選店'}
-
-          </button>
+          {storesOnSelectedRoad.length > 0 ? (
+            <div
+              role="list"
+              aria-label={`${selectedCounty}${selectedDistrict}${selectedRoad}門市清單`}
+              style={{ display: 'grid', gap: '10px', marginTop: '16px' }}
+            >
+              {storesOnSelectedRoad.map((store) => (
+                <div
+                  key={`${store.chain}-${store.id}`}
+                  role="listitem"
+                  style={{
+                    padding: '12px',
+                    border: isSelectedStore(store)
+                      ? '2px solid #198754'
+                      : '1px solid #e3e3e3',
+                    borderRadius: '8px',
+                    background: 'white'
+                  }}
+                >
+                  <strong>{store.name}</strong>
+                  <p>門市代碼：{store.id}</p>
+                  <p>{store.address}</p>
+                  <button
+                    type="button"
+                    onClick={() => setSelectedStore(store)}
+                    disabled={isSubmitting}
+                  >
+                    {isSelectedStore(store) ? '已選擇這間門市' : '選擇這間門市'}
+                  </button>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <p role="status" style={{ color: '#777' }}>
+              {!selectedCounty
+                ? '請先選擇縣市、區域與道路。'
+                : !selectedDistrict
+                  ? '請選擇區域。'
+                  : !selectedRoad
+                    ? '請選擇道路。'
+                    : '目前沒有符合條件的門市。'}
+            </p>
+          )}
 
         </div>
 
@@ -739,7 +788,7 @@ function CheckoutPage({ onCreateOrder }: Props) {
       <button
         type="button"
         onClick={handleConfirmOrder}
-        disabled={isSubmitting}
+        disabled={isSubmitting || selectedItems.length === 0}
         style={{
           width: '100%',
           padding: '16px',
@@ -750,7 +799,7 @@ function CheckoutPage({ onCreateOrder }: Props) {
 
         {isSubmitting
           ? '訂單建立中，請稍候...'
-          : '建立測試訂單'}
+          : '建立訂單'}
 
       </button>
 

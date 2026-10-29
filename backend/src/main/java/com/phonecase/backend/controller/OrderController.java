@@ -4,13 +4,10 @@ import com.phonecase.backend.dto.CreateOrderRequest;
 import com.phonecase.backend.order.entity.OrderEntity;
 import com.phonecase.backend.order.service.OrderService;
 import com.phonecase.backend.order.service.OrderQueryService;
+import com.phonecase.backend.member.security.CheckJwt;
 
 import jakarta.servlet.http.HttpServletRequest;
-import jakarta.servlet.http.HttpSession;
-
-import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
-import org.springframework.web.server.ResponseStatusException;
 
 import java.util.List;
 import java.util.Map;
@@ -18,7 +15,10 @@ import java.util.Map;
 @RestController
 @RequestMapping("/api/orders")
 @CrossOrigin(
-        origins = "http://localhost:5173",
+        origins = {
+                "http://localhost:5173",
+                "http://localhost:5174"
+        },
         allowCredentials = "true"
 )
 public class OrderController {
@@ -44,30 +44,16 @@ public class OrderController {
     }
 
     // =====================================
-    // 2. 從 Session 取得會員 ID
+    // 2. 從 JWT 驗證結果取得會員 ID
     // =====================================
 
     private Long getMemberId(HttpServletRequest request) {
 
-        HttpSession session = request.getSession(false);
-
-        if (session == null) {
-            throw new ResponseStatusException(
-                    HttpStatus.UNAUTHORIZED,
-                    "請先登入會員"
-            );
+        Object memberId = request.getAttribute("authenticatedMemberId");
+        if (!(memberId instanceof Long)) {
+            throw new IllegalStateException("JWT 驗證後沒有會員 ID");
         }
-
-        Object value = session.getAttribute("memberId");
-
-        if (!(value instanceof Number)) {
-            throw new ResponseStatusException(
-                    HttpStatus.UNAUTHORIZED,
-                    "找不到會員登入資訊"
-            );
-        }
-
-        return ((Number) value).longValue();
+        return (Long) memberId;
     }
 
     // =====================================
@@ -76,6 +62,7 @@ public class OrderController {
     // =====================================
 
     @PostMapping
+    @CheckJwt
     public Map<String, Object> createOrder(
             @RequestBody CreateOrderRequest orderData,
             HttpServletRequest request
@@ -102,6 +89,7 @@ public class OrderController {
     // =====================================
 
     @GetMapping
+    @CheckJwt
     public List<OrderQueryService.OrderView> getOrders(
             HttpServletRequest request
     ) {
@@ -117,6 +105,7 @@ public class OrderController {
     // =====================================
 
     @PostMapping("/{orderNumber}/cancel")
+    @CheckJwt
     public Map<String, Object> cancelOrder(
             @PathVariable String orderNumber,
             HttpServletRequest request

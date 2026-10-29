@@ -25,9 +25,7 @@ public record CreateOrderRequest(
 ) {
 
     public record OrderItemRequest(
-            String productName,
-            String modelName,
-            String color,
+            Long variantId,
             Integer quantity
     ) {
     }

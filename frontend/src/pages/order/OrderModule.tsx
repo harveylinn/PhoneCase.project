@@ -35,11 +35,15 @@ type CancelInfo = {
 // 2. App
 // ========================================
 
-function OrderModule() {
+function OrderModule({
+  initialPage = 'checkout'
+}: {
+  initialPage?: 'checkout' | 'list' | 'detail'
+}) {
 
   // 目前頁面
   const [currentPage, setCurrentPage] =
-    useState('checkout')
+  useState(initialPage)
 
   // MySQL 訂單資料
   const [orders, setOrders] =
@@ -335,44 +339,6 @@ function OrderModule() {
     <div>
 
       {/* ================================= */}
-      {/* 頁面切換 */}
-      {/* ================================= */}
-
-      <div
-        style={{
-          display: 'flex',
-          justifyContent: 'center',
-          gap: '15px',
-          padding: '20px',
-          background: '#f5f5f5',
-          flexWrap: 'wrap'
-        }}
-      >
-
-        <button
-          type="button"
-          onClick={() => setCurrentPage('checkout')}
-        >
-          確認訂單
-        </button>
-
-        <button
-          type="button"
-          onClick={handleOpenOrderList}
-        >
-          我的訂單
-        </button>
-
-        <button
-          type="button"
-          onClick={() => setCurrentPage('detail')}
-        >
-          訂單明細
-        </button>
-
-      </div>
-
-      {/* ================================= */}
       {/* API 狀態 */}
       {/* ================================= */}
 
@@ -389,7 +355,7 @@ function OrderModule() {
 
       )}
 
-      {errorMessage && (
+      {errorMessage && currentPage !== 'checkout' && (
 
         <div
           style={{
@@ -403,6 +369,10 @@ function OrderModule() {
         >
 
           <p>{errorMessage}</p>
+
+          {errorMessage.includes('登入') && (
+            <p><a href="/login">前往會員登入</a></p>
+          )}
 
           <button
             type="button"
@@ -450,6 +420,29 @@ function OrderModule() {
       {currentPage === 'detail' && (
 
         <>
+
+          <div
+            style={{
+              maxWidth: '900px',
+              margin: '28px auto -24px',
+              boxSizing: 'border-box'
+            }}
+          >
+            <button
+              type="button"
+              onClick={handleOpenOrderList}
+              style={{
+                padding: '9px 14px',
+                border: '1px solid #ddd',
+                borderRadius: '6px',
+                background: 'white',
+                color: '#333',
+                cursor: 'pointer'
+              }}
+            >
+              ← 返回我的訂單
+            </button>
+          </div>
 
           <OrderDetailPage
             order={selectedOrder}
@@ -565,8 +558,13 @@ function OrderModule() {
                 style={{
                   display: 'flex',
                   alignItems: 'center',
+                  width: '100%',
+                  minWidth: 0,
                   gap: '12px',
                   padding: '12px 0',
+                  margin: 0,
+                  textAlign: 'left',
+                  lineHeight: 1.5,
                   cursor: 'pointer'
                 }}
               >
@@ -577,12 +575,30 @@ function OrderModule() {
                   value={reason}
                   checked={cancelReason === reason}
                   disabled={isCancelling}
+                  style={{
+                    display: 'block',
+                    flex: '0 0 18px',
+                    width: '18px',
+                    minWidth: '18px',
+                    height: '18px',
+                    margin: 0,
+                    padding: 0
+                  }}
                   onChange={(e) => {
                     setCancelReason(e.target.value)
                   }}
                 />
 
-                <span>{reason}</span>
+                <span
+                  style={{
+                    flex: 1,
+                    minWidth: 0,
+                    whiteSpace: 'normal',
+                    overflowWrap: 'anywhere'
+                  }}
+                >
+                  {reason}
+                </span>
 
               </label>
 

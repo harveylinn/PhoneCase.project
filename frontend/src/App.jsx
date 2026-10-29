@@ -14,9 +14,8 @@ import { useAuth } from './auth/useAuth';
 import MemberRoute from './auth/MemberRoute';
 import Admin from './pages/admin/admin.jsx';
 import CheckOutPage from './pages/order/CheckoutPage.tsx'
-import OrderDetailPage from './pages/order/OrderDetailPage.tsx'
-import OrderListPage from './pages/order/OrderListPage.tsx'
 import { getGuestCartCount } from './utils/cartStorage';
+import OrderModule from './pages/order/OrderModule';
 
 
 // 首頁欄
@@ -82,9 +81,9 @@ export default function App() {
         <Route path="/login" element={<LoginPage />} />
         <Route path="/profile" element={<MemberRoute><ProfilePage /></MemberRoute>} />
 
-        <Route path="/checkout" element={<CheckOutPage />} />
-        <Route path="/orderdetail" element={<OrderDetailPage />} />
-        <Route path="/orderlist" element={<OrderListPage />} />
+        <Route path="/checkout" element={<OrderModule />} />
+        <Route path="/orderdetail" element={<OrderModule initialPage="list" />} />
+        <Route path="/orderlist" element={<OrderModule initialPage="list" />} />
 
         <Route path="/admin" element={<Admin />} />
         <Route path="/admin-products/variants" element={<VariantsCatalog />} />
