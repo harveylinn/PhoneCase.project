@@ -47,3 +47,15 @@ test('ordinary page login returns to the full current URL', () => {
   const login = getLoginUrl({pathname:'/products/42',search:'?color=navy',hash:'#detail'});
   assert.equal(getReturnTo(login.slice('/login'.length)), '/products/42?color=navy#detail');
 });
+
+for (const pathname of ['/orderlist', '/orderdetail']) {
+  test(pathname + ' preserves order query and hash through login and registration', () => {
+    const expected = pathname + '?page=2&status=PENDING_PAYMENT#orders';
+    const login = getLoginUrl({ pathname, search: '?page=2&status=PENDING_PAYMENT', hash: '#orders' });
+    assert.equal(getReturnTo(new URL(login, 'https://test.invalid').search), expected);
+    const register = getAuthUrl('/register', getReturnTo(new URL(login, 'https://test.invalid').search));
+    // 由網址重新解析目的地，等同重新整理後，不依賴前一頁的記憶體狀態。
+    const loginAgain = getAuthUrl('/login', getReturnTo(new URL(register, 'https://test.invalid').search));
+    assert.equal(getReturnTo(new URL(loginAgain, 'https://test.invalid').search), expected);
+  });
+}

@@ -81,8 +81,8 @@ export default function App() {
         <Route path="/profile" element={<MemberRoute><ProfilePage /></MemberRoute>} />
 
         <Route path="/checkout" element={<MemberRoute><OrderModule /></MemberRoute>} />
-        <Route path="/orderdetail" element={<OrderModule initialPage="list" />} />
-        <Route path="/orderlist" element={<OrderModule initialPage="list" />} />
+        <Route path="/orderdetail" element={<MemberRoute><OrderModule initialPage="list" /></MemberRoute>} />
+        <Route path="/orderlist" element={<MemberRoute><OrderModule initialPage="list" /></MemberRoute>} />
 
         <Route path="/admin" element={<Admin />} />
         <Route path="/admin-products/variants" element={<VariantsCatalog />} />
