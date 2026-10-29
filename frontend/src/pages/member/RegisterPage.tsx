@@ -1,7 +1,22 @@
-import { useState, type SubmitEvent } from "react";
+import { useEffect, useState, type SubmitEvent } from "react";
+import { useNavigate } from "react-router-dom";
 import "../../styles/member/register.css";
 
+interface RegisterResponse {
+  success: boolean;
+  message: string;
+  memberId?: number;
+  errors?: {
+    account?: string;
+    password?: string;
+    name?: string;
+    phone?: string;
+    email?: string;
+  };
+}
+
 export default function RegisterPage() {
+  const navigate = useNavigate();
   const [account, setAccount] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -17,6 +32,19 @@ export default function RegisterPage() {
   const [telError, setTelError] = useState("");
   const [emailError, setEmailError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [registrationSuccess, setRegistrationSuccess] = useState(false);
+
+  useEffect(() => {
+    if (!registrationSuccess) return;
+    const timer = window.setTimeout(() => {
+      navigate("/login", {
+        replace: true,
+        state: { registrationSuccess: true },
+      });
+    }, 1500);
+    // 提前前往登入或離開註冊頁時，取消尚未執行的導頁。
+    return () => window.clearTimeout(timer);
+  }, [registrationSuccess, navigate]);
 
   function handleClear() {
     setAccount("");
@@ -38,7 +66,7 @@ export default function RegisterPage() {
   async function handleSubmit(event: SubmitEvent<HTMLFormElement>) {
     event.preventDefault();
 
-    if (isSubmitting) {
+    if (isSubmitting || registrationSuccess) {
       return;
     }
     setResultMessage("");
@@ -119,52 +147,62 @@ export default function RegisterPage() {
         body: JSON.stringify(registerData),
       });
 
-      if (!response.ok) {
-        setResultMessage(`請求失敗，HTTP狀態碼：${response.status}`);
+      const data: RegisterResponse = await response.json();
+
+      if (!response.ok || data.success !== true) {
+        //後端若有提供欄位錯誤，就顯示在對應欄位下方。
+        //符號??表示：null 或undefined時 使用右邊值(空字串)
+        setAccountError(data.errors?.account ?? "");
+        setPasswordError(data.errors?.password ?? "");
+        setNameError(data.errors?.name ?? "");
+        setTelError(data.errors?.phone ?? "");
+        setEmailError(data.errors?.email ?? "");
+
+        setResultMessage(
+          data.message ?? `註冊失敗，HTTP狀態碼:${response.status}`,
+        );
+
         return;
       }
 
-      const data = await response.json();
-
-      if (data.success === true) {
-        setResultMessage(data.message ?? "後端已收到資料。");
-      } else {
-        setResultMessage(data.message ?? "後端未能完成請求。");
-      }
+      setRegistrationSuccess(true);
     } catch {
-      setResultMessage("無法完成請求，請確認後端已啟動及回應格式正確");
+      setResultMessage(
+        "無法取得有效回應，請確認網路與後端服務，再確認註冊結果",
+      );
     } finally {
       setIsSubmitting(false);
     }
   }
 
   return (
-    <>
+    <div className="member-register">
       <a className="skip-link" href="#registerForm">
         跳至註冊表單
       </a>
-      <header className="site-header">
-        <a className="brand" href="/index">
-          <span className="brand-mark">
-            P<span>·</span>
-          </span>
-          PhoneCase<span className="brand-dot">.</span>
-        </a>
-        <a className="back-link" href="/login">
-          <span>←</span> 返回登入
-        </a>
-      </header>
       <main className="register-layout">
         <section className="register-container">
           <span className="eyebrow">JOIN PHONECASE</span>
           <h1 id="registerHeading">
-            建立你的帳號<span>。</span>
+            {registrationSuccess ? "註冊成功" : "建立你的帳號"}<span>。</span>
           </h1>
-          <p className="form-intro">
+          {registrationSuccess && (
+            <div className="registration-success">
+              <p>註冊成功！即將前往登入頁。</p>
+              <p>約 1.5 秒後自動跳轉，也可以立即前往登入。</p>
+              <button className="submit-button" type="button" onClick={() => navigate("/login", {
+                replace: true,
+                state: { registrationSuccess: true },
+              })}>
+                立即前往登入 <span>→</span>
+              </button>
+            </div>
+          )}
+          <p className="form-intro" hidden={registrationSuccess}>
             歡迎加入！請填寫以下資料，所有欄位皆為必填。
           </p>
-          <form id="registerForm" onSubmit={handleSubmit} noValidate>
-            <fieldset id="registerFields" disabled={isSubmitting}>
+          <form id="registerForm" onSubmit={handleSubmit} noValidate hidden={registrationSuccess}>
+            <fieldset id="registerFields" disabled={isSubmitting || registrationSuccess}>
               <legend className="sr-only">會員註冊資料</legend>
               <div className="form-grid">
                 <div className="form-group full-width">
@@ -351,7 +389,7 @@ export default function RegisterPage() {
               {resultMessage}
             </p>
           </form>
-          <p className="login-prompt">
+          <p className="login-prompt" hidden={registrationSuccess}>
             已經有帳號了？{" "}
             <a href="/login">
               前往登入 <span>↗</span>
@@ -363,6 +401,6 @@ export default function RegisterPage() {
         <p>&copy; 2026 PhoneCase. 保留所有權利。</p>
         <span>MADE FOR YOUR EVERYDAY</span>
       </footer>
-    </>
+    </div>
   );
 }
