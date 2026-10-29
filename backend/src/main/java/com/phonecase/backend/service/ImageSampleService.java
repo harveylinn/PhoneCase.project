@@ -9,13 +9,10 @@ import com.phonecase.backend.dto.AiVisionResult;
 import com.phonecase.backend.dto.ImageSampleAnalysisResponse;
 import com.phonecase.backend.repository.ImageSampleRepository;
 import org.springframework.http.HttpStatus;
-import org.springframework.beans.factory.annotation.Value;
+
 import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
 
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.util.Base64;
 import java.util.List;
 
@@ -26,19 +23,19 @@ public class ImageSampleService {
     private final AiVisionService aiVisionService;
     private final ProductService productService;
     private final ProductRecommendationService productRecommendationService;
-    private final Path uploadRoot;
+    private final SampleImageReader imageReader;
 
     public ImageSampleService(
             ImageSampleRepository repository,
             AiVisionService aiVisionService,
             ProductService productService,
             ProductRecommendationService productRecommendationService,
-            @Value("${app.upload.dir:uploads}") String uploadDir) {
+            SampleImageReader imageReader) {
         this.repository = repository;
         this.aiVisionService = aiVisionService;
         this.productService = productService;
         this.productRecommendationService = productRecommendationService;
-        this.uploadRoot = Paths.get(uploadDir).toAbsolutePath().normalize();
+        this.imageReader = imageReader;
     }
 
     public List<ImageSample> findAll(String reviewStatus) {
@@ -55,6 +52,7 @@ public class ImageSampleService {
     }
 
     public ImageSample create(ImageSample sample) {
+        sample.setImageUrl(SampleImageReader.cloudinaryUri(sample.getImageUrl()).toString());
         sample.setId(null);
         if (sample.getReviewStatus() == null || sample.getReviewStatus().isBlank()) {
             sample.setReviewStatus("待審核");
@@ -81,26 +79,10 @@ public class ImageSampleService {
 
     public ImageSampleAnalysisResponse analyzeImage(Long id) {
         ImageSample sample = findById(id);
-        String imageUrl = sample.getImageUrl();
-
-        if (imageUrl == null || !imageUrl.startsWith("/images/")) {
-            throw new ResponseStatusException(
-                    HttpStatus.BAD_REQUEST, "只能分析由系統上傳的圖片");
-        }
-
-        String filename = imageUrl.substring("/images/".length());
-        Path imagePath = uploadRoot.resolve(filename).normalize();
-        if (!imagePath.startsWith(uploadRoot) || !Files.isRegularFile(imagePath)) {
-            throw new ResponseStatusException(
-                    HttpStatus.NOT_FOUND, "找不到圖片檔案");
-        }
-
+        var image = imageReader.read(sample.getImageUrl());
         try {
-            String mimeType = Files.probeContentType(imagePath);
-            if (mimeType == null || !mimeType.startsWith("image/")) {
-                mimeType = "image/jpeg";
-            }
-            byte[] imageBytes = Files.readAllBytes(imagePath);
+            String mimeType = image.mimeType();
+            byte[] imageBytes = image.bytes();
             List<AiProductRecommendation> candidates = List.of();
             AiVisionResult criteria = null;
             if (sample.getProductId() == null) {

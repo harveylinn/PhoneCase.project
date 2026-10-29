@@ -35,6 +35,7 @@ public class ProductRecommendationService {
         return products.stream()
                 .filter(product -> product.getVariants() != null)
                 .flatMap(product -> product.getVariants().stream()
+                        .filter(variant -> "上架".equals(variant.getStatus()))
                         .filter(variant -> variant.getStock() != null
                                 && variant.getStock() > 0)
                         .filter(variant -> matches(variant, correctedCriteria))
@@ -67,6 +68,7 @@ public class ProductRecommendationService {
         return products.stream()
                 .filter(product -> product.getVariants() != null)
                 .flatMap(product -> product.getVariants().stream()
+                        .filter(variant -> "上架".equals(variant.getStatus()))
                         .filter(variant -> variant.getStock() != null
                                 && variant.getStock() > 0)
                         .filter(variant -> score(variant, correctedCriteria) > 0)

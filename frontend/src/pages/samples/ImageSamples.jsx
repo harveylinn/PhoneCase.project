@@ -2,7 +2,8 @@ import {useEffect, useState} from 'react';
 import {Link} from 'react-router-dom';
 
 const emptyForm = {
-    source: '',
+    imageUrl: '',
+    source: 'Cloudinary',
     licenseType: '',
     licenseNote: '',
     aiDescription: '',
@@ -12,8 +13,6 @@ const emptyForm = {
 export default function ImageSamples() {
     const [samples, setSamples] = useState([]);
     const [form, setForm] = useState(emptyForm);
-    const [file, setFile] = useState(null);
-    const [preview, setPreview] = useState('');
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
     const [analyzingId, setAnalyzingId] = useState(null);
@@ -41,60 +40,36 @@ export default function ImageSamples() {
         setForm({...form, [event.target.name]: event.target.value});
     }
 
-    function chooseFile(event) {
-        const selected = event.target.files?.[0];
-        if (!selected) return;
-        if (!selected.type.startsWith('image/')) {
-            setMessage('只能選擇圖片檔案');
-            return;
-        }
-        if (selected.size > 5 * 1024 * 1024) {
-            setMessage('圖片大小不可超過 5MB');
-            return;
-        }
-        setFile(selected);
-        setPreview(URL.createObjectURL(selected));
-        setMessage('');
-    }
-
     async function createSample(event) {
         event.preventDefault();
-        if (!file) {
-            setMessage('請先選擇圖片');
-            return;
-        }
-
         setSaving(true);
         setMessage('');
         try {
-            const uploadBody = new FormData();
-            uploadBody.append('file', file);
-
-            const uploadResponse = await fetch('/api/image-samples/upload', {
-                method: 'POST',
-                body: uploadBody,
-            });
-            if (!uploadResponse.ok) throw new Error('圖片上傳失敗');
-
-            const {imageUrl} = await uploadResponse.json();
-            const sampleResponse = await fetch('/api/image-samples', {
+            const imageUrl = form.imageUrl.trim();
+            const url = new URL(imageUrl);
+            if (url.protocol !== 'https:' || url.hostname !== 'res.cloudinary.com'
+                || url.username || url.password || url.port || url.hash
+                || !/^\/[^/]+\/image\/upload\/.+/.test(url.pathname)) {
+                throw new Error('請貼上 Cloudinary 的 HTTPS 圖片網址');
+            }
+            const response = await fetch('/api/image-samples', {
                 method: 'POST',
                 headers: {'Content-Type': 'application/json'},
                 body: JSON.stringify({
-                    imageUrl,
                     ...form,
+                    imageUrl,
                     productId: form.productId ? Number(form.productId) : null,
                 }),
             });
-            if (!sampleResponse.ok) throw new Error('樣本資料儲存失敗');
-
+            if (!response.ok) {
+                const error = await response.json().catch(() => ({}));
+                throw new Error(error.message || '樣本資料儲存失敗');
+            }
             setForm(emptyForm);
-            setFile(null);
-            setPreview('');
-            setMessage('圖片已快速加入樣本庫，等待人工審核');
+            setMessage('雲端圖片已加入樣本庫，等待人工審核');
             await loadSamples();
         } catch (error) {
-            setMessage(error.message);
+            setMessage(error.message === 'Invalid URL' ? '請輸入完整的 Cloudinary 圖片網址' : error.message);
         } finally {
             setSaving(false);
         }
@@ -124,7 +99,10 @@ export default function ImageSamples() {
             const response = await fetch(`/api/image-samples/${id}/analyze`, {
                 method: 'POST',
             });
-            if (!response.ok) throw new Error('AI 圖片分析失敗');
+            if (!response.ok) {
+                const error = await response.json().catch(() => ({}));
+                throw new Error(error.message || 'AI 圖片分析失敗');
+            }
             const result = await response.json();
             setCandidates(current => ({
                 ...current,
@@ -172,17 +150,16 @@ export default function ImageSamples() {
                 </aside>
 
                 <section className="sample-admin-content">
-                    <p className="sample-page-intro">選擇圖片即可快速加入樣本庫，之後再進行人工審核。</p>
+                    <p className="sample-page-intro">先將圖片上傳到 Cloudinary，再貼上圖片網址加入樣本庫；本系統只儲存網址。</p>
 
                     <form className="sample-form" onSubmit={createSample}>
-                <input type="file" accept="image/*" onChange={chooseFile} required/>
-                {preview && <img className="sample-upload-preview" src={preview} alt="圖片預覽"/>}
+                <label>Cloudinary 圖片網址<input name="imageUrl" type="url" value={form.imageUrl} onChange={updateForm} placeholder="https://res.cloudinary.com/你的雲端名稱/image/upload/圖片.jpg" required maxLength={500}/></label>
                 <input name="source" value={form.source} onChange={updateForm} placeholder="圖片來源"/>
                 <input name="licenseType" value={form.licenseType} onChange={updateForm} placeholder="授權類型"/>
                 <input name="productId" value={form.productId} onChange={updateForm} placeholder="關聯商品 ID" type="number"/>
                 <textarea name="licenseNote" value={form.licenseNote} onChange={updateForm} placeholder="授權備註"/>
                 <textarea name="aiDescription" value={form.aiDescription} onChange={updateForm} placeholder="AI 圖片描述（之後可自動產生）"/>
-                <button type="submit" disabled={saving}>{saving ? '上傳中…' : '快速新增樣本'}</button>
+                <button type="submit" disabled={saving}>{saving ? '儲存中…' : '快速新增樣本'}</button>
                     </form>
 
                     {message && <p className="sample-message">{message}</p>}

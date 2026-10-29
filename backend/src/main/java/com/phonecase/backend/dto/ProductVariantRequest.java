@@ -26,7 +26,6 @@ public class ProductVariantRequest {
     @DecimalMin(value = "0.0", message = "商品價格不可小於0")
     private BigDecimal price;
 
-    @NotNull(message = "商品數量不可為空")
     @Min(value = 0, message = "商品數量不可小於 0")
     private Integer stock;
 

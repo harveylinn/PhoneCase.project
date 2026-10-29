@@ -39,7 +39,7 @@ public class ProductVariantService {
         variant.setModel(request.getModel());
         variant.setColor(request.getColor());
         variant.setPrice(request.getPrice());
-        variant.setStock(request.getStock());
+        variant.setStock(request.getStock() == null ? 0 : request.getStock());
         variant.setSku(request.getSku());
         variant.setStatus(request.getStatus());
         variant.setTags(request.getTags());
@@ -85,7 +85,9 @@ public class ProductVariantService {
         existingVariant.setModel(request.getModel());
         existingVariant.setColor(request.getColor());
         existingVariant.setPrice(request.getPrice());
-        existingVariant.setStock(request.getStock());
+        if (request.getStock() != null) {
+            existingVariant.setStock(request.getStock());
+        }
         existingVariant.setSku(request.getSku());
         existingVariant.setStatus(request.getStatus());
         existingVariant.setTags(request.getTags());
