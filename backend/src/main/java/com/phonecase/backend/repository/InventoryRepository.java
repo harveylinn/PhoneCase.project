@@ -26,6 +26,19 @@ public interface InventoryRepository
             @Param("model") String model,
             @Param("color") String color);
 
+    // 新增單據沒有填品號時，以 品名 + 型號 + 顏色 查庫存的品號（只讀取，不鎖定）
+    @Query(value = """
+            SELECT product_no FROM inventory
+            WHERE product_name = :productName
+              AND model <=> :model
+              AND color <=> :color
+            LIMIT 1
+            """, nativeQuery = true)
+    Optional<String> findProductNo(
+            @Param("productName") String productName,
+            @Param("model") String model,
+            @Param("color") String color);
+
     List<Inventory> findAllByOrderByProductNameAscModelAscColorAsc();
 
     // 庫存異常報告：庫存數量低於安全庫存量，缺少數量多的排前面

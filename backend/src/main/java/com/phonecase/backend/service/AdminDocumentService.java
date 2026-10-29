@@ -330,7 +330,8 @@ public class AdminDocumentService {
     }
 
     // 品號：訂單、採購單、入庫單、出庫單為 product_no 欄位（varchar(50)、不可空白）
-    // 新增時必填；修改時沒有傳入就沿用原本的品號；庫存的品號為主鍵，不在這裡處理
+    // 新增時沒有傳入就以 品名 + 型號 + 顏色 從庫存找品號；修改時沒有傳入就沿用原本的品號
+    // 庫存的品號為主鍵，不在這裡處理
     private void applyProductNo(BaseDocument document, String productNo, boolean required) {
         if (document instanceof Inventory) {
             return;
@@ -339,12 +340,18 @@ public class AdminDocumentService {
         String no = trimToNull(productNo);
         if (no == null) {
             if (required) {
-                throw new ResponseStatusException(
-                        HttpStatus.BAD_REQUEST,
-                        "品號不可空白"
-                );
+                no = inventoryRepository.findProductNo(
+                                document.getProductName(), document.getModel(), document.getColor())
+                        .orElseThrow(() -> new ResponseStatusException(
+                                HttpStatus.BAD_REQUEST,
+                                "未填寫品號，且庫存中找不到對應品項（品名：" + document.getProductName()
+                                        + "、型號：" + Objects.toString(document.getModel(), "無")
+                                        + "、顏色：" + Objects.toString(document.getColor(), "無")
+                                        + "），請填寫品號或先在「庫存」新增該品項"
+                        ));
+            } else {
+                return;
             }
-            return;
         }
         if (no.length() > 50) {
             throw new ResponseStatusException(
