@@ -9,16 +9,21 @@ import org.springframework.stereotype.Service;
 import com.phonecase.backend.entity.Product;
 import org.springframework.web.server.ResponseStatusException;
 
+import java.util.List;
+
 @Service
 public class ProductVariantService {
 
     private final ProductRepository productRepository;
     private final ProductVariantRepository productVariantRepository;
+    private final ShopSyncService shopSyncService;
 
     public ProductVariantService(ProductVariantRepository productVariantRepository,
-                                 ProductRepository productRepository) {
+                                 ProductRepository productRepository,
+                                 ShopSyncService shopSyncService) {
         this.productVariantRepository = productVariantRepository;
         this.productRepository = productRepository;
+        this.shopSyncService = shopSyncService;
     }
 
     public ProductVariant addVariant(
@@ -52,7 +57,10 @@ public class ProductVariantService {
                         )
                 );
         variant.setProduct(product);
-        return productVariantRepository.save(variant);
+        ProductVariant saved = productVariantRepository.save(variant);
+        // 同步到後台庫存（品號 = SKU）
+        shopSyncService.syncVariant(saved.getId());
+        return saved;
     }
 
     public ProductVariant updateVariant(
@@ -91,7 +99,10 @@ public class ProductVariantService {
         existingVariant.setSku(request.getSku());
         existingVariant.setStatus(request.getStatus());
         existingVariant.setTags(request.getTags());
-        return productVariantRepository.save(existingVariant);
+        ProductVariant saved = productVariantRepository.save(existingVariant);
+        // 同步到後台庫存（品號 = SKU）
+        shopSyncService.syncVariant(saved.getId());
+        return saved;
     }
 
     private void validateStatus(String status) {
@@ -132,6 +143,8 @@ public class ProductVariantService {
             );
         }
         productVariantRepository.delete(existingVariant);
+        // 後台庫存保留紀錄，只清空上架狀態
+        shopSyncService.unlinkSkus(List.of(existingVariant.getSku()));
 
     }
 

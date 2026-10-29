@@ -1,46 +1,36 @@
-import React, { useState } from 'react';
-import {
-  Smartphone,
-  ChartLine,
-  CalendarCheck,
-  CalendarDays,
-  FolderCog,
-  Receipt,
-  ShoppingCart,
-  PackagePlus,
-  Truck,
-  TriangleAlert,
-  CircleAlert,
-  FileText,
-  X,
-  Search
-} from 'lucide-react';
+import React, { useEffect, useState } from 'react';
+import { Link } from 'react-router-dom';
+import { X, Search } from 'lucide-react';
 
-/* 本頁專用樣式（全部以 .adm 為前綴，避免影響其他頁面） */
-const adminStyles = `
+/* 後台專用樣式（全部以 .adm 為前綴，避免影響其他頁面），由 AdminLayout 載入 */
+export const adminStyles = `
 .adm {
-  --adm-bg: #f8fafc;
+  --adm-bg: #ffffff;
   --adm-card: #ffffff;
-  --adm-border: #e2e8f0;
-  --adm-border-soft: #f1f5f9;
-  --adm-text: #1e293b;
-  --adm-muted: #64748b;
-  --adm-faint: #94a3b8;
-  --adm-dark: #0f172a;
-  --adm-indigo: #4f46e5;
-  --adm-indigo-dark: #4338ca;
-  --adm-blue: #2563eb;
-  --adm-emerald: #059669;
-  --adm-amber: #d97706;
-  --adm-rose: #e11d48;
+  --adm-paper: #f5f2ed;
+  --adm-soft: #f7f9fb;
+  --adm-border: #e5eaf0;
+  --adm-border-soft: #eef1f4;
+  --adm-text: #1d3557;
+  --adm-navy: #122b50;
+  --adm-muted: #6d7b8c;
+  --adm-faint: #9aa5b1;
+  --adm-coral: #ff625d;
+  --adm-coral-dark: #e9504b;
+  --adm-coral-soft: #fff5f3;
+  --adm-warn: #b7791f;
+  --adm-warn-soft: #fdf6ea;
+  --adm-danger: #bd403d;
+  --adm-danger-soft: #fff0ee;
   min-height: 100vh;
   display: flex;
   flex-direction: column;
   width: 100%;
   background: var(--adm-bg);
   color: var(--adm-text);
+  font-family: "Noto Sans TC", "Microsoft JhengHei", Arial, sans-serif;
   font-size: 14px;
-  line-height: 1.5;
+  line-height: 1.6;
 }
 .adm *, .adm *::before, .adm *::after { box-sizing: border-box; }
 .adm h1, .adm h2, .adm h3, .adm h4, .adm p { margin: 0; }
@@ -48,48 +38,49 @@ const adminStyles = `
 .adm button { cursor: pointer; }
 .adm svg { flex-shrink: 0; }
 
-/* ---------- Header ---------- */
+/* ---------- Header（比照商城首頁 hero 區塊） ---------- */
 .adm-header {
-  position: sticky;
-  top: 0;
-  z-index: 30;
-  background: var(--adm-dark);
-  color: #fff;
-  box-shadow: 0 2px 6px rgba(15, 23, 42, 0.25);
+  width: 100%;
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: 32px 4% 0;
 }
 .adm-header-inner {
-  height: 64px;
-  padding: 0 24px;
   display: flex;
-  align-items: center;
+  align-items: flex-end;
   justify-content: space-between;
-  gap: 12px;
+  gap: 16px;
+  padding: 36px 44px;
+  border-radius: 18px;
+  background: linear-gradient(110deg, var(--adm-paper), #e9eef1);
 }
-.adm-brand { display: flex; align-items: center; gap: 12px; }
-.adm-brand-icon {
-  display: flex;
-  padding: 8px;
-  border-radius: 8px;
-  background: var(--adm-indigo);
+.adm-eyebrow {
+  display: block;
+  margin-bottom: 8px;
+  color: var(--adm-coral);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 3px;
 }
-.adm-brand h1 { font-size: 18px; font-weight: 700; line-height: 1.2; }
-.adm-brand p { font-size: 12px; color: var(--adm-faint); }
+.adm-brand h1 { color: var(--adm-navy); font-size: clamp(28px, 4vw, 40px); font-weight: 900; line-height: 1.2; }
+.adm-brand p { margin-top: 8px; color: var(--adm-muted); }
 .adm-status {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
-  padding: 6px 12px;
+  gap: 8px;
+  padding: 8px 16px;
+  border: 1px solid var(--adm-border);
   border-radius: 999px;
-  background: #1e293b;
-  color: #cbd5e1;
-  font-size: 12px;
+  background: #fff;
+  color: var(--adm-navy);
+  font-size: 13px;
   white-space: nowrap;
 }
 .adm-dot {
   width: 8px;
   height: 8px;
   border-radius: 50%;
-  background: #10b981;
+  background: #3aa66b;
   animation: adm-pulse 2s ease-in-out infinite;
 }
 @keyframes adm-pulse { 50% { opacity: 0.4; } }
@@ -98,7 +89,9 @@ const adminStyles = `
 .adm-main {
   flex: 1;
   width: 100%;
-  padding: 24px;
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: 24px 4% 64px;
   display: flex;
   flex-direction: column;
   gap: 24px;
@@ -112,53 +105,92 @@ const adminStyles = `
 .adm-card {
   background: var(--adm-card);
   border: 1px solid var(--adm-border);
-  border-radius: 12px;
-  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.05);
+  border-radius: 14px;
 }
-.adm-card-pad { padding: 20px; display: flex; flex-direction: column; }
+.adm-card-pad { padding: 24px 28px; display: flex; flex-direction: column; }
 .adm-card-head {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 8px;
-  padding-bottom: 12px;
-  margin-bottom: 16px;
-  border-bottom: 1px solid var(--adm-border-soft);
+  margin-bottom: 20px;
 }
-.adm-card-head h2 {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  font-size: 16px;
-  font-weight: 700;
-}
-.adm-hint { font-size: 12px; color: var(--adm-faint); }
+.adm-card-head h2 { color: var(--adm-navy); font-size: 22px; font-weight: 800; }
+.adm-hint { font-size: 13px; color: var(--adm-muted); }
 
 /* ---------- Sales stats ---------- */
 .adm-stats-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
-.adm-stat-box { border-radius: 8px; padding: 16px; border: 1px solid; }
-.adm-stat-box.indigo { background: #eef2ff; border-color: #e0e7ff; }
-.adm-stat-box.blue { background: #eff6ff; border-color: #dbeafe; }
+.adm-stat-box { border-radius: 12px; padding: 18px; border: 1px solid var(--adm-border); background: var(--adm-soft); }
+.adm-stat-box.today { background: var(--adm-coral-soft); border-color: #ffdcd9; }
 .adm-stat-head {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding-bottom: 8px;
-  margin-bottom: 8px;
-  border-bottom: 1px solid;
+  padding-bottom: 10px;
+  margin-bottom: 12px;
+  border-bottom: 1px solid var(--adm-border);
 }
-.indigo .adm-stat-head { border-color: #e0e7ff; color: #312e81; }
-.blue .adm-stat-head { border-color: #dbeafe; color: #1e3a8a; }
-.adm-stat-title { display: flex; align-items: center; gap: 6px; font-size: 14px; font-weight: 600; }
-.adm-stat-tag { font-size: 11px; font-weight: 500; padding: 2px 8px; border-radius: 4px; }
-.indigo .adm-stat-tag { background: #c7d2fe; color: #3730a3; }
-.blue .adm-stat-tag { background: #bfdbfe; color: #1e40af; }
-.adm-stat-items { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; font-size: 12px; }
+.adm-stat-box.today .adm-stat-head { border-color: #ffdcd9; }
+.adm-stat-title { color: var(--adm-navy); font-size: 15px; font-weight: 800; }
+.adm-stat-tag {
+  padding: 2px 10px;
+  border-radius: 999px;
+  background: #fff;
+  color: var(--adm-coral);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 1px;
+}
+.adm-stat-items { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; font-size: 12px; }
 .adm-stat-label { color: var(--adm-muted); }
-.adm-stat-value { font-size: 16px; font-weight: 700; }
-.adm-stat-best { font-size: 12px; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.indigo .adm-stat-best { color: var(--adm-indigo-dark); }
-.blue .adm-stat-best { color: #1d4ed8; }
+.adm-stat-value { color: var(--adm-navy); font-size: 20px; font-weight: 800; }
+.adm-stat-best { color: var(--adm-coral); font-size: 13px; font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* ---------- Sales trend ---------- */
+.adm-trend {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  margin-top: 16px;
+  padding: 18px;
+  border-radius: 12px;
+  border: 1px solid var(--adm-border);
+}
+.adm-trend-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 10px; }
+.adm-trend-sum { margin-left: 10px; color: var(--adm-muted); font-size: 12px; }
+.adm-trend-tabs { display: flex; gap: 4px; padding: 3px; border-radius: 999px; background: var(--adm-soft); }
+.adm-trend-tab {
+  padding: 4px 14px;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--adm-muted);
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+}
+.adm-trend-tab.is-active { background: #fff; color: var(--adm-coral); box-shadow: 0 1px 3px rgba(18, 43, 80, 0.12); }
+.adm-trend-chart { position: relative; flex: 1; display: flex; align-items: flex-end; min-height: 160px; }
+.adm-trend-chart svg { width: 100%; height: auto; display: block; overflow: visible; }
+.adm-trend-grid { stroke: var(--adm-border-soft); stroke-width: 1; }
+.adm-trend-axis { fill: var(--adm-faint); font-size: 11px; }
+.adm-trend-bar { fill: #ffb3af; transition: fill 0.15s; }
+.adm-trend-bar.is-hover { fill: var(--adm-coral); }
+.adm-trend-tip {
+  position: absolute;
+  top: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  background: var(--adm-navy);
+  color: #fff;
+  font-size: 12px;
+  white-space: nowrap;
+  pointer-events: none;
+}
+.adm-trend-tip strong { font-size: 12px; }
 
 /* ---------- Document ops ---------- */
 .adm-doc-list { display: flex; flex-direction: column; gap: 10px; }
@@ -167,12 +199,14 @@ const adminStyles = `
   align-items: center;
   justify-content: space-between;
   gap: 8px;
-  padding: 10px;
-  border-radius: 8px;
-  background: #f8fafc;
-  border: 1px solid var(--adm-border-soft);
+  padding: 12px 14px;
+  border-radius: 10px;
+  background: var(--adm-soft);
+  border: 1px solid transparent;
+  transition: border-color 0.15s, background-color 0.15s;
 }
-.adm-doc-name { display: flex; align-items: center; gap: 8px; min-width: 80px; font-size: 13px; font-weight: 500; color: #334155; }
+.adm-doc-row:hover { border-color: #ffdcd9; background: var(--adm-coral-soft); }
+.adm-doc-name { min-width: 80px; color: var(--adm-navy); font-size: 14px; font-weight: 700; }
 .adm-doc-btns { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 6px; }
 
 /* ---------- Buttons ---------- */
@@ -181,37 +215,29 @@ const adminStyles = `
   align-items: center;
   justify-content: center;
   gap: 6px;
-  padding: 4px 10px;
+  padding: 5px 14px;
   font-size: 12px;
-  font-weight: 500;
-  border-radius: 6px;
+  font-weight: 700;
+  border-radius: 999px;
   border: 1px solid transparent;
-  transition: background-color 0.15s, color 0.15s;
+  transition: background-color 0.15s, color 0.15s, border-color 0.15s;
   white-space: nowrap;
 }
-.adm-btn-lg { padding: 8px 16px; border-radius: 8px; }
-.adm-btn-white { background: #fff; color: #334155; border-color: #cbd5e1; }
-.adm-btn-white:hover { background: #f1f5f9; }
-.adm-btn-gray { background: #f1f5f9; color: #475569; }
-.adm-btn-gray:hover { background: #e2e8f0; }
-.adm-btn-dark { background: #1e293b; color: #fff; }
-.adm-btn-dark:hover { background: var(--adm-dark); }
-.adm-btn-indigo { background: var(--adm-indigo); color: #fff; }
-.adm-btn-indigo:hover { background: var(--adm-indigo-dark); }
-.adm-btn-emerald { background: var(--adm-emerald); color: #fff; }
-.adm-btn-emerald:hover { background: #047857; }
-.adm-btn-blue { background: var(--adm-blue); color: #fff; }
-.adm-btn-blue:hover { background: #1d4ed8; }
-.adm-btn-amber { background: var(--adm-amber); color: #fff; }
-.adm-btn-amber:hover { background: #b45309; }
-.adm-btn-rose { background: var(--adm-rose); color: #fff; }
-.adm-btn-rose:hover { background: #be123c; }
-.adm-btn-rose-soft { background: #fff1f2; color: var(--adm-rose); border-color: #fecdd3; }
-.adm-btn-rose-soft:hover { background: #ffe4e6; }
-.adm-btn-indigo-soft { background: #eef2ff; color: var(--adm-indigo); }
-.adm-btn-indigo-soft:hover { background: #e0e7ff; }
-.adm-btn-amber-soft { background: #fffbeb; color: #b45309; }
-.adm-btn-amber-soft:hover { background: #fef3c7; }
+.adm-btn-lg { padding: 10px 20px; border-radius: 8px; font-size: 14px; font-weight: 800; }
+.adm-btn-primary { background: var(--adm-coral); color: #fff; }
+.adm-btn-primary:hover { background: var(--adm-coral-dark); }
+.adm-btn-white { background: #fff; color: var(--adm-navy); border-color: var(--adm-border); }
+.adm-btn-white:hover { border-color: var(--adm-coral); color: var(--adm-coral); }
+.adm-btn-gray { background: #f1f3f5; color: var(--adm-muted); }
+.adm-btn-gray:hover { background: var(--adm-border); color: var(--adm-navy); }
+.adm-btn-dark { background: var(--adm-navy); color: #fff; }
+.adm-btn-dark:hover { background: #0b1d38; }
+.adm-btn-danger { background: var(--adm-danger); color: #fff; }
+.adm-btn-danger:hover { background: #a33532; }
+.adm-btn-danger-soft { background: #fff; color: var(--adm-danger); border-color: #f0bbb8; }
+.adm-btn-danger-soft:hover { background: var(--adm-danger-soft); }
+.adm-btn-soft { background: var(--adm-coral-soft); color: var(--adm-coral); border-color: #ffdcd9; }
+.adm-btn-soft:hover { background: #ffe9e6; }
 
 /* ---------- Report tables ---------- */
 .adm-section { overflow: hidden; }
@@ -221,43 +247,82 @@ const adminStyles = `
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  padding: 16px;
-  background: #fbfcfd;
+  padding: 22px 28px;
   border-bottom: 1px solid var(--adm-border);
 }
-.adm-section-title { display: flex; align-items: center; gap: 8px; }
-.adm-section-title h2 { font-size: 16px; font-weight: 700; }
-.adm-section-title p { font-size: 12px; color: var(--adm-muted); }
-.adm-icon-badge { display: flex; padding: 6px; border-radius: 8px; }
-.adm-icon-badge.amber { background: #fef3c7; color: #b45309; }
-.adm-icon-badge.rose { background: #ffe4e6; color: #be123c; }
-.adm-pill { font-size: 12px; font-weight: 500; padding: 4px 10px; border-radius: 999px; border: 1px solid; }
-.adm-pill.amber { background: #fffbeb; color: #b45309; border-color: #fde68a; }
-.adm-pill.rose { background: #fff1f2; color: #be123c; border-color: #fecdd3; }
-.adm-table-wrap { overflow-x: auto; }
-.adm-table { width: 100%; border-collapse: collapse; text-align: left; font-size: 12px; }
+.adm-section-title h2 { color: var(--adm-navy); font-size: 22px; font-weight: 800; }
+.adm-section-title p { margin-top: 2px; font-size: 13px; color: var(--adm-muted); }
+.adm-pill { font-size: 12px; font-weight: 700; padding: 5px 14px; border-radius: 999px; border: 1px solid; }
+.adm-pill.warn { background: var(--adm-warn-soft); color: var(--adm-warn); border-color: #f1dcb4; }
+.adm-pill.danger { background: var(--adm-danger-soft); color: var(--adm-danger); border-color: #f0bbb8; }
+.adm-table-wrap { overflow: auto; max-height: 480px; }
+.adm-table-wrap .adm-table th { position: sticky; top: 0; z-index: 1; }
+.adm-table { width: 100%; border-collapse: collapse; text-align: left; font-size: 13px; }
 .adm-table th {
   padding: 12px;
-  background: #f1f5f9;
-  color: #475569;
-  font-weight: 600;
+  background: #fff;
+  color: var(--adm-muted);
+  font-size: 12px;
+  font-weight: 700;
   white-space: nowrap;
   border-bottom: 1px solid var(--adm-border);
 }
-.adm-table td { padding: 10px 12px; color: #334155; border-bottom: 1px solid var(--adm-border-soft); }
-.adm-table tbody tr:hover { background: #f8fafc; }
+.adm-table td { padding: 12px; color: var(--adm-text); border-bottom: 1px solid var(--adm-border-soft); }
+.adm-table tbody tr:hover { background: var(--adm-soft); }
 .adm-table .c { text-align: center; }
 .adm-table .r { text-align: right; }
-.adm-table .mono { font-family: ui-monospace, Consolas, monospace; font-weight: 500; color: var(--adm-indigo); }
-.adm-empty { padding: 16px; text-align: center; color: var(--adm-faint); }
+.adm-table .mono { font-family: ui-monospace, Consolas, monospace; font-weight: 600; color: var(--adm-navy); }
+.adm-empty { padding: 32px 16px; text-align: center; color: var(--adm-muted); }
+
+/* ---------- Header links / sync status ---------- */
+.adm-header-side { display: flex; flex-direction: column; align-items: flex-end; gap: 12px; }
+.adm-links { display: flex; gap: 16px; font-size: 13px; font-weight: 700; }
+.adm-links a { color: var(--adm-navy); text-decoration: none; }
+.adm-links a:hover { color: var(--adm-coral); }
+.adm-status.syncing .adm-dot { background: #e0a43a; }
+.adm-status.failed .adm-dot { background: var(--adm-danger); animation: none; }
+
+/* ---------- CRM ---------- */
+.adm-input.adm-crm-search { width: min(300px, 100%); }
+.adm-crm-tiles {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 12px;
+  padding: 20px 28px 0;
+}
+.adm-crm-tile { padding: 14px 16px; border-radius: 12px; background: var(--adm-soft); }
+.adm-crm-tile span { display: block; color: var(--adm-muted); font-size: 12px; }
+.adm-crm-tile strong { color: var(--adm-navy); font-size: 22px; font-weight: 800; }
+.adm-crm-tile small { margin-left: 2px; color: var(--adm-muted); font-size: 12px; font-weight: 600; }
+.adm-crm-tabs { display: flex; gap: 8px; overflow-x: auto; padding: 18px 28px; border-bottom: 1px solid var(--adm-border); }
+.adm-crm-tab {
+  flex: 0 0 auto;
+  padding: 7px 16px;
+  border: 1px solid var(--adm-border);
+  border-radius: 999px;
+  background: #fff;
+  color: var(--adm-navy);
+  font-size: 13px;
+}
+.adm-crm-tab span { margin-left: 4px; color: var(--adm-faint); font-size: 12px; }
+.adm-crm-tab:hover, .adm-crm-tab.is-active { border-color: var(--adm-coral); background: var(--adm-coral); color: #fff; }
+.adm-crm-tab:hover span, .adm-crm-tab.is-active span { color: #ffe1df; }
+.adm-sub { display: block; color: var(--adm-faint); font-size: 11px; }
+.adm-tag { display: inline-block; padding: 2px 10px; border-radius: 999px; font-size: 12px; font-weight: 700; white-space: nowrap; }
+.adm-tag.vip { background: var(--adm-coral); color: #fff; }
+.adm-tag.regular { background: #eef2f7; color: var(--adm-navy); }
+.adm-tag.new { background: #eaf7ef; color: #247341; }
+.adm-tag.dormant { background: var(--adm-warn-soft); color: var(--adm-warn); }
+.adm-tag.none { background: #f1f3f5; color: var(--adm-muted); }
+.adm-tag.ok { background: #eaf7ef; color: #247341; }
+.adm-tag.off { background: var(--adm-danger-soft); color: var(--adm-danger); }
 
 /* ---------- Footer ---------- */
 .adm-footer {
-  padding: 16px;
+  padding: 24px 16px;
   text-align: center;
   font-size: 12px;
   color: var(--adm-muted);
-  background: #fff;
   border-top: 1px solid var(--adm-border);
 }
 
@@ -270,43 +335,42 @@ const adminStyles = `
   align-items: center;
   justify-content: center;
   padding: 16px;
-  background: rgba(15, 23, 42, 0.5);
-  backdrop-filter: blur(4px);
+  background: rgba(18, 43, 80, 0.35);
+  backdrop-filter: blur(3px);
 }
-.adm-overlay.top { z-index: 50; background: rgba(2, 6, 23, 0.6); }
+.adm-overlay.top { z-index: 50; background: rgba(18, 43, 80, 0.5); }
 .adm-modal {
   width: 100%;
-  max-width: 672px;
+  max-width: 680px;
   max-height: 90vh;
   display: flex;
   flex-direction: column;
   background: #fff;
   border: 1px solid var(--adm-border);
-  border-radius: 12px;
-  box-shadow: 0 20px 40px rgba(15, 23, 42, 0.25);
+  border-radius: 18px;
+  box-shadow: 0 18px 60px rgba(18, 43, 80, 0.18);
 }
 .adm-modal-head {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 16px;
-  border-bottom: 1px solid var(--adm-border-soft);
+  padding: 20px 24px;
+  border-bottom: 1px solid var(--adm-border);
 }
-.adm-modal-head h3 { display: flex; align-items: center; gap: 8px; font-size: 16px; font-weight: 700; }
-.adm-close { display: flex; padding: 4px; border: 0; background: none; color: var(--adm-faint); }
-.adm-close:hover { color: #475569; }
-.adm-modal-body { flex: 1; overflow-y: auto; padding: 16px; display: flex; flex-direction: column; gap: 16px; }
+.adm-modal-head h3 { color: var(--adm-navy); font-size: 20px; font-weight: 800; }
+.adm-close { display: flex; padding: 4px; border: 0; border-radius: 6px; background: none; color: var(--adm-muted); }
+.adm-close:hover { color: var(--adm-coral); }
+.adm-modal-body { flex: 1; overflow-y: auto; padding: 20px 24px; display: flex; flex-direction: column; gap: 16px; }
 .adm-notice {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 8px;
-  padding: 12px;
+  padding: 12px 16px;
   border-radius: 8px;
-  background: #eef2ff;
-  border: 1px solid #e0e7ff;
-  color: #3730a3;
-  font-size: 12px;
+  background: var(--adm-paper);
+  color: var(--adm-navy);
+  font-size: 13px;
 }
 .adm-notice-time {
   font-family: ui-monospace, Consolas, monospace;
@@ -314,83 +378,86 @@ const adminStyles = `
   padding: 2px 8px;
   border-radius: 4px;
   background: #fff;
-  border: 1px solid #c7d2fe;
+  color: var(--adm-muted);
 }
-.adm-form { display: flex; flex-direction: column; gap: 12px; }
-.adm-form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; font-size: 12px; }
-.adm-label { display: block; margin-bottom: 4px; font-weight: 500; color: #334155; }
+.adm-form { display: flex; flex-direction: column; gap: 16px; }
+.adm-form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px 16px; font-size: 13px; }
+.adm-label { display: block; margin-bottom: 6px; font-weight: 700; color: var(--adm-navy); }
 .adm-input,
 .adm-select {
   width: 100%;
-  padding: 6px 10px;
-  font-size: 12px;
+  padding: 10px 12px;
+  font-size: 13px;
   color: var(--adm-text);
   background: #fff;
-  border: 1px solid #cbd5e1;
-  border-radius: 6px;
+  border: 1px solid #ccd5df;
+  border-radius: 7px;
   outline: none;
 }
+.adm-input::placeholder { color: var(--adm-faint); }
 .adm-input:focus,
-.adm-select:focus { border-color: var(--adm-indigo); box-shadow: 0 0 0 2px rgba(79, 70, 229, 0.2); }
-.adm-input[readonly] { background: #f8fafc; color: var(--adm-muted); border-color: var(--adm-border); }
+.adm-select:focus { border-color: var(--adm-coral); box-shadow: 0 0 0 3px rgba(255, 98, 93, 0.15); }
+.adm-input[readonly] { background: var(--adm-soft); color: var(--adm-muted); border-color: var(--adm-border); }
 .adm-actions {
   display: flex;
   justify-content: flex-end;
   gap: 8px;
-  padding-top: 12px;
-  border-top: 1px solid var(--adm-border-soft);
+  padding-top: 16px;
+  border-top: 1px solid var(--adm-border);
 }
 .adm-search-bar { display: flex; align-items: center; gap: 8px; }
-.adm-search-bar .adm-input { flex: 1; padding: 8px 12px; border-radius: 8px; }
-.adm-search-bar .adm-select { width: auto; padding: 8px; border-radius: 8px; font-family: ui-monospace, Consolas, monospace; }
-.adm-result { border: 1px solid var(--adm-border); border-radius: 8px; overflow-x: auto; }
+.adm-search-bar .adm-input { flex: 1; }
+.adm-search-bar .adm-select { width: auto; font-family: ui-monospace, Consolas, monospace; }
+.adm-result { border: 1px solid var(--adm-border); border-radius: 12px; overflow-x: auto; }
 .adm-placeholder {
-  padding: 32px;
+  padding: 36px;
   text-align: center;
-  font-size: 12px;
-  color: var(--adm-faint);
-  border: 1px solid var(--adm-border);
-  border-radius: 8px;
+  font-size: 13px;
+  color: var(--adm-muted);
+  border: 1px dashed var(--adm-border);
+  border-radius: 14px;
 }
 .adm-detail {
   display: flex;
   flex-direction: column;
   gap: 12px;
-  padding: 16px;
-  font-size: 12px;
-  background: #f8fafc;
-  border: 1px solid var(--adm-border);
-  border-radius: 8px;
+  padding: 18px;
+  font-size: 13px;
+  background: var(--adm-soft);
+  border-radius: 12px;
 }
-.adm-detail h4 { padding-bottom: 8px; font-weight: 700; border-bottom: 1px solid var(--adm-border); }
+.adm-detail h4 { padding-bottom: 10px; color: var(--adm-navy); font-weight: 800; border-bottom: 1px solid var(--adm-border); }
 .adm-detail-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
 .adm-detail-label { display: block; color: var(--adm-muted); }
-.adm-detail-mono { font-family: ui-monospace, Consolas, monospace; font-weight: 600; }
+.adm-detail-mono { font-family: ui-monospace, Consolas, monospace; font-weight: 700; color: var(--adm-navy); }
 .adm-detail .adm-actions { border-top: 0; padding-top: 0; }
 
 /* ---------- Delete confirm ---------- */
 .adm-confirm {
   width: 100%;
   max-width: 448px;
-  padding: 24px;
+  padding: 28px;
   background: #fff;
-  border: 1px solid #ffe4e6;
-  border-radius: 12px;
-  box-shadow: 0 25px 50px rgba(15, 23, 42, 0.3);
+  border: 1px solid var(--adm-border);
+  border-radius: 18px;
+  box-shadow: 0 18px 60px rgba(18, 43, 80, 0.22);
 }
-.adm-confirm-head { display: flex; align-items: center; gap: 12px; margin-bottom: 12px; color: var(--adm-rose); }
-.adm-confirm-head .adm-icon-badge { padding: 8px; border-radius: 50%; background: #ffe4e6; }
-.adm-confirm-head h4 { font-size: 16px; font-weight: 700; color: var(--adm-text); }
-.adm-confirm p { margin-bottom: 16px; font-size: 12px; line-height: 1.7; color: #475569; }
-.adm-confirm strong { font-family: ui-monospace, Consolas, monospace; color: var(--adm-rose); }
+.adm-confirm h4 { margin-bottom: 12px; color: var(--adm-navy); font-size: 20px; font-weight: 800; }
+.adm-confirm p { margin-bottom: 20px; font-size: 13px; line-height: 1.8; color: var(--adm-muted); }
+.adm-confirm strong { font-family: ui-monospace, Consolas, monospace; color: var(--adm-danger); }
 
 /* ---------- RWD ---------- */
 @media (max-width: 1024px) {
   .adm-top-grid { grid-template-columns: 1fr; }
+  .adm-crm-tiles { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 }
 @media (max-width: 640px) {
-  .adm-header-inner, .adm-main { padding-left: 16px; padding-right: 16px; }
-  .adm-brand p { display: none; }
+  .adm-header, .adm-main { padding-left: 16px; padding-right: 16px; }
+  .adm-header-inner { flex-direction: column; align-items: flex-start; padding: 28px 22px; }
+  .adm-header-side { align-items: flex-start; }
+  .adm-crm-tiles { grid-template-columns: repeat(2, minmax(0, 1fr)); padding: 16px 18px 0; }
+  .adm-crm-tabs { padding: 14px 18px; }
+  .adm-card-pad, .adm-section-head { padding: 20px 18px; }
   .adm-stats-grid, .adm-form-grid, .adm-detail-grid { grid-template-columns: 1fr; }
   .adm-doc-row { flex-direction: column; align-items: flex-start; }
   .adm-doc-btns { justify-content: flex-start; }
@@ -398,9 +465,21 @@ const adminStyles = `
 }
 `;
 
+// 瀏覽器當地日期 yyyy-MM-dd（不用 toISOString，避免 UTC 時差造成日期少一天）
+export const getLocalDateString = () => {
+  const now = new Date();
+  const month = String(now.getMonth() + 1).padStart(2, '0');
+  const day = String(now.getDate()).padStart(2, '0');
+  return `${now.getFullYear()}-${month}-${day}`;
+};
+
+export const formatNumber = (value) => Number(value || 0).toLocaleString();
+
 const emptyForm = {
   orderNo: '',
   productName: '',
+  productCode: '',
+  brand: '',
   color: '',
   model: '',
   quantity: 1,
@@ -423,6 +502,19 @@ export default function App() {
 
   const [selectedItem, setSelectedItem] = useState(null);
   const [pendingDeleteId, setPendingDeleteId] = useState('');
+
+  // 單據新增、修改、刪除成功後遞增，讓銷售統計重新讀取
+  const [statsVersion, setStatsVersion] = useState(0);
+  const refreshStats = () => setStatsVersion((version) => version + 1);
+
+  // 開啟後台時先同步商城資料（商品規格 → 庫存、商城訂單 → 訂單），完成後重新讀取各區塊
+  const [syncState, setSyncState] = useState('syncing');
+  useEffect(() => {
+    fetch('/api/admin/sync', { method: 'POST' })
+      .then((response) => setSyncState(response.ok ? 'done' : 'failed'))
+      .catch(() => setSyncState('failed'))
+      .finally(refreshStats);
+  }, []);
 
   const openDocModal = (type, action) => {
     setCurrentType(type);
@@ -449,11 +541,20 @@ export default function App() {
     setPendingDeleteId('');
   };
 
+  // 讀取後端回傳的錯誤訊息，例如「單號已存在」「庫存不足」
+  const getErrorMessage = async (response) => {
+    const err = await response.json().catch(() => ({}));
+    return err.message || Object.values(err).join('、') || `HTTP ${response.status}`;
+  };
+
   const handleCreateSubmit = async (e) => {
     e.preventDefault();
     const payload = {
+      docType: currentType,
       orderNo: formData.orderNo,
       productName: formData.productName,
+      productNo: formData.productCode,
+      brand: formData.brand,
       color: formData.color,
       model: formData.model,
       quantity: Number(formData.quantity) || 0,
@@ -462,7 +563,7 @@ export default function App() {
     };
 
     try {
-      const response = await fetch('http://localhost:8080/api/orders', {
+      const response = await fetch('/api/admin/documents', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload)
@@ -470,12 +571,13 @@ export default function App() {
 
       if (response.ok) {
         alert(`【${currentType}】新增成功並寫入資料庫！`);
+        refreshStats();
         closeMainModal();
       } else {
-        alert('新增失敗，請檢查 Java 後端或 Console 訊息');
+        alert(`新增失敗：${await getErrorMessage(response)}`);
       }
     } catch (error) {
-      console.error('Error creating order:', error);
+      console.error('Error creating document:', error);
       alert('無法連線至 Java 後端 (http://localhost:8080)');
     }
   };
@@ -483,7 +585,7 @@ export default function App() {
   const handleSearch = async () => {
     try {
       const response = await fetch(
-        `http://localhost:8080/api/orders/search?keyword=${encodeURIComponent(
+        `/api/admin/documents/search?docType=${encodeURIComponent(currentType)}&keyword=${encodeURIComponent(
           searchKeyword
         )}&operator=${encodeURIComponent(searchOperator)}`
       );
@@ -492,57 +594,55 @@ export default function App() {
         setSearchResults(data);
       } else {
         setSearchResults([]);
+        alert(`查詢失敗：${await getErrorMessage(response)}`);
       }
     } catch (error) {
-      console.error('Error searching orders:', error);
-      setSearchResults([
-        {
-          orderNo: searchKeyword || '2609190001',
-          productName: '防摔手機殼-黑色-iPhone15',
-          quantity: 10,
-          unitPrice: 490,
-          totalPrice: 4900,
-          customerName: '王小明'
-        }
-      ]);
+      console.error('Error searching documents:', error);
+      setSearchResults([]);
+      alert('無法連線至 Java 後端，查詢失敗');
     }
     setHasSearched(true);
   };
 
   const handleUpdateSubmit = async (item) => {
     try {
-      const response = await fetch(`http://localhost:8080/api/orders/${item.orderNo}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(item)
-      });
+      const response = await fetch(
+        `/api/admin/documents/${encodeURIComponent(item.orderNo)}?docType=${encodeURIComponent(currentType)}`,
+        {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(item)
+        }
+      );
       if (response.ok) {
         alert(`單據 ${item.orderNo} 已成功修改並傳送至資料庫！`);
         setSelectedItem(null);
+        refreshStats();
         handleSearch();
       } else {
-        alert('修改失敗！');
+        alert(`修改失敗：${await getErrorMessage(response)}`);
       }
     } catch (error) {
-      console.error('Error updating order:', error);
-      alert('無法連線至 Java 後端，模擬更新成功');
-      setSelectedItem(null);
+      console.error('Error updating document:', error);
+      alert('無法連線至 Java 後端，更新失敗');
     }
   };
 
   const executeDelete = async () => {
     try {
-      const response = await fetch(`http://localhost:8080/api/orders/${pendingDeleteId}`, {
-        method: 'DELETE'
-      });
+      const response = await fetch(
+        `/api/admin/documents/${encodeURIComponent(pendingDeleteId)}?docType=${encodeURIComponent(currentType)}`,
+        { method: 'DELETE' }
+      );
       if (response.ok) {
-        alert(`單據 ${pendingDeleteId} 已傳回資料庫並成功刪除！`);
+        alert(`單據 ${pendingDeleteId} 已成功從資料庫刪除！`);
+        refreshStats();
       } else {
-        alert(`單據 ${pendingDeleteId} 刪除成功（測試流程）！`);
+        alert(`單據 ${pendingDeleteId} 刪除失敗：${await getErrorMessage(response)}`);
       }
     } catch (error) {
-      console.error('Error deleting order:', error);
-      alert(`單據 ${pendingDeleteId} 已傳回資料庫並順利刪除！`);
+      console.error('Error deleting document:', error);
+      alert('無法連線至 Java 後端，刪除失敗');
     } finally {
       closeDeleteConfirm();
       closeMainModal();
@@ -550,23 +650,26 @@ export default function App() {
   };
 
   return (
-    <div className="adm">
-      <style>{adminStyles}</style>
-      <Header />
+    <>
+      <AdminPageTitle title="Dashboard">
+        <span className={`adm-status ${syncState}`}>
+          <span className="adm-dot"></span>
+          {syncLabels[syncState]}
+        </span>
+      </AdminPageTitle>
 
       <main className="adm-main">
+        <OverviewSection refreshKey={statsVersion} />
+
         <div className="adm-top-grid">
-          <SalesStatsCard />
+          <SalesStatsCard refreshKey={statsVersion} />
           <DocumentOpsCard onOpenModal={openDocModal} />
         </div>
 
-        <InventoryReportTable />
-        <OrderReportTable />
+        <CrmSection refreshKey={statsVersion} />
+        <InventoryReportTable refreshKey={statsVersion} />
+        <OrderReportTable refreshKey={statsVersion} />
       </main>
-
-      <footer className="adm-footer">
-        Phonecase Enterprise ERP &amp; Inventory Management System &copy; 2026. All rights reserved.
-      </footer>
 
       {mainModalOpen && (
         <MainModal
@@ -597,120 +700,387 @@ export default function App() {
           onConfirm={executeDelete}
         />
       )}
-    </div>
+    </>
   );
 }
 
-function Header() {
+const syncLabels = {
+  syncing: '同步商城資料中…',
+  done: '已同步商城資料',
+  failed: '商城資料同步失敗'
+};
+
+// 各後台分頁共用的標題列（比照設計稿：左側大標題，右側放狀態或操作）
+export function AdminPageTitle({ title, desc, children }) {
   return (
-    <header className="adm-header">
-      <div className="adm-header-inner">
-        <div className="adm-brand">
-          <div className="adm-brand-icon">
-            <Smartphone size={20} />
-          </div>
-          <div>
-            <h1>Phonecase 管理系統</h1>
-            <p>React + Spring Boot 商品庫存與單據儀表板</p>
-          </div>
-        </div>
-        <span className="adm-status">
-          <span className="adm-dot"></span>
-          系統就緒 (React 模式)
-        </span>
+    <header className="adm-page-title">
+      <div>
+        <h1>{title}</h1>
+        {desc && <p>{desc}</p>}
       </div>
+      {children && <div className="adm-page-title-side">{children}</div>}
     </header>
   );
 }
 
-function StatBox({ color, icon, title, tag, prefix }) {
+// 商城訂單狀態（order.order_status）顯示文字
+export const orderStatusLabels = {
+  PENDING_PAYMENT: '未結帳',
+  PENDING_SHIPMENT: '待出貨',
+  PAID: '已付款',
+  SHIPPED: '已出貨',
+  COMPLETED: '已完成',
+  CANCELLED: '已取消'
+};
+
+export const orderStatusClass = {
+  PENDING_PAYMENT: 'warn',
+  PENDING_SHIPMENT: 'new',
+  PAID: 'new',
+  SHIPPED: 'regular',
+  COMPLETED: 'ok',
+  CANCELLED: 'off'
+};
+
+// Dashboard 上方總覽：今日訂單、本月營業額、商品數、會員數，以及最近 5 筆商城訂單
+function OverviewSection({ refreshKey }) {
+  const [overview, setOverview] = useState(null);
+  const [error, setError] = useState(false);
+
+  useEffect(() => {
+    fetch(`/api/admin/overview?date=${getLocalDateString()}`)
+      .then((response) => {
+        if (!response.ok) {
+          throw new Error(`HTTP ${response.status}`);
+        }
+        return response.json();
+      })
+      .then((data) => {
+        setOverview(data);
+        setError(false);
+      })
+      .catch((err) => {
+        console.error('Error loading overview:', err);
+        setOverview(null);
+        setError(true);
+      });
+  }, [refreshKey]);
+
+  const kpis = [
+    ['今日訂單', overview && formatNumber(overview.todayOrders)],
+    ['本月營業額', overview && `NT$${formatNumber(overview.monthRevenue)}`],
+    ['商品數', overview && formatNumber(overview.productCount)],
+    ['會員數', overview && formatNumber(overview.memberCount)]
+  ];
+
   return (
-    <div className={`adm-stat-box ${color}`}>
+    <>
+      <div className="adm-kpis">
+        {kpis.map(([label, value]) => (
+          <div key={label} className="adm-kpi">
+            <span>{label}</span>
+            <strong>{value ?? '-'}</strong>
+          </div>
+        ))}
+      </div>
+
+      <section className="adm-recent">
+        <div className="adm-recent-head">
+          <h2>最近訂單</h2>
+          <Link to="/admin/orders">查看所有訂單</Link>
+        </div>
+        <table className="adm-table adm-recent-table">
+          <thead>
+            <tr>
+              <th>訂單編號</th>
+              <th>會員</th>
+              <th className="r">金額</th>
+              <th>狀態</th>
+            </tr>
+          </thead>
+          <tbody>
+            {(overview?.recentOrders || []).length > 0 ? (
+              overview.recentOrders.map((order) => (
+                <tr key={order.id}>
+                  <td className="mono">#{order.orderNumber}</td>
+                  <td>{order.memberName || order.receiverName || '-'}</td>
+                  <td className="r">NT${formatNumber(order.totalAmount)}</td>
+                  <td>
+                    <span className={`adm-tag ${orderStatusClass[order.orderStatus] || ''}`}>
+                      {orderStatusLabels[order.orderStatus] || order.orderStatus}
+                    </span>
+                  </td>
+                </tr>
+              ))
+            ) : (
+              <tr>
+                <td colSpan={4} className="adm-empty">
+                  {error ? '無法取得訂單資料' : '目前沒有訂單'}
+                </td>
+              </tr>
+            )}
+          </tbody>
+        </table>
+      </section>
+    </>
+  );
+}
+
+function StatBox({ variant, title, tag, prefix, data }) {
+  // 銷售數量相同的最佳單品全部列出
+  const bestSellers = (data?.bestProducts || []).map(
+    (product) => `${product.productName}（${formatNumber(data.bestQuantity)} 個）`
+  );
+
+  return (
+    <div className={`adm-stat-box ${variant}`}>
       <div className="adm-stat-head">
-        <span className="adm-stat-title">
-          {icon} {title}
-        </span>
+        <span className="adm-stat-title">{title}</span>
         <span className="adm-stat-tag">{tag}</span>
       </div>
       <div className="adm-stat-items">
         <div>
           <p className="adm-stat-label">{prefix}銷售金額</p>
-          <p className="adm-stat-value">-</p>
+          <p className="adm-stat-value">{data ? `$${formatNumber(data.amount)}` : '-'}</p>
         </div>
         <div>
           <p className="adm-stat-label">{prefix}銷售數量</p>
-          <p className="adm-stat-value">-</p>
+          <p className="adm-stat-value">{data ? formatNumber(data.quantity) : '-'}</p>
         </div>
         <div>
           <p className="adm-stat-label">{prefix}訂單數量</p>
-          <p className="adm-stat-value">-</p>
+          <p className="adm-stat-value">{data ? formatNumber(data.orders) : '-'}</p>
         </div>
         <div>
           <p className="adm-stat-label">最佳銷售單品</p>
-          <p className="adm-stat-best">-</p>
+          {bestSellers.length > 0 ? (
+            bestSellers.map((bestSeller) => (
+              <p key={bestSeller} className="adm-stat-best" title={bestSeller}>
+                {bestSeller}
+              </p>
+            ))
+          ) : (
+            <p className="adm-stat-best">-</p>
+          )}
         </div>
       </div>
     </div>
   );
 }
 
-function SalesStatsCard() {
+// 銷售統計只計算訂單，日期以瀏覽器當地日期送給後端
+function SalesStatsCard({ refreshKey }) {
+  const [stats, setStats] = useState(null);
+  const [statsDate, setStatsDate] = useState('');
+  const [loadFailed, setLoadFailed] = useState(false);
+
+  useEffect(() => {
+    const date = getLocalDateString();
+    setStatsDate(date);
+
+    fetch(`/api/admin/documents/stats?date=${date}`)
+      .then((response) => {
+        if (!response.ok) {
+          throw new Error(`HTTP ${response.status}`);
+        }
+        return response.json();
+      })
+      .then((data) => {
+        setStats(data);
+        setLoadFailed(false);
+      })
+      .catch((error) => {
+        console.error('Error loading sales stats:', error);
+        setStats(null);
+        setLoadFailed(true);
+      });
+  }, [refreshKey]);
+
   return (
     <div className="adm-card adm-card-pad">
       <div className="adm-card-head">
-        <h2>
-          <ChartLine size={18} color="#4f46e5" />
-          銷售統計
-        </h2>
-        <span className="adm-hint">即時數據待連線</span>
+        <h2>銷售統計</h2>
+        <span className="adm-hint">{loadFailed ? '無法取得銷售數據' : `統計日期：${statsDate}`}</span>
       </div>
 
       <div className="adm-stats-grid">
         <StatBox
-          color="indigo"
-          icon={<CalendarCheck size={16} color="#4f46e5" />}
+          variant="today"
           title="今日銷售數據"
           tag="Today"
           prefix="今日"
+          data={stats?.today}
         />
         <StatBox
-          color="blue"
-          icon={<CalendarDays size={16} color="#2563eb" />}
+          variant="month"
           title="本月銷售數據"
           tag="This Month"
           prefix="本月"
+          data={stats?.month}
         />
+      </div>
+
+      <SalesTrendChart refreshKey={refreshKey} />
+    </div>
+  );
+}
+
+// 銷售趨勢圖：每日 = 近 30 天、每月 = 近 12 個月，長條為銷售金額
+const trendModes = [
+  ['daily', '每日'],
+  ['monthly', '每月']
+];
+
+function SalesTrendChart({ refreshKey }) {
+  const [trend, setTrend] = useState(null);
+  const [loadFailed, setLoadFailed] = useState(false);
+  const [mode, setMode] = useState('daily');
+  const [hoverIndex, setHoverIndex] = useState(null);
+
+  useEffect(() => {
+    fetch(`/api/admin/documents/stats/trend?date=${getLocalDateString()}`)
+      .then((response) => {
+        if (!response.ok) {
+          throw new Error(`HTTP ${response.status}`);
+        }
+        return response.json();
+      })
+      .then((data) => {
+        setTrend(data);
+        setLoadFailed(false);
+      })
+      .catch((error) => {
+        console.error('Error loading sales trend:', error);
+        setTrend(null);
+        setLoadFailed(true);
+      });
+  }, [refreshKey]);
+
+  const points = trend?.[mode] || [];
+  const total = points.reduce((sum, point) => sum + point.amount, 0);
+  const maxAmount = Math.max(...points.map((point) => point.amount), 0);
+
+  // 座標軸上限取整，讓刻度好讀
+  const step = maxAmount > 0 ? 10 ** Math.floor(Math.log10(maxAmount)) : 1;
+  const axisMax = maxAmount > 0 ? Math.ceil(maxAmount / step) * step : 1000;
+  const ticks = [0, 0.5, 1].map((ratio) => axisMax * ratio);
+
+  const width = 640;
+  const height = 200;
+  const pad = { top: 12, right: 8, bottom: 26, left: 52 };
+  const plotW = width - pad.left - pad.right;
+  const plotH = height - pad.top - pad.bottom;
+  const slot = points.length ? plotW / points.length : plotW;
+  const barW = Math.max(2, slot * 0.62);
+  const y = (value) => pad.top + plotH - (value / axisMax) * plotH;
+  const shortLabel = (label) => (mode === 'daily' ? label.slice(5).replace('-', '/') : label.replace('-', '/'));
+  // 每日顯示約 6 個日期標籤，每月全部顯示
+  const labelEvery = mode === 'daily' ? 5 : 1;
+  const hovered = hoverIndex != null ? points[hoverIndex] : null;
+
+  return (
+    <div className="adm-trend">
+      <div className="adm-trend-head">
+        <div>
+          <span className="adm-stat-title">銷售趨勢</span>
+          <span className="adm-trend-sum">
+            {mode === 'daily' ? '近 30 天' : '近 12 個月'}合計 ${formatNumber(total)}
+          </span>
+        </div>
+        <div className="adm-trend-tabs">
+          {trendModes.map(([key, label]) => (
+            <button
+              key={key}
+              onClick={() => {
+                setMode(key);
+                setHoverIndex(null);
+              }}
+              className={`adm-trend-tab ${mode === key ? 'is-active' : ''}`}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <div className="adm-trend-chart">
+        {loadFailed ? (
+          <p className="adm-empty">無法取得銷售趨勢</p>
+        ) : (
+          <svg viewBox={`0 0 ${width} ${height}`} role="img" aria-label="銷售金額趨勢圖">
+            {ticks.map((tick) => (
+              <g key={tick}>
+                <line x1={pad.left} x2={width - pad.right} y1={y(tick)} y2={y(tick)} className="adm-trend-grid" />
+                <text x={pad.left - 8} y={y(tick) + 4} textAnchor="end" className="adm-trend-axis">
+                  {tick >= 10000 ? `${formatNumber(tick / 1000)}k` : formatNumber(tick)}
+                </text>
+              </g>
+            ))}
+            {points.map((point, index) => {
+              const x = pad.left + slot * index + (slot - barW) / 2;
+              const barH = pad.top + plotH - y(point.amount);
+              return (
+                <g
+                  key={point.label}
+                  onMouseEnter={() => setHoverIndex(index)}
+                  onMouseLeave={() => setHoverIndex(null)}
+                >
+                  <rect x={pad.left + slot * index} y={pad.top} width={slot} height={plotH} fill="transparent" />
+                  <rect
+                    x={x}
+                    y={pad.top + plotH - Math.max(barH, point.amount > 0 ? 2 : 0)}
+                    width={barW}
+                    height={Math.max(barH, point.amount > 0 ? 2 : 0)}
+                    rx={Math.min(3, barW / 2)}
+                    className={`adm-trend-bar ${hoverIndex === index ? 'is-hover' : ''}`}
+                  />
+                  {(index % labelEvery === 0 || index === points.length - 1) && (
+                    <text x={x + barW / 2} y={height - 8} textAnchor="middle" className="adm-trend-axis">
+                      {shortLabel(point.label)}
+                    </text>
+                  )}
+                </g>
+              );
+            })}
+          </svg>
+        )}
+        {hovered && (
+          <div
+            className="adm-trend-tip"
+            style={{
+              left: `${((pad.left + slot * (hoverIndex + 0.5)) / width) * 100}%`,
+              // 右半邊的長條提示框往左展開，避免超出卡片
+              transform: hoverIndex >= points.length / 2 ? 'translateX(calc(-100% - 8px))' : 'translateX(8px)'
+            }}
+          >
+            <strong>{hovered.label}</strong>
+            <span>銷售金額 ${formatNumber(hovered.amount)}</span>
+            <span>
+              銷售數量 {formatNumber(hovered.quantity)}・訂單 {formatNumber(hovered.orders)}
+            </span>
+          </div>
+        )}
       </div>
     </div>
   );
 }
 
 function DocumentOpsCard({ onOpenModal }) {
-  const docTypes = [
-    { name: '訂單', Icon: Receipt, iconColor: '#6366f1', btnClass: 'adm-btn-indigo' },
-    { name: '採購單', Icon: ShoppingCart, iconColor: '#10b981', btnClass: 'adm-btn-emerald' },
-    { name: '入庫單', Icon: PackagePlus, iconColor: '#3b82f6', btnClass: 'adm-btn-blue' },
-    { name: '出庫單', Icon: Truck, iconColor: '#f59e0b', btnClass: 'adm-btn-amber' }
-  ];
+  const docTypes = ['庫存', '採購單', '入庫單', '出庫單', '訂單'];
 
   return (
     <div className="adm-card adm-card-pad">
       <div className="adm-card-head">
-        <h2>
-          <FolderCog size={18} color="#334155" />
-          單據操作管理
-        </h2>
+        <h2>單據操作管理</h2>
         <span className="adm-hint">營運單據快捷動作</span>
       </div>
 
       <div className="adm-doc-list">
-        {docTypes.map(({ name, Icon, iconColor, btnClass }) => (
+        {docTypes.map((name) => (
           <div key={name} className="adm-doc-row">
-            <span className="adm-doc-name">
-              <Icon size={16} color={iconColor} /> {name}：
-            </span>
+            <span className="adm-doc-name">{name}</span>
             <div className="adm-doc-btns">
-              <button onClick={() => onOpenModal(name, '新增')} className={`adm-btn ${btnClass}`}>
+              <button onClick={() => onOpenModal(name, '新增')} className="adm-btn adm-btn-primary">
                 新增
               </button>
               <button onClick={() => onOpenModal(name, '查詢')} className="adm-btn adm-btn-white">
@@ -719,7 +1089,7 @@ function DocumentOpsCard({ onOpenModal }) {
               <button onClick={() => onOpenModal(name, '修改')} className="adm-btn adm-btn-white">
                 修改
               </button>
-              <button onClick={() => onOpenModal(name, '刪除')} className="adm-btn adm-btn-rose-soft">
+              <button onClick={() => onOpenModal(name, '刪除')} className="adm-btn adm-btn-danger-soft">
                 刪除
               </button>
             </div>
@@ -730,16 +1100,230 @@ function DocumentOpsCard({ onOpenModal }) {
   );
 }
 
-function ReportTable({ color, icon, title, desc, badge, columns }) {
+// 簡易 CRM：會員消費概況與分群（VIP / 一般 / 新客 / 非活躍 / 未下單）
+const crmSegments = ['全部', 'VIP', '一般', '新客', '非活躍', '未下單'];
+const segmentClass = { VIP: 'vip', 一般: 'regular', 新客: 'new', 非活躍: 'dormant', 未下單: 'none' };
+
+// manage 為 true 時（會員管理頁）多一欄操作，可停權 / 恢復會員
+export function CrmSection({ refreshKey, manage = false }) {
+  const [report, setReport] = useState(null);
+  const [error, setError] = useState(false);
+  const [segment, setSegment] = useState('全部');
+  const [keyword, setKeyword] = useState('');
+  const [reloadKey, setReloadKey] = useState(0);
+
+  const toggleStatus = async (customer) => {
+    const next = customer.status === 'ACTIVE' ? 'SUSPENDED' : 'ACTIVE';
+    const verb = next === 'ACTIVE' ? '恢復' : '停權';
+    if (!window.confirm(`確定要${verb}會員「${customer.name}」（${customer.customerCode}）嗎？`)) {
+      return;
+    }
+    const response = await fetch(`/api/admin/members/${customer.id}/status`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ status: next })
+    }).catch(() => null);
+    if (response?.ok) {
+      setReloadKey((key) => key + 1);
+    } else {
+      const err = await response?.json().catch(() => ({}));
+      alert(`${verb}失敗：${err?.message || '無法連線至後端'}`);
+    }
+  };
+
+  useEffect(() => {
+    fetch(`/api/admin/crm?date=${getLocalDateString()}`)
+      .then((response) => {
+        if (!response.ok) {
+          throw new Error(`HTTP ${response.status}`);
+        }
+        return response.json();
+      })
+      .then((data) => {
+        setReport(data);
+        setError(false);
+      })
+      .catch((err) => {
+        console.error('Error loading CRM:', err);
+        setReport(null);
+        setError(true);
+      });
+  }, [refreshKey, reloadKey]);
+
+  const summary = report?.summary;
+  const word = keyword.trim().toLowerCase();
+  const customers = (report?.customers || []).filter(
+    (customer) =>
+      (segment === '全部' || customer.segment === segment) &&
+      (!word ||
+        [customer.name, customer.account, customer.email, customer.phone, customer.customerCode].some((value) =>
+          (value || '').toLowerCase().includes(word)
+        ))
+  );
+  const countOf = (name) =>
+    name === '全部' ? report?.customers.length ?? 0 : (report?.customers || []).filter((c) => c.segment === name).length;
+
+  const tiles = [
+    ['會員總數', summary?.members, '位'],
+    ['有消費會員', summary?.buyers, '位'],
+    ['本月新會員', summary?.newMembers, '位'],
+    ['VIP 會員', summary?.vip, '位'],
+    ['平均客單價', summary ? `$${formatNumber(summary.averageOrder)}` : null, ''],
+    ['回購率', summary?.repeatRate, '%']
+  ];
+
   return (
     <section className="adm-card adm-section">
       <div className="adm-section-head">
         <div className="adm-section-title">
-          <div className={`adm-icon-badge ${color}`}>{icon}</div>
-          <div>
-            <h2>{title}</h2>
-            <p>{desc}</p>
+          <h2>會員 CRM</h2>
+          <p>依會員消費紀錄自動分群：VIP 累計消費滿 $30,000、非活躍為超過 60 天未下單、新客首購 30 天內</p>
+        </div>
+        <input
+          type="text"
+          placeholder="搜尋姓名、帳號、電話或會員代號"
+          value={keyword}
+          onChange={(e) => setKeyword(e.target.value)}
+          className="adm-input adm-crm-search"
+        />
+      </div>
+
+      <div className="adm-crm-tiles">
+        {tiles.map(([label, value, unit]) => (
+          <div key={label} className="adm-crm-tile">
+            <span>{label}</span>
+            <strong>
+              {value ?? '-'}
+              {value != null && unit && <small>{unit}</small>}
+            </strong>
           </div>
+        ))}
+      </div>
+
+      <div className="adm-crm-tabs">
+        {crmSegments.map((name) => (
+          <button
+            key={name}
+            onClick={() => setSegment(name)}
+            className={`adm-crm-tab ${segment === name ? 'is-active' : ''}`}
+          >
+            {name} <span>{countOf(name)}</span>
+          </button>
+        ))}
+      </div>
+
+      <div className="adm-table-wrap">
+        <table className="adm-table">
+          <thead>
+            <tr>
+              <th>會員代號</th>
+              <th>姓名</th>
+              <th>帳號 / Email</th>
+              <th>電話</th>
+              <th className="r">訂單數</th>
+              <th className="r">累計消費</th>
+              <th className="r">平均客單價</th>
+              <th>最近下單</th>
+              <th className="c">分群</th>
+              <th className="c">狀態</th>
+              {manage && <th className="c">操作</th>}
+            </tr>
+          </thead>
+          <tbody>
+            {customers.length > 0 ? (
+              customers.map((customer) => (
+                <tr key={customer.id}>
+                  <td className="mono">{customer.customerCode}</td>
+                  <td>
+                    <strong>{customer.name}</strong>
+                  </td>
+                  <td>
+                    {customer.account}
+                    <span className="adm-sub">{customer.email}</span>
+                  </td>
+                  <td>{customer.phone || '-'}</td>
+                  <td className="r">{formatNumber(customer.orders)}</td>
+                  <td className="r">${formatNumber(customer.spending)}</td>
+                  <td className="r">{customer.orders ? `$${formatNumber(customer.averageOrder)}` : '-'}</td>
+                  <td>
+                    {customer.lastOrderDate || '-'}
+                    {customer.daysSinceLastOrder != null && (
+                      <span className="adm-sub">{customer.daysSinceLastOrder} 天前</span>
+                    )}
+                  </td>
+                  <td className="c">
+                    <span className={`adm-tag ${segmentClass[customer.segment]}`}>{customer.segment}</span>
+                  </td>
+                  <td className="c">
+                    {customer.status === 'ACTIVE' ? (
+                      <span className="adm-tag ok">正常</span>
+                    ) : (
+                      <span className="adm-tag off">停權</span>
+                    )}
+                  </td>
+                  {manage && (
+                    <td className="c">
+                      <button
+                        onClick={() => toggleStatus(customer)}
+                        className={`adm-btn ${customer.status === 'ACTIVE' ? 'adm-btn-danger-soft' : 'adm-btn-soft'}`}
+                      >
+                        {customer.status === 'ACTIVE' ? '停權' : '恢復'}
+                      </button>
+                    </td>
+                  )}
+                </tr>
+              ))
+            ) : (
+              <tr>
+                <td colSpan={manage ? 11 : 10} className="adm-empty">
+                  {error ? '無法取得會員資料' : '沒有符合條件的會員'}
+                </td>
+              </tr>
+            )}
+          </tbody>
+        </table>
+      </div>
+    </section>
+  );
+}
+
+// 讀取異常報告資料，refreshKey 改變時重新讀取；失敗時 error 為 true
+function useReportData(url, refreshKey) {
+  const [rows, setRows] = useState([]);
+  const [error, setError] = useState(false);
+
+  useEffect(() => {
+    fetch(url)
+      .then((response) => {
+        if (!response.ok) {
+          throw new Error(`HTTP ${response.status}`);
+        }
+        return response.json();
+      })
+      .then((data) => {
+        setRows(data);
+        setError(false);
+      })
+      .catch((err) => {
+        console.error('Error loading report:', err);
+        setRows([]);
+        setError(true);
+      });
+  }, [url, refreshKey]);
+
+  return { rows, error };
+}
+
+const formatDateTime = (value) => (value ? value.replace('T', ' ').slice(0, 16) : '-');
+
+// rows：每列為 { key, cells }，cells 依 columns 的順序排列
+function ReportTable({ color, title, desc, badge, columns, rows = [], error = false }) {
+  return (
+    <section className="adm-card adm-section">
+      <div className="adm-section-head">
+        <div className="adm-section-title">
+          <h2>{title}</h2>
+          <p>{desc}</p>
         </div>
         <span className={`adm-pill ${color}`}>{badge}</span>
       </div>
@@ -755,11 +1339,23 @@ function ReportTable({ color, icon, title, desc, badge, columns }) {
             </tr>
           </thead>
           <tbody>
-            <tr>
-              <td colSpan={columns.length} className="adm-empty">
-                目前沒有資料
-              </td>
-            </tr>
+            {rows.length > 0 ? (
+              rows.map((row) => (
+                <tr key={row.key}>
+                  {row.cells.map((cell, index) => (
+                    <td key={columns[index][0]} className={columns[index][1]}>
+                      {cell ?? '-'}
+                    </td>
+                  ))}
+                </tr>
+              ))
+            ) : (
+              <tr>
+                <td colSpan={columns.length} className="adm-empty">
+                  {error ? '無法取得資料' : '目前沒有資料'}
+                </td>
+              </tr>
+            )}
           </tbody>
         </table>
       </div>
@@ -767,22 +1363,45 @@ function ReportTable({ color, icon, title, desc, badge, columns }) {
   );
 }
 
-function InventoryReportTable() {
+// 庫存異常：庫存數量低於安全庫存量
+function InventoryReportTable({ refreshKey }) {
+  const { rows, error } = useReportData('/api/admin/documents/alerts/inventory', refreshKey);
+
   return (
     <ReportTable
-      color="amber"
-      icon={<TriangleAlert size={18} />}
+      color="warn"
       title="庫存異常報告"
       desc="庫存量低於安全庫存值或數據異常項目"
-      badge="共 0 項警示"
+      badge={`共 ${rows.length} 項警示`}
+      error={error}
+      rows={rows.map((item, index) => ({
+        key: item.orderNo,
+        cells: [
+          index + 1,
+          item.productName,
+          <span className="mono">{item.orderNo}</span>,
+          item.brand,
+          item.color,
+          item.model,
+          formatNumber(item.quantity),
+          `$${formatNumber(item.unitPrice)}`,
+          `$${formatNumber(item.totalPrice)}`,
+          formatNumber(item.safetyStock),
+          formatDateTime(item.updatedAt),
+          item.quantity <= 0
+            ? '缺貨'
+            : `低於安全庫存 ${formatNumber(item.safetyStock - item.quantity)} 個`
+        ]
+      }))}
       columns={[
         ['項次', 'c'],
         ['品名'],
         ['品號'],
+        ['品牌'],
         ['顏色'],
         ['型號'],
         ['數量', 'r'],
-        ['單價', 'r'],
+        ['成本', 'r'],
         ['總計', 'r'],
         ['安全庫存量', 'r'],
         ['更新時間'],
@@ -792,18 +1411,42 @@ function InventoryReportTable() {
   );
 }
 
-function OrderReportTable() {
+// 訂單異常：訂單日期超過 3 天仍未出貨，日期以瀏覽器當地日期送給後端
+function OrderReportTable({ refreshKey }) {
+  const { rows, error } = useReportData(
+    `/api/admin/documents/alerts/orders?date=${getLocalDateString()}`,
+    refreshKey
+  );
+
   return (
     <ReportTable
-      color="rose"
-      icon={<CircleAlert size={18} />}
+      color="danger"
       title="訂單異常報告"
-      desc="付款卡關、缺貨延遲或資訊異常之訂單"
-      badge="共 0 筆異常"
+      desc="訂單日期超過三天仍未出貨之訂單"
+      badge={`共 ${rows.length} 筆異常`}
+      error={error}
+      rows={rows.map(({ order, orderDate, days }, index) => ({
+        key: order.orderNo,
+        cells: [
+          index + 1,
+          <span className="mono">{order.orderNo}</span>,
+          order.productName,
+          order.brand,
+          order.color,
+          order.model,
+          formatNumber(order.quantity),
+          `$${formatNumber(order.unitPrice)}`,
+          `$${formatNumber(order.totalPrice)}`,
+          order.customerName,
+          order.customerId,
+          `${orderDate} 下單，已 ${days} 天未出貨（${order.status}）`
+        ]
+      }))}
       columns={[
         ['項次', 'c'],
         ['訂單編號'],
         ['品名'],
+        ['品牌'],
         ['顏色'],
         ['型號'],
         ['數量', 'r'],
@@ -853,7 +1496,7 @@ function MainModal({
       <div className="adm-modal">
         <div className="adm-modal-head">
           <h3>
-            <FileText size={18} color="#4f46e5" /> {type} - {action}
+            {type} - {action}
           </h3>
           <button onClick={onClose} className="adm-close" aria-label="關閉">
             <X size={20} />
@@ -889,6 +1532,29 @@ function MainModal({
                     className="adm-input"
                   />
                 </FormField>
+                {/* 庫存的品號就是上方的主鍵，不需要另外填寫 */}
+                {type !== '庫存' && (
+                  <FormField label="品號">
+                    <input
+                      type="text"
+                      required
+                      placeholder="如：PC-IP15-BK"
+                      value={formData.productCode}
+                      onChange={updateField('productCode')}
+                      className="adm-input"
+                    />
+                  </FormField>
+                )}
+                <FormField label="品牌">
+                  <input
+                    type="text"
+                    required
+                    placeholder="如：Apple"
+                    value={formData.brand}
+                    onChange={updateField('brand')}
+                    className="adm-input"
+                  />
+                </FormField>
                 <FormField label="顏色">
                   <input
                     type="text"
@@ -915,7 +1581,7 @@ function MainModal({
                     className="adm-input"
                   />
                 </FormField>
-                <FormField label="單價 ($)">
+                <FormField label={type === '庫存' ? '成本 ($)' : '單價 ($)'}>
                   <input
                     type="number"
                     value={formData.unitPrice}
@@ -946,7 +1612,7 @@ function MainModal({
                 <button type="button" onClick={onClose} className="adm-btn adm-btn-lg adm-btn-gray">
                   取消
                 </button>
-                <button type="submit" className="adm-btn adm-btn-lg adm-btn-indigo">
+                <button type="submit" className="adm-btn adm-btn-lg adm-btn-primary">
                   儲存並匯入資料庫
                 </button>
               </div>
@@ -1002,7 +1668,7 @@ function MainModal({
                               {action === '查詢' && (
                                 <button
                                   onClick={() => setSelectedItem(item)}
-                                  className="adm-btn adm-btn-indigo-soft"
+                                  className="adm-btn adm-btn-soft"
                                 >
                                   檢視詳細資訊
                                 </button>
@@ -1010,7 +1676,7 @@ function MainModal({
                               {action === '修改' && (
                                 <button
                                   onClick={() => setSelectedItem(item)}
-                                  className="adm-btn adm-btn-amber-soft"
+                                  className="adm-btn adm-btn-soft"
                                 >
                                   修改數據並儲存
                                 </button>
@@ -1018,7 +1684,7 @@ function MainModal({
                               {action === '刪除' && (
                                 <button
                                   onClick={() => onOpenDelete(item.orderNo)}
-                                  className="adm-btn adm-btn-rose-soft"
+                                  className="adm-btn adm-btn-danger-soft"
                                 >
                                   選擇刪除
                                 </button>
@@ -1089,7 +1755,7 @@ function MainModal({
                       <button onClick={() => setSelectedItem(null)} className="adm-btn adm-btn-gray">
                         取消
                       </button>
-                      <button onClick={() => onUpdateSubmit(selectedItem)} className="adm-btn adm-btn-amber">
+                      <button onClick={() => onUpdateSubmit(selectedItem)} className="adm-btn adm-btn-primary">
                         儲存更新至資料庫
                       </button>
                     </div>
@@ -1108,12 +1774,7 @@ function DeleteConfirmModal({ targetId, onCancel, onConfirm }) {
   return (
     <div className="adm-overlay top">
       <div className="adm-confirm">
-        <div className="adm-confirm-head">
-          <div className="adm-icon-badge">
-            <TriangleAlert size={22} />
-          </div>
-          <h4>確認刪除單據？</h4>
-        </div>
+        <h4>確認刪除單據？</h4>
         <p>
           您確定要刪除單號 <strong>{targetId}</strong> 的這筆單據嗎？此動作將同步直接傳回資料庫刪除且無法復原。
         </p>
@@ -1121,7 +1782,7 @@ function DeleteConfirmModal({ targetId, onCancel, onConfirm }) {
           <button onClick={onCancel} className="adm-btn adm-btn-lg adm-btn-gray">
             取消
           </button>
-          <button onClick={onConfirm} className="adm-btn adm-btn-lg adm-btn-rose">
+          <button onClick={onConfirm} className="adm-btn adm-btn-lg adm-btn-danger">
             確定刪除
           </button>
         </div>

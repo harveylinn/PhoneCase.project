@@ -1,0 +1,487 @@
+package com.phonecase.backend.service;
+
+import com.phonecase.backend.dto.AdminDocumentRequest;
+import com.phonecase.backend.entity.*;
+import com.phonecase.backend.repository.*;
+import org.springframework.http.HttpStatus;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.server.ResponseStatusException;
+
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
+import java.time.format.DateTimeParseException;
+import java.time.temporal.ChronoUnit;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
+
+@Service
+public class AdminDocumentService {
+
+    private static final String SALES_ORDER = "訂單";
+    private static final String PURCHASE_ORDER = "採購單";
+    private static final String STOCK_IN = "入庫單";
+    private static final String STOCK_OUT = "出庫單";
+    private static final String INVENTORY = "庫存";
+
+    // 後台建立的訂單編號格式為 YYMMDDNNNN（商城同步的訂單為 商城訂單編號-明細序號，最長 40 碼）
+    private static final DateTimeFormatter ORDER_DATE_PREFIX = DateTimeFormatter.ofPattern("yyMMdd");
+    private static final int SALES_ORDER_NO_MAX_LENGTH = 40;
+
+    // 銷售統計回傳格式：today = 今日、month = 本月
+    public record SalesStats(SalesPeriod today, SalesPeriod month) {
+    }
+
+    // amount 銷售金額、quantity 銷售數量、orders 訂單數量
+    // bestQuantity 最佳銷售單品的銷售數量、bestProducts 最佳銷售單品（數量相同時全部列出）
+    public record SalesPeriod(long amount, long quantity, long orders,
+            long bestQuantity, List<BestProduct> bestProducts) {
+    }
+
+    public record BestProduct(String productNo, String productName) {
+    }
+
+    // 銷售趨勢：daily = 近 30 天、monthly = 近 12 個月（沒有訂單的日期、月份補 0）
+    private static final int TREND_DAYS = 30;
+    private static final int TREND_MONTHS = 12;
+    private static final DateTimeFormatter ORDER_MONTH_PREFIX = DateTimeFormatter.ofPattern("yyMM");
+
+    public record SalesTrend(List<TrendPoint> daily, List<TrendPoint> monthly) {
+    }
+
+    // label 顯示用日期（yyyy-MM-dd 或 yyyy-MM）
+    public record TrendPoint(String label, long amount, long quantity, long orders) {
+    }
+
+    // 訂單異常報告：訂單日期超過 3 天仍未出貨
+    private static final int ORDER_OVERDUE_DAYS = 3;
+    private static final List<String> SHIPPED_STATUSES = List.of("已出貨", "已完成", "已取消");
+
+    // order 訂單、orderDate 訂單日期（sales_order.order_date）、days 距今天數
+    public record OrderAlert(SalesOrder order, LocalDate orderDate, long days) {
+    }
+
+    private final SalesOrderRepository salesOrderRepository;
+    private final PurchaseOrderRepository purchaseOrderRepository;
+    private final StockInRepository stockInRepository;
+    private final StockOutRepository stockOutRepository;
+    private final InventoryRepository inventoryRepository;
+    private final InventoryService inventoryService;
+    private final ShopSyncService shopSyncService;
+
+    public AdminDocumentService(
+            SalesOrderRepository salesOrderRepository,
+            PurchaseOrderRepository purchaseOrderRepository,
+            StockInRepository stockInRepository,
+            StockOutRepository stockOutRepository,
+            InventoryRepository inventoryRepository,
+            InventoryService inventoryService,
+            ShopSyncService shopSyncService) {
+        this.salesOrderRepository = salesOrderRepository;
+        this.purchaseOrderRepository = purchaseOrderRepository;
+        this.stockInRepository = stockInRepository;
+        this.stockOutRepository = stockOutRepository;
+        this.inventoryRepository = inventoryRepository;
+        this.inventoryService = inventoryService;
+        this.shopSyncService = shopSyncService;
+    }
+
+    @Transactional
+    public BaseDocument createDocument(AdminDocumentRequest request) {
+        String docType = request.getDocType();
+        DocumentRepository<BaseDocument> repository = repositoryOf(docType);
+
+        String orderNo = requireOrderNo(docType, request.getOrderNo());
+        if (repository.existsByOrderNo(orderNo)) {
+            throw new ResponseStatusException(
+                    HttpStatus.CONFLICT,
+                    "單號已存在：" + orderNo
+            );
+        }
+
+        BaseDocument document = newDocument(docType);
+        document.setOrderNo(orderNo);
+        if (document instanceof SalesOrder salesOrder) {
+            salesOrder.setOrderDate(orderDateOf(orderNo));
+        }
+        applyRequest(document, request);
+        applyProductNo(document, request.getProductNo(), true);
+        applyReference(document, request.getRefNo(), true);
+        applyStock(docType, document.getProductName(), document.getModel(),
+                document.getColor(), document.getQuantity());
+        pushInventoryToShop(document);
+
+        return repository.save(document);
+    }
+
+    @Transactional(readOnly = true)
+    public List<BaseDocument> searchDocuments(String docType, String keyword, String operator) {
+        DocumentRepository<BaseDocument> repository = repositoryOf(docType);
+
+        if (keyword == null || keyword.isBlank()) {
+            return repository.findAllByOrderByOrderNoDesc();
+        }
+        String no = keyword.trim();
+
+        return switch (operator == null ? "=" : operator) {
+            case "=" -> repository.findByOrderNo(no).map(List::of).orElse(List.of());
+            case "%" -> repository.findByOrderNoContainingOrderByOrderNoDesc(no);
+            case ">=" -> repository.findByOrderNoGreaterThanEqualOrderByOrderNoAsc(no);
+            case "<=" -> repository.findByOrderNoLessThanEqualOrderByOrderNoDesc(no);
+            case ">" -> repository.findByOrderNoGreaterThanOrderByOrderNoAsc(no);
+            case "<" -> repository.findByOrderNoLessThanOrderByOrderNoDesc(no);
+            default -> throw new ResponseStatusException(
+                    HttpStatus.BAD_REQUEST,
+                    "不支援的搜尋條件：" + operator
+            );
+        };
+    }
+
+    @Transactional(readOnly = true)
+    public BaseDocument getDocument(String docType, String orderNo) {
+        return repositoryOf(docType)
+                .findByOrderNo(orderNo == null ? null : orderNo.trim())
+                .orElseThrow(() ->
+                        new ResponseStatusException(
+                                HttpStatus.NOT_FOUND,
+                                "找不到" + docType + "，單號" + orderNo
+                        )
+                );
+    }
+
+    // 入庫單、出庫單：同一品項只異動數量差額；換了品項則先撤銷舊品項再套用新品項
+    @Transactional
+    public BaseDocument updateDocument(String docType, String orderNo, AdminDocumentRequest request) {
+        BaseDocument existingDocument = getDocument(docType, orderNo);
+
+        String oldProductName = existingDocument.getProductName();
+        String oldModel = existingDocument.getModel();
+        String oldColor = existingDocument.getColor();
+        int oldQuantity = existingDocument.getQuantity();
+
+        applyRequest(existingDocument, request);
+        applyProductNo(existingDocument, request.getProductNo(), false);
+        applyReference(existingDocument, request.getRefNo(), false);
+
+        boolean sameItem = Objects.equals(oldProductName, existingDocument.getProductName())
+                && Objects.equals(oldModel, existingDocument.getModel())
+                && Objects.equals(oldColor, existingDocument.getColor());
+        if (sameItem) {
+            applyStock(docType, oldProductName, oldModel, oldColor,
+                    existingDocument.getQuantity() - oldQuantity);
+        } else {
+            applyStock(docType, oldProductName, oldModel, oldColor, -oldQuantity);
+            applyStock(docType, existingDocument.getProductName(), existingDocument.getModel(),
+                    existingDocument.getColor(), existingDocument.getQuantity());
+        }
+        pushInventoryToShop(existingDocument);
+
+        return repositoryOf(docType).save(existingDocument);
+    }
+
+    // 入庫單、出庫單：刪除時撤銷該單對庫存的影響
+    // 訂單、採購單：已被出庫單、入庫單引用時不可刪除（資料表外鍵）
+    @Transactional
+    public void deleteDocument(String docType, String orderNo) {
+        BaseDocument existingDocument = getDocument(docType, orderNo);
+        String no = existingDocument.getOrderNo();
+
+        if (existingDocument instanceof SalesOrder
+                && stockOutRepository.existsBySalesOrderNo(no)) {
+            throw new ResponseStatusException(
+                    HttpStatus.CONFLICT,
+                    "訂單 " + no + " 已有出庫單，請先刪除對應的出庫單"
+            );
+        }
+        if (existingDocument instanceof PurchaseOrder
+                && stockInRepository.existsByPurchaseNo(no)) {
+            throw new ResponseStatusException(
+                    HttpStatus.CONFLICT,
+                    "採購單 " + no + " 已有入庫單，請先刪除對應的入庫單"
+            );
+        }
+
+        if (existingDocument instanceof Inventory && shopSyncService.isShopSku(no)) {
+            throw new ResponseStatusException(
+                    HttpStatus.CONFLICT,
+                    "品號 " + no + " 為商城商品規格，請先在商品管理刪除該規格"
+            );
+        }
+
+        applyStock(docType, existingDocument.getProductName(), existingDocument.getModel(),
+                existingDocument.getColor(), -existingDocument.getQuantity());
+        repositoryOf(docType).delete(existingDocument);
+    }
+
+    // 銷售統計只計算訂單（sales_order），日期由前端依瀏覽器日期傳入
+    // 後台新增訂單的訂單日期：訂單編號前 6 碼為 YYMMDD 時取該日期，否則為現在時間
+    private LocalDateTime orderDateOf(String orderNo) {
+        if (orderNo.length() >= 6 && orderNo.substring(0, 6).chars().allMatch(Character::isDigit)) {
+            try {
+                return LocalDate.parse(orderNo.substring(0, 6), ORDER_DATE_PREFIX).atStartOfDay();
+            } catch (DateTimeParseException ignored) {
+                // 前 6 碼不是有效日期
+            }
+        }
+        return LocalDateTime.now();
+    }
+
+    @Transactional(readOnly = true)
+    public SalesStats getSalesStats(LocalDate date) {
+        LocalDate monthStart = date.withDayOfMonth(1);
+        return new SalesStats(
+                salesPeriodOf(date, date.plusDays(1)),
+                salesPeriodOf(monthStart, monthStart.plusMonths(1)));
+    }
+
+    // from（含）~ to（不含）
+    private SalesPeriod salesPeriodOf(LocalDate from, LocalDate to) {
+        SalesOrderRepository.SalesSummary summary =
+                salesOrderRepository.summarizeBetween(from, to);
+
+        List<SalesOrderRepository.BestSeller> bestSellers =
+                salesOrderRepository.findBestSellersBetween(from, to);
+
+        long bestQuantity = bestSellers.isEmpty() ? 0 : bestSellers.get(0).getTotalQuantity().longValue();
+        List<BestProduct> bestProducts = bestSellers.stream()
+                .map(best -> new BestProduct(best.getProductNo(), best.getProductName()))
+                .toList();
+
+        return new SalesPeriod(
+                summary.getAmount().longValue(),
+                summary.getQuantity().longValue(),
+                summary.getOrders().longValue(),
+                bestQuantity,
+                bestProducts);
+    }
+
+    // 銷售趨勢只計算訂單（sales_order），日期由前端依瀏覽器日期傳入
+    @Transactional(readOnly = true)
+    public SalesTrend getSalesTrend(LocalDate date) {
+        List<LocalDate> days = Stream.iterate(date.minusDays(TREND_DAYS - 1), day -> day.plusDays(1))
+                .limit(TREND_DAYS)
+                .toList();
+        List<LocalDate> months = Stream.iterate(date.withDayOfMonth(1).minusMonths(TREND_MONTHS - 1),
+                        month -> month.plusMonths(1))
+                .limit(TREND_MONTHS)
+                .toList();
+
+        return new SalesTrend(
+                trendOf(days, ORDER_DATE_PREFIX, "%y%m%d", DateTimeFormatter.ISO_LOCAL_DATE),
+                trendOf(months, ORDER_MONTH_PREFIX, "%y%m", DateTimeFormatter.ofPattern("yyyy-MM")));
+    }
+
+    // prefixFormat 與 sqlFormat 為同一種日期格式（Java / MySQL DATE_FORMAT 寫法）
+    private List<TrendPoint> trendOf(List<LocalDate> periods, DateTimeFormatter prefixFormat,
+            String sqlFormat, DateTimeFormatter labelFormat) {
+        String from = periods.get(0).format(prefixFormat);
+        String to = periods.get(periods.size() - 1).format(prefixFormat);
+
+        Map<String, SalesOrderRepository.SalesTrendRow> rows = salesOrderRepository
+                .summarizeTrend(sqlFormat, from, to).stream()
+                .collect(Collectors.toMap(SalesOrderRepository.SalesTrendRow::getPeriod, row -> row));
+
+        return periods.stream()
+                .map(period -> {
+                    SalesOrderRepository.SalesTrendRow row = rows.get(period.format(prefixFormat));
+                    String label = period.format(labelFormat);
+                    return row == null
+                            ? new TrendPoint(label, 0, 0, 0)
+                            : new TrendPoint(label, row.getAmount().longValue(),
+                                    row.getQuantity().longValue(), row.getOrders().longValue());
+                })
+                .toList();
+    }
+
+    // 庫存異常報告：庫存數量低於安全庫存量的品項全部列出
+    @Transactional(readOnly = true)
+    public List<Inventory> getInventoryAlerts() {
+        return inventoryRepository.findBelowSafetyStock();
+    }
+
+    // 訂單異常報告：訂單日期超過 3 天（早於 date - 3 天）且狀態不是已出貨、已完成、已取消
+    // 日期由前端依瀏覽器日期傳入
+    @Transactional(readOnly = true)
+    public List<OrderAlert> getOrderAlerts(LocalDate date) {
+        LocalDate cutoff = date.minusDays(ORDER_OVERDUE_DAYS);
+
+        return salesOrderRepository.findUnshippedBefore(cutoff, SHIPPED_STATUSES).stream()
+                .map(order -> {
+                    LocalDate orderDate = order.getOrderDate().toLocalDate();
+                    return new OrderAlert(order, orderDate, ChronoUnit.DAYS.between(orderDate, date));
+                })
+                .toList();
+    }
+
+    // quantity 為正數 = 套用單據，負數 = 撤銷單據
+    // 只有入庫單會增加庫存、只有出庫單會減少庫存；訂單、採購單、庫存本身不影響庫存
+    private void applyStock(String docType, String productName, String model, String color, int quantity) {
+        if (STOCK_IN.equals(docType)) {
+            inventoryService.changeQuantity(productName, model, color, quantity);
+        } else if (STOCK_OUT.equals(docType)) {
+            inventoryService.changeQuantity(productName, model, color, -quantity);
+        }
+    }
+
+    // 共用欄位，總計一律由後端以 數量 × 單價 計算
+    private void applyRequest(BaseDocument document, AdminDocumentRequest request) {
+        document.setProductName(request.getProductName().trim());
+        document.setBrand(trimToNull(request.getBrand()));
+        document.setColor(trimToNull(request.getColor()));
+        document.setModel(trimToNull(request.getModel()));
+        document.setQuantity(request.getQuantity());
+        document.setUnitPrice(request.getUnitPrice());
+        document.setTotalPrice(request.getQuantity() * request.getUnitPrice());
+        document.setCustomerName(trimToNull(request.getCustomerName()));
+        // 訂單的客戶名稱對應到會員時，自動帶入客戶代號（M + 會員 id）
+        if (document instanceof SalesOrder) {
+            document.setCustomerId(shopSyncService.findCustomerCode(document.getCustomerName()));
+        }
+    }
+
+    // 後台直接新增、修改「庫存」時，數量同步到商城商品規格
+    private void pushInventoryToShop(BaseDocument document) {
+        if (document instanceof Inventory inventory) {
+            shopSyncService.pushStockToVariant(inventory.getOrderNo(), inventory.getQuantity());
+        }
+    }
+
+    // 品號：訂單、採購單、入庫單、出庫單為 product_no 欄位（varchar(50)、不可空白）
+    // 新增時沒有傳入就以 品名 + 型號 + 顏色 從庫存找品號；修改時沒有傳入就沿用原本的品號
+    // 庫存的品號為主鍵，不在這裡處理
+    private void applyProductNo(BaseDocument document, String productNo, boolean required) {
+        if (document instanceof Inventory) {
+            return;
+        }
+
+        String no = trimToNull(productNo);
+        if (no == null) {
+            if (required) {
+                no = inventoryRepository.findProductNo(
+                                document.getProductName(), document.getModel(), document.getColor())
+                        .orElseThrow(() -> new ResponseStatusException(
+                                HttpStatus.BAD_REQUEST,
+                                "未填寫品號，且庫存中找不到對應品項（品名：" + document.getProductName()
+                                        + "、型號：" + Objects.toString(document.getModel(), "無")
+                                        + "、顏色：" + Objects.toString(document.getColor(), "無")
+                                        + "），請填寫品號或先在「庫存」新增該品項"
+                        ));
+            } else {
+                return;
+            }
+        }
+        if (no.length() > 50) {
+            throw new ResponseStatusException(
+                    HttpStatus.BAD_REQUEST,
+                    "品號長度不可超過 50 碼"
+            );
+        }
+        document.setProductNo(no);
+    }
+
+    // 入庫單需對應採購單、出庫單需對應訂單（資料表外鍵）
+    // 新增時必填；修改時沒有傳入就沿用原本的單號
+    private void applyReference(BaseDocument document, String refNo, boolean required) {
+        String ref = trimToNull(refNo);
+
+        if (document instanceof StockIn stockIn) {
+            if (ref == null) {
+                if (required) {
+                    throw new ResponseStatusException(
+                            HttpStatus.BAD_REQUEST,
+                            "入庫單必須填寫對應的採購單號（refNo）"
+                    );
+                }
+                return;
+            }
+            if (!purchaseOrderRepository.existsByOrderNo(ref)) {
+                throw new ResponseStatusException(
+                        HttpStatus.BAD_REQUEST,
+                        "找不到採購單，單號" + ref
+                );
+            }
+            stockIn.setPurchaseNo(ref);
+        } else if (document instanceof StockOut stockOut) {
+            if (ref == null) {
+                if (required) {
+                    throw new ResponseStatusException(
+                            HttpStatus.BAD_REQUEST,
+                            "出庫單必須填寫對應的訂單號（refNo）"
+                    );
+                }
+                return;
+            }
+            if (!salesOrderRepository.existsByOrderNo(ref)) {
+                throw new ResponseStatusException(
+                        HttpStatus.BAD_REQUEST,
+                        "找不到訂單，單號" + ref
+                );
+            }
+            stockOut.setSalesOrderNo(ref);
+        }
+    }
+
+    // 訂單編號為 varchar(40)、其他單據編號為 char(10)、品號為 varchar(50)
+    private String requireOrderNo(String docType, String orderNo) {
+        String label = INVENTORY.equals(docType) ? "品號" : "單號";
+        int maxLength = switch (docType) {
+            case INVENTORY -> 50;
+            case SALES_ORDER -> SALES_ORDER_NO_MAX_LENGTH;
+            default -> 10;
+        };
+
+        String no = trimToNull(orderNo);
+        if (no == null) {
+            throw new ResponseStatusException(
+                    HttpStatus.BAD_REQUEST,
+                    label + "不可空白"
+            );
+        }
+        if (no.length() > maxLength) {
+            throw new ResponseStatusException(
+                    HttpStatus.BAD_REQUEST,
+                    label + "長度不可超過 " + maxLength + " 碼"
+            );
+        }
+        return no;
+    }
+
+    private String trimToNull(String value) {
+        return value == null || value.isBlank() ? null : value.trim();
+    }
+
+    @SuppressWarnings("unchecked")
+    private DocumentRepository<BaseDocument> repositoryOf(String docType) {
+        DocumentRepository<? extends BaseDocument> repository = switch (docType == null ? "" : docType) {
+            case SALES_ORDER -> salesOrderRepository;
+            case PURCHASE_ORDER -> purchaseOrderRepository;
+            case STOCK_IN -> stockInRepository;
+            case STOCK_OUT -> stockOutRepository;
+            case INVENTORY -> inventoryRepository;
+            default -> throw invalidDocType();
+        };
+        return (DocumentRepository<BaseDocument>) repository;
+    }
+
+    private BaseDocument newDocument(String docType) {
+        return switch (docType) {
+            case SALES_ORDER -> new SalesOrder();
+            case PURCHASE_ORDER -> new PurchaseOrder();
+            case STOCK_IN -> new StockIn();
+            case STOCK_OUT -> new StockOut();
+            case INVENTORY -> new Inventory();
+            default -> throw invalidDocType();
+        };
+    }
+
+    private ResponseStatusException invalidDocType() {
+        return new ResponseStatusException(
+                HttpStatus.BAD_REQUEST,
+                "單據類型只能是訂單、採購單、入庫單、出庫單或庫存"
+        );
+    }
+}
