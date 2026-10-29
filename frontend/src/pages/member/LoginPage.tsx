@@ -1,12 +1,14 @@
 import "../../styles/member/login.css";
 import { useState, type SubmitEvent } from "react";
-import { Navigate, useLocation, useNavigate } from "react-router-dom";
+import { Link, Navigate, useLocation } from "react-router-dom";
+import { getAuthUrl, getReturnTo } from "../../utils/authRedirect";
 import { useAuth } from "../../auth/useAuth";
 
 export default function LoginPage() {
   const { login, status, error, retry } = useAuth();
-  const navigate = useNavigate();
-  const navigationState: unknown = useLocation().state;
+  const location = useLocation();
+  const destination = getReturnTo(location.search);
+  const navigationState: unknown = location.state;
   const [account, setAccount] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
@@ -28,12 +30,11 @@ export default function LoginPage() {
     try {
       await login(account.trim(), password);
       setPassword("");
-      navigate('/profile', { replace: true });
     } catch (failure) {
       setResultMessage(failure instanceof Error && !(failure instanceof TypeError) ? failure.message : "無法完成登入，請確認網路與後端服務。");
     } finally { setIsSubmitting(false); }
   }
-  if (status === 'authenticated') return <Navigate to="/profile" replace />;
+  if (status === 'authenticated') return <Navigate to={destination} replace />;
   return (
     <div className="member-login">
       <a className="skip-link" href="#loginForm">
@@ -110,9 +111,9 @@ export default function LoginPage() {
             </form>
             <div className="register-prompt">
               <span>還沒有帳號？</span>
-              <a href="/register">
+              <Link to={getAuthUrl("/register", destination)}>
                 註冊會員 <span>↗</span>
-              </a>
+              </Link>
             </div>
           </div>
         </section>
