@@ -22,6 +22,7 @@ import java.util.Set;
 //
 // 對應規則：
 //   商品規格 product_variants.sku   ↔ 庫存 inventory.product_no（品名 = 商品名稱、售價 = 規格價格、狀態 = 上架 / 下架 / 未上架）
+//                                    同時記錄 inventory.product_variant_id = product_variants.id（外鍵）
 //   會員 members.id                 ↔ 客戶代號 M + 4 碼會員 id（例如 M0006）
 //   商城訂單明細 order_item.id       → 訂單 sales_order.source_order_item_id（一個明細一張訂單）
 //
@@ -96,8 +97,10 @@ public class ShopSyncService {
     }
 
     // 商品頁新增、修改規格後呼叫
+    // 規格改了 SKU 時，先釋放舊品號的庫存，避免兩筆庫存對應同一個規格
     @Transactional
     public synchronized void syncVariant(Long variantId) {
+        releaseUnlinkedInventory("");
         jdbcTemplate.update(insertMissingInventorySql("AND v.id = ?"), variantId);
         jdbcTemplate.update(updateInventoryFromVariantSql("AND v.id = ?"), variantId);
         // 商品頁剛修改的庫存數量為最新資料
@@ -111,6 +114,7 @@ public class ShopSyncService {
     // 商品頁修改商品名稱、上下架後呼叫（同一商品的全部規格）
     @Transactional
     public synchronized void syncProduct(Long productId) {
+        releaseUnlinkedInventory("");
         jdbcTemplate.update(insertMissingInventorySql("AND p.id = ?"), productId);
         jdbcTemplate.update(updateInventoryFromVariantSql("AND p.id = ?"), productId);
     }
@@ -119,12 +123,19 @@ public class ShopSyncService {
     @Transactional
     public synchronized void unlinkSkus(List<String> skus) {
         for (String sku : skus) {
-            jdbcTemplate.update("""
-                    UPDATE inventory SET status = '未上架'
-                    WHERE product_no = ?
-                      AND NOT EXISTS (SELECT 1 FROM product_variants v WHERE v.sku = inventory.product_no)
-                    """, sku);
+            releaseUnlinkedInventory("AND i.product_no = ?", sku);
         }
+    }
+
+    // 沒有對應商城規格的庫存：狀態改為未上架、清空 product_variant_id
+    private int releaseUnlinkedInventory(String condition, Object... args) {
+        return jdbcTemplate.update("""
+                UPDATE inventory i
+                LEFT JOIN product_variants v ON v.sku = i.product_no
+                SET i.status = '未上架', i.product_variant_id = NULL
+                WHERE v.id IS NULL
+                  AND NOT (i.status <=> '未上架' AND i.product_variant_id IS NULL) %s
+                """.formatted(condition), args);
     }
 
     // 入庫單、出庫單、後台「庫存」異動數量後呼叫：同步商品規格的庫存
@@ -155,7 +166,9 @@ public class ShopSyncService {
     }
 
     private int syncAllVariants() {
-        int changed = jdbcTemplate.update(insertMissingInventorySql(""));
+        // 商城已刪除或改了 SKU 的規格：保留庫存，狀態改為未上架
+        int changed = releaseUnlinkedInventory("");
+        changed += jdbcTemplate.update(insertMissingInventorySql(""));
 
         // 庫存數量：以較晚更新的一方為準（同時間以後台庫存為準）
         changed += jdbcTemplate.update("""
@@ -170,29 +183,23 @@ public class ShopSyncService {
                 """);
 
         changed += jdbcTemplate.update(updateInventoryFromVariantSql(""));
-
-        // 商城已刪除的規格：保留庫存，狀態改為未上架
-        changed += jdbcTemplate.update("""
-                UPDATE inventory SET status = '未上架'
-                WHERE NOT (status <=> '未上架')
-                  AND NOT EXISTS (SELECT 1 FROM product_variants v WHERE v.sku = inventory.product_no)
-                """);
         return changed;
     }
 
     private String insertMissingInventorySql(String condition) {
         return """
                 INSERT INTO inventory (product_name, product_no, brand, color, model, quantity,
-                                       unit_price, sale_price, total_price, safety_stock, status)
+                                       unit_price, sale_price, total_price, safety_stock, status,
+                                       product_variant_id)
                 SELECT p.name, v.sku, v.brand, v.color, v.model, v.stock,
                        %1$s, ROUND(v.price), v.stock * %1$s, 10,
-                       %3$s
+                       %3$s, v.id
                 FROM product_variants v JOIN products p ON p.id = v.product_id
                 WHERE NOT EXISTS (SELECT 1 FROM inventory i WHERE i.product_no = v.sku) %2$s
                 """.formatted(ESTIMATED_COST, condition, INVENTORY_STATUS_CASE);
     }
 
-    // 品名、品牌、型號、顏色、售價、狀態以商品頁為準（數量另外處理）
+    // 品名、品牌、型號、顏色、售價、狀態、規格 id 以商品頁為準（數量另外處理）
     private String updateInventoryFromVariantSql(String condition) {
         return """
                 UPDATE inventory i
@@ -200,10 +207,11 @@ public class ShopSyncService {
                 JOIN products p ON p.id = v.product_id
                 SET i.product_name = p.name, i.brand = v.brand, i.model = v.model, i.color = v.color,
                     i.sale_price = ROUND(v.price),
-                    i.status = %1$s
+                    i.status = %1$s,
+                    i.product_variant_id = v.id
                 WHERE NOT (i.product_name <=> p.name AND i.brand <=> v.brand AND i.model <=> v.model
                            AND i.color <=> v.color AND i.sale_price <=> ROUND(v.price)
-                           AND i.status <=> %1$s) %2$s
+                           AND i.status <=> %1$s AND i.product_variant_id <=> v.id) %2$s
                 """.formatted(INVENTORY_STATUS_CASE, condition);
     }
 

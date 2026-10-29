@@ -25,6 +25,10 @@ public class Inventory extends BaseDocument {
     @Column(name = "safety_stock", nullable = false)
     private Integer safetyStock = 0;
 
+    // 對應的商城規格 product_variants.id，由 ShopSyncService 維護（不在商城販售時為 null）
+    @Column(name = "product_variant_id", insertable = false, updatable = false)
+    private Long productVariantId;
+
     // 狀態：未上架 / 上架 / 下架，由商品頁面上架並填入售價後同步為上架
     @Column(length = 20, nullable = false)
     private String status = "未上架";
