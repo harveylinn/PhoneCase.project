@@ -18,6 +18,7 @@ export default function SupportAdmin() {
     const [messages, setMessages] = useState([]);
     const [reply, setReply] = useState('');
     const [error, setError] = useState('');
+    const [statusFilter, setStatusFilter] = useState('ALL');
 
     async function loadConversations() {
         try { setConversations(await api('/api/support/conversations')); setError(''); }
@@ -31,6 +32,16 @@ export default function SupportAdmin() {
     }
 
     useEffect(() => { loadConversations(); }, []);
+
+    const visibleConversations = [...conversations]
+        .sort((left, right) => right.id - left.id)
+        .filter(item => statusFilter === 'ALL' || item.status === statusFilter);
+
+    const statusLabel = {
+        OPEN: '待處理',
+        IN_PROGRESS: '處理中',
+        CLOSED: '已完成',
+    };
 
     async function sendReply(event) {
         event.preventDefault();
@@ -67,9 +78,15 @@ export default function SupportAdmin() {
             <section className="admin-layout">
                 <aside className="admin-list panel">
                     <h2>客服案件</h2>
-                    {!conversations.length && <p>目前沒有客服案件。</p>}
-                    {conversations.map(item => <button type="button" key={item.id} className={`admin-list-item ${selected?.id === item.id ? 'is-selected' : ''}`} onClick={() => selectConversation(item)}>
-                        <strong>案件 #{item.id}</strong><small>{item.status} · {item.guestId || '會員'}</small>
+                    <select value={statusFilter} onChange={event => setStatusFilter(event.target.value)} aria-label="客服案件狀態篩選">
+                        <option value="ALL">全部案件</option>
+                        <option value="OPEN">待處理</option>
+                        <option value="IN_PROGRESS">處理中</option>
+                        <option value="CLOSED">已完成</option>
+                    </select>
+                    {!visibleConversations.length && <p>目前沒有符合條件的案件。</p>}
+                    {visibleConversations.map(item => <button type="button" key={item.id} className={`admin-list-item ${selected?.id === item.id ? 'is-selected' : ''}`} onClick={() => selectConversation(item)}>
+                        <strong>案件 #{item.id}</strong><small>{statusLabel[item.status] || item.status} · {item.guestId || '會員'}</small>
                     </button>)}
                 </aside>
                 <section className="admin-editor panel">
