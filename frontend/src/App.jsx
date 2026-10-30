@@ -13,6 +13,7 @@ import ProfilePage from './pages/member/ProfilePage';
 import { useAuth } from './auth/useAuth';
 import MemberRoute from './auth/MemberRoute';
 import Admin from './pages/admin/admin.jsx';
+import SupportAdmin from './pages/admin/SupportAdmin.jsx';
 import CheckOutPage from './pages/order/CheckoutPage.tsx'
 import { getGuestCartCount } from './utils/cartStorage';
 import OrderModule from './pages/order/OrderModule';
@@ -65,7 +66,8 @@ export default function App() {
   const location = useLocation();
   const isAdminRoute = location.pathname === '/admin'
     || location.pathname.startsWith('/admin-products')
-    || location.pathname.startsWith('/admin/samples');
+    || location.pathname.startsWith('/admin/samples')
+    || location.pathname.startsWith('/admin/support');
 
   return (
     <>
@@ -88,6 +90,7 @@ export default function App() {
         <Route path="/admin" element={<Admin />} />
         <Route path="/admin-products/variants" element={<VariantsCatalog />} />
         <Route path="/admin/samples" element={<ImageSamples />} />
+        <Route path="/admin/support" element={<SupportAdmin />} />
         <Route path="*" element={<ProductList />} />
       </Routes>
       {!isAdminRoute && <AiChatWidget />}

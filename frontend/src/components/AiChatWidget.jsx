@@ -2,6 +2,7 @@ import {useState} from 'react';
 import {Link} from 'react-router-dom';
 import {searchProductsWithAi} from '../services/aiSearchApi.js';
 import {addToGuestCart} from '../utils/cartStorage';
+import {addSupportMessage, createSupportConversation} from '../services/supportApi.js';
 
 export default function AiChatWidget() {
     const [open, setOpen] = useState(false);
@@ -10,21 +11,37 @@ export default function AiChatWidget() {
     const [loading, setLoading] = useState(false);
     const [imageFile, setImageFile] = useState(null);
     const [imagePreview, setImagePreview] = useState('');
+    const [supportConversationId, setSupportConversationId] = useState(null);
 
     const quickQuestions = [
         '我想找適合我的手機殼',
         '聯絡人工客服',
     ];
 
-    function handleQuickQuestion(question) {
+    async function handleQuickQuestion(question) {
         if (loading) return;
 
         if (question === '聯絡人工客服') {
+            setLoading(true);
             setMessages(current => [
                 ...current,
                 {role: 'user', content: question},
-                {role: 'assistant', content: '已為你準備人工客服轉接。請留下訂單編號與問題描述，客服上線後會協助處理付款、退款、退貨或商品客訴。'},
             ]);
+            try {
+                const conversation = await createSupportConversation('使用者申請轉接人工客服');
+                setSupportConversationId(conversation.id);
+                setMessages(current => [
+                    ...current,
+                    {role: 'assistant', content: `已建立人工客服案件 #${conversation.id}。請留下你的問題，客服人員會查看。`},
+                ]);
+            } catch (error) {
+                setMessages(current => [
+                    ...current,
+                    {role: 'assistant', content: `人工客服暫時無法連線：${error.message}`},
+                ]);
+            } finally {
+                setLoading(false);
+            }
             return;
         }
 
@@ -63,6 +80,17 @@ export default function AiChatWidget() {
         setLoading(true);
 
         try {
+            if (supportConversationId) {
+                await addSupportMessage(supportConversationId, question || '使用者上傳了一張圖片');
+                setMessages([
+                    ...nextMessages,
+                    {role: 'assistant', content: '訊息已送出，人工客服會查看你的問題。'},
+                ]);
+                setImageFile(null);
+                setImagePreview('');
+                return;
+            }
+
             const imageBase64 = imageFile
                 ? await fileToBase64(imageFile)
                 : null;
@@ -84,6 +112,10 @@ export default function AiChatWidget() {
         } catch (error) {
             const message = error.code === 'AI_SERVICE_UNAVAILABLE'
                 ? 'AI 服務目前無法回應，請確認 Ollama 已啟動，稍後再試。'
+                : error.code === 'AI_REQUEST_TIMEOUT'
+                    ? 'AI 分析逾時，請確認 Ollama 已啟動後再試。'
+                    : error.code === 'AI_CONNECTION_FAILED'
+                        ? '無法連線到 AI 服務，請確認後端與 Ollama 已啟動。'
                 : error.status === 400
                     ? error.message
                     : 'AI 暫時無法完成分析，請稍後再試。';
