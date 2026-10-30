@@ -82,9 +82,14 @@ export default function AiChatWidget() {
             setImageFile(null);
             setImagePreview('');
         } catch (error) {
+            const message = error.code === 'AI_SERVICE_UNAVAILABLE'
+                ? 'AI 服務目前無法回應，請確認 Ollama 已啟動，稍後再試。'
+                : error.status === 400
+                    ? error.message
+                    : 'AI 暫時無法完成分析，請稍後再試。';
             setMessages([
                 ...nextMessages,
-                {role: 'assistant', content: `發生錯誤：${error.message}`},
+                {role: 'assistant', content: message},
             ]);
         } finally {
             setLoading(false);

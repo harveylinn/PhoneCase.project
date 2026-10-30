@@ -25,7 +25,10 @@ export async function searchProductsWithAi(
     const data = await response.json();
 
     if (!response.ok) {
-        throw new Error(data.message || 'AI 搜尋失敗');
+        const error = new Error(data.message || 'AI 搜尋失敗');
+        error.code = data.code || 'AI_SEARCH_FAILED';
+        error.status = response.status;
+        throw error;
     }
 
     return data;
