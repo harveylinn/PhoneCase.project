@@ -43,7 +43,8 @@ function getStylePreviewUrl(name) {
     return stylePreviewImages.find(item => item.names.some(alias => normalized.includes(alias)))?.url ?? '';
 }
 
-export default function AdminProducts() {
+// embedded：嵌入後台版面（/admin/products）時不顯示本頁的側邊選單，由後台側邊欄導覽
+export default function AdminProducts({embedded = false}) {
     const [products, setProducts] = useState([]);
     const [selected, setSelected] = useState(null);
     const [productForm, setProductForm] = useState(emptyProduct);
@@ -241,13 +242,13 @@ export default function AdminProducts() {
             {notice && <div className="admin-notice">{notice}</div>}{error && <div className="admin-error">{error}
             <button onClick={() => setError('')}>關閉</button>
         </div>}
-            <div className="admin-with-sidebar">
-                <aside className="admin-sidebar panel">
+            <div className={embedded ? '' : 'admin-with-sidebar'}>
+                {!embedded && <aside className="admin-sidebar panel">
                     <p className="admin-sidebar-title">後台管理</p>
                     <Link className="is-active" to="/admin-products">商品系列管理</Link>
                     <Link to="/admin-products/variants">手機品項／SKU</Link>
                     <Link to="/admin/samples">圖片樣本庫</Link>
-                </aside>
+                </aside>}
                 <section className="admin-layout">
                 <aside className="admin-list panel">
                     <div className="admin-list-tools"><input placeholder="搜尋商品" value={keyword}
@@ -308,6 +309,7 @@ export default function AdminProducts() {
                                     <th>品牌／型號</th>
                                     <th>顏色</th>
                                     <th>價格</th>
+                                    <th>庫存</th>
                                     <th>SKU</th>
                                     <th>操作</th>
                                 </tr>
@@ -316,6 +318,7 @@ export default function AdminProducts() {
                                     <td><strong>{variant.brand}</strong><br/>{variant.model}</td>
                                     <td>{variant.color}</td>
                                     <td>NT$ {Number(variant.price).toLocaleString()}</td>
+                                    <td>{variant.stock}</td>
                                     <td>{variant.sku}</td>
                                     <td>
                                         <button className="link-button" onClick={() => editVariant(variant)}>編輯
