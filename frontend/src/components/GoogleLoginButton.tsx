@@ -25,22 +25,33 @@ declare global {
 }
 let sdkPromise: Promise<void> | undefined;
 function loadGoogleSdk(): Promise<void> {
-  if (window.google) return Promise.resolve();
+  if (window.google?.accounts?.id) return Promise.resolve();
   if (!sdkPromise) {
     sdkPromise = new Promise<void>((resolve, reject) => {
       const script = document.createElement("script");
       script.src = "https://accounts.google.com/gsi/client";
       script.async = true;
+      let settled = false;
       const timer = window.setTimeout(() => {
+        settled = true;
         script.remove();
         sdkPromise = undefined;
         reject(new Error("Google 元件載入逾時，請檢查網路後重試。"));
       }, 15000);
       script.onload = () => {
+        if (settled) return;
+        settled = true;
         window.clearTimeout(timer);
-        resolve();
+        if (window.google?.accounts?.id) resolve();
+        else {
+          script.remove();
+          sdkPromise = undefined;
+          reject(new Error("Google 元件尚未就緒，請重試。"));
+        }
       };
       script.onerror = () => {
+        if (settled) return;
+        settled = true;
         window.clearTimeout(timer);
         script.remove();
         sdkPromise = undefined;
@@ -52,6 +63,10 @@ function loadGoogleSdk(): Promise<void> {
   return sdkPromise;
 }
 
+type LoginState =
+  | { phase: "preparing" | "ready" | "verifying" }
+  | { phase: "error"; message: string };
+
 export default function GoogleLoginButton({
   onLogin,
 }: {
@@ -59,8 +74,8 @@ export default function GoogleLoginButton({
 }) {
   const host = useRef<HTMLDivElement>(null);
   const handler = useRef(onLogin);
-  const busy = useRef(false);
-  const [message, setMessage] = useState("");
+  const phase = useRef<LoginState["phase"]>("preparing");
+  const [state, setState] = useState<LoginState>({ phase: "preparing" });
   const [attempt, setAttempt] = useState(0);
   useEffect(() => {
     handler.current = onLogin;
@@ -69,80 +84,117 @@ export default function GoogleLoginButton({
   useEffect(() => {
     let active = true;
     const controller = new AbortController();
-    setMessage("正在準備 Google 登入…");
+    const element = host.current;
+    let observer: ResizeObserver | undefined;
+    function updateState(next: LoginState) {
+      if (!active) return;
+      phase.current = next.phase;
+      setState(next);
+    }
     async function prepare() {
       try {
         const clientId = import.meta.env.VITE_GOOGLE_CLIENT_ID;
-        if (!clientId) throw new Error("尚未設定 VITE_GOOGLE_CLIENT_ID。");
+        if (!clientId) throw new Error("Google 登入暫時無法使用，請稍後重試或使用帳密登入。");
         await loadGoogleSdk();
         if (!active) return;
         const nonce = await getGoogleNonce(controller.signal);
-        if (!active || !host.current || !window.google) return;
+        if (!active || !element || !window.google?.accounts?.id) return;
         const api = window.google.accounts.id;
         api.initialize({
           client_id: clientId,
           nonce,
           auto_select: false,
           callback: (result) => {
-            if (!active || busy.current) return;
-            busy.current = true;
-            if (host.current) host.current.style.pointerEvents = "none";
-            setMessage("Google 身分確認中…");
-            void handler
-              .current(result.credential)
+            if (!active || phase.current !== "ready") return;
+            updateState({ phase: "verifying" });
+            element.replaceChildren();
+            void Promise.resolve()
+              .then(() => handler.current(result.credential))
               .catch((failure: unknown) => {
                 if (!active) return;
-                setMessage(
-                  failure instanceof Error
+                updateState({
+                  phase: "error",
+                  message: failure instanceof Error && !(failure instanceof TypeError)
                     ? failure.message
-                    : "登入失敗，請重試。",
-                );
+                    : "無法完成 Google 登入，請檢查網路後重試。",
+                });
                 // nonce 可能已消耗，請按重試重新取得，不沿用舊挑戰。
-                host.current?.replaceChildren();
-              })
-              .finally(() => {
-                busy.current = false;
               });
           },
         });
-        host.current.replaceChildren();
-        host.current.style.pointerEvents = "auto";
-        api.renderButton(host.current, {
-          theme: "outline",
-          size: "large",
-          text: "signin_with",
-          width: 280,
-        });
-        setMessage("");
+        let renderedWidth = 0;
+        function renderButton() {
+          if (!active || phase.current !== "ready" || !element) return;
+          const width = Math.floor(element.getBoundingClientRect().width);
+          if (width <= 0 || width === renderedWidth) return;
+          element.replaceChildren();
+          api.renderButton(element, {
+            theme: "outline",
+            size: "large",
+            text: "signin_with",
+            width,
+          });
+          renderedWidth = width;
+        }
+        updateState({ phase: "ready" });
+        renderButton();
+        observer = new ResizeObserver(renderButton);
+        observer.observe(element);
       } catch (failure) {
-        if (active)
-          setMessage(
-            failure instanceof Error
+        if (active) {
+          element?.replaceChildren();
+          updateState({
+            phase: "error",
+            message: failure instanceof Error && !(failure instanceof TypeError)
               ? failure.message
-              : "Google 登入初始化失敗。",
-          );
+              : "無法準備 Google 登入，請檢查網路後重試。",
+          });
+        }
       }
     }
     void prepare();
     return () => {
       active = false;
       controller.abort();
-      host.current?.replaceChildren();
+      observer?.disconnect();
+      element?.replaceChildren();
     };
   }, [attempt]);
 
   return (
-    <section aria-label="Google 登入" style={{ marginTop: 24 }}>
-      <div ref={host} />
-      {message && <p role="status">{message}</p>}
-      <button
-        type="button"
-        onClick={() => {
-          if (!busy.current) setAttempt((value) => value + 1);
-        }}
+    <section aria-label="Google 登入" className="google-login">
+      <div className="google-login-divider">或使用 Google 登入</div>
+      <div
+        className="google-login-content"
+        aria-busy={state.phase === "preparing" || state.phase === "verifying"}
       >
-        重新準備 Google 登入
-      </button>
+        <div ref={host} className="google-login-host" />
+        <p
+          className={`google-login-status${state.phase === "error" ? " google-login-error" : ""}`}
+          role="status"
+          aria-live="polite"
+          aria-atomic="true"
+        >
+          {state.phase === "preparing" && "正在準備 Google 登入…"}
+          {state.phase === "verifying" && "Google 身分確認中…"}
+          {state.phase === "error" && state.message}
+        </p>
+        {state.phase === "error" && (
+          <button
+            className="google-login-retry"
+            type="button"
+            onClick={() => {
+              if (phase.current !== "error") return;
+              phase.current = "preparing";
+              host.current?.replaceChildren();
+              setState({ phase: "preparing" });
+              setAttempt((value) => value + 1);
+            }}
+          >
+            重試 Google 登入
+          </button>
+        )}
+      </div>
     </section>
   );
 }
