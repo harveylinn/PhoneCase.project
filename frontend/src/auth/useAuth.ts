@@ -10,6 +10,7 @@ interface AuthValue {
   logout: () => void;
   retry: () => void;
   updateProfile: (input: ProfileUpdate) => Promise<void>;
+  loginWithGoogle: (Credential: string) => Promise<void>;
 }
 export const AuthContext = createContext<AuthValue | null>(null);
 

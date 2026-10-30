@@ -1,5 +1,6 @@
 import { useEffect, useState, type SubmitEvent } from "react";
-import { useNavigate } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
+import { getAuthUrl, getReturnTo } from "../../utils/authRedirect";
 import "../../styles/member/register.css";
 
 interface RegisterResponse {
@@ -17,6 +18,8 @@ interface RegisterResponse {
 
 export default function RegisterPage() {
   const navigate = useNavigate();
+  const location = useLocation();
+  const loginUrl = getAuthUrl("/login", getReturnTo(location.search));
   const [account, setAccount] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -37,14 +40,14 @@ export default function RegisterPage() {
   useEffect(() => {
     if (!registrationSuccess) return;
     const timer = window.setTimeout(() => {
-      navigate("/login", {
+      navigate(loginUrl, {
         replace: true,
         state: { registrationSuccess: true },
       });
     }, 1500);
     // 提前前往登入或離開註冊頁時，取消尚未執行的導頁。
     return () => window.clearTimeout(timer);
-  }, [registrationSuccess, navigate]);
+  }, [registrationSuccess, navigate, loginUrl]);
 
   function handleClear() {
     setAccount("");
@@ -190,7 +193,7 @@ export default function RegisterPage() {
             <div className="registration-success">
               <p>註冊成功！即將前往登入頁。</p>
               <p>約 1.5 秒後自動跳轉，也可以立即前往登入。</p>
-              <button className="submit-button" type="button" onClick={() => navigate("/login", {
+              <button className="submit-button" type="button" onClick={() => navigate(loginUrl, {
                 replace: true,
                 state: { registrationSuccess: true },
               })}>
@@ -391,9 +394,9 @@ export default function RegisterPage() {
           </form>
           <p className="login-prompt" hidden={registrationSuccess}>
             已經有帳號了？{" "}
-            <a href="/login">
+            <Link to={loginUrl}>
               前往登入 <span>↗</span>
-            </a>
+            </Link>
           </p>
         </section>
       </main>

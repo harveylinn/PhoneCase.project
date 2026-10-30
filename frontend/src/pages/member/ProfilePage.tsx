@@ -2,6 +2,7 @@ import { useState, type SubmitEvent } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../../auth/useAuth';
 import '../../styles/member/profile.css';
+import { formatMemberTime } from '../../utils/memberTime';
 
 export default function ProfilePage() {
   const { currentMember, updateProfile, logout } = useAuth();
@@ -118,11 +119,11 @@ export default function ProfilePage() {
               </div>
               <div className="profile-field">
                 <label htmlFor="profileCreatedAt">建立時間 <span>（僅顯示）</span></label>
-                <input className="readonly-field" id="profileCreatedAt" value="暫未提供" readOnly />
+                <input className="readonly-field" id="profileCreatedAt" value={formatMemberTime(currentMember.createdAt)} readOnly />
               </div>
               <div className="profile-field">
                 <label htmlFor="profileUpdatedAt">更新時間 <span>（僅顯示）</span></label>
-                <input className="readonly-field" id="profileUpdatedAt" value="暫未提供" readOnly />
+                <input className="readonly-field" id="profileUpdatedAt" value={formatMemberTime(currentMember.updatedAt)} readOnly />
               </div>
             </div>
           </fieldset>

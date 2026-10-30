@@ -1,4 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
+import { Link, useLocation } from 'react-router-dom'
+import { getLoginUrl } from '../../utils/authRedirect'
 
 import CheckoutPage from './CheckoutPage'
 
@@ -40,6 +42,7 @@ function OrderModule({
 }: {
   initialPage?: 'checkout' | 'list' | 'detail'
 }) {
+  const location = useLocation()
 
   // 目前頁面
   const [currentPage, setCurrentPage] =
@@ -371,7 +374,7 @@ function OrderModule({
           <p>{errorMessage}</p>
 
           {errorMessage.includes('登入') && (
-            <p><a href="/login">前往會員登入</a></p>
+            <p><Link to={getLoginUrl(location)}>前往會員登入</Link></p>
           )}
 
           <button
