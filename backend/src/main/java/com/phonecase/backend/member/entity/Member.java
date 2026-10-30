@@ -38,14 +38,17 @@ public class Member {
     @Column(name = "default_address")
     private String defaultAddress;
 
-    private String role ="CUSTOMER";
+    private String role = "CUSTOMER";
 
-    private String status ="ACTIVE";
+    private String status = "ACTIVE";
 
-    @Column(name = "created_at",insertable = false, updatable = false)
+    @Column(name = "created_at", insertable = false, updatable = false)
     private LocalDateTime createdAt;
 
-    @Column(name = "updated_at",insertable = false,updatable = false)
+    @Column(name = "updated_at", insertable = false, updatable = false)
     private LocalDateTime updatedAt;
+
+    @Column(name = "google_sub", length = 255, unique = true)
+    private String googleSub;
 
 }

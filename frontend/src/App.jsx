@@ -12,6 +12,8 @@ import LoginPage from './pages/member/LoginPage';
 import ProfilePage from './pages/member/ProfilePage';
 import { useAuth } from './auth/useAuth';
 import MemberRoute from './auth/MemberRoute';
+import MemberMenu from './components/MemberMenu';
+import { getLoginUrl } from './utils/authRedirect';
 import Admin from './pages/admin/admin.jsx';
 import CheckOutPage from './pages/order/CheckoutPage.tsx'
 import { getGuestCartCount } from './utils/cartStorage';
@@ -20,7 +22,8 @@ import OrderModule from './pages/order/OrderModule';
 
 // 首頁欄
 function Header() {
-  const { currentMember, status, logout } = useAuth();
+  const location = useLocation();
+  const { currentMember, status } = useAuth();
   const [cartCount, setCartCount] = useState(getGuestCartCount);
 
   useEffect(() => {
@@ -48,12 +51,8 @@ function Header() {
         <a href="#story">品牌故事</a>
         <Link to="/cart" className="header-cart-link">購物車 ({cartCount})</Link>
         {status === 'checking' && <span>身分確認中…</span>}
-        {currentMember ? <>
-          <Link to="/profile" style={{ maxWidth: '12rem', overflowWrap: 'anywhere' }}>會員中心：{currentMember.name}</Link>
-          <button type="button" onClick={logout}>登出</button>
-        </> : <>
-          <Link to="/login">登入</Link>
-          <Link to="/register">註冊</Link>
+        {currentMember ? <MemberMenu /> : <>
+          <Link to={getLoginUrl(location)}>登入/註冊</Link>
         </>}
       </nav>
     </header>
@@ -81,9 +80,9 @@ export default function App() {
         <Route path="/login" element={<LoginPage />} />
         <Route path="/profile" element={<MemberRoute><ProfilePage /></MemberRoute>} />
 
-        <Route path="/checkout" element={<OrderModule />} />
-        <Route path="/orderdetail" element={<OrderModule initialPage="list" />} />
-        <Route path="/orderlist" element={<OrderModule initialPage="list" />} />
+        <Route path="/checkout" element={<MemberRoute><OrderModule /></MemberRoute>} />
+        <Route path="/orderdetail" element={<MemberRoute><OrderModule initialPage="list" /></MemberRoute>} />
+        <Route path="/orderlist" element={<MemberRoute><OrderModule initialPage="list" /></MemberRoute>} />
 
         <Route path="/admin" element={<Admin />} />
         <Route path="/admin-products/variants" element={<VariantsCatalog />} />

@@ -1,0 +1,105 @@
+.member-menu {
+  position: relative;
+  flex-shrink: 0;
+  color: #122b50;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.member-menu .member-menu__trigger {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 44px;
+  padding: 0 10px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.member-menu .member-menu__trigger:hover,
+.member-menu .member-menu__trigger[aria-expanded="true"] {
+  background: #f0f4f9;
+}
+
+.member-menu .member-menu__trigger:focus-visible,
+.member-menu .member-menu__item:focus-visible {
+  outline: 2px solid #122b50;
+  outline-offset: 2px;
+  background: #f0f4f9;
+}
+
+.member-menu__chevron {
+  transition: transform .16s ease;
+}
+
+.member-menu__trigger[aria-expanded="true"] .member-menu__chevron {
+  transform: rotate(180deg);
+}
+
+.member-menu__panel {
+  position: absolute;
+  top: calc(100% + 8px);
+  z-index: 1;
+  width: min(224px, calc(100vw - 32px));
+  max-height: calc(100dvh - 96px);
+  overflow-y: auto;
+  border: 1px solid #e5eaf0;
+  border-radius: 12px;
+  background: #fff;
+  box-shadow: 0 8px 28px rgba(18, 43, 80, .12);
+  text-align: left;
+}
+
+.member-menu__panel[hidden] { display: none; }
+
+.member-menu__greeting {
+  margin: 0;
+  padding: 16px;
+  border-bottom: 1px solid #e5eaf0;
+  color: #6d7b8c;
+  font-size: 13px;
+  font-weight: 400;
+  line-height: 1.6;
+  overflow-wrap: anywhere;
+}
+
+.member-menu__greeting span { color: #122b50; font-weight: 600; }
+.member-menu__links { padding: 6px; }
+.member-menu__footer { padding: 6px; border-top: 1px solid #e5eaf0; }
+
+.member-menu .member-menu__item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  min-height: 44px;
+  padding: 10px;
+  border: 0;
+  border-radius: 7px;
+  background: transparent;
+  color: #122b50;
+  font: inherit;
+  line-height: 1.5;
+  text-align: left;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.member-menu .member-menu__item:hover,
+.member-menu .member-menu__item[aria-current="page"] {
+  background: #f0f4f9;
+  color: #122b50;
+}
+
+.member-menu .member-menu__logout { color: #a74444; }
+.member-menu .member-menu__logout:hover { background: #faf0f0; color: #963737; }
+
+@media (prefers-reduced-motion: reduce) {
+  .member-menu__chevron { transition: none; }
+}
