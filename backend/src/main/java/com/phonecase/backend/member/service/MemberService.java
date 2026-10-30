@@ -22,17 +22,17 @@ public class MemberService {
     @Autowired
     private EntityManager entityManager;
 
-    public Long register(RegisterRequest request){
+    public Long register(RegisterRequest request) {
         String account = request.account().trim();
         String email = request.email().trim();
         String name = request.name().trim();
         String phone = request.phone().trim();
 
-        if (memberRepository.existsByAccount(account)){
+        if (memberRepository.existsByAccount(account)) {
             throw new RegistrationException("此帳號已被使用。");
         }
 
-        if (memberRepository.existsByEmail(email)){
+        if (memberRepository.existsByEmail(email)) {
             throw new RegistrationException("此電子郵件已被使用。");
         }
 
@@ -41,8 +41,7 @@ public class MemberService {
         }
 
         String passwordHash = BCrypt.hashpw(request.password(),
-                                            BCrypt.gensalt(12)
-        );
+                BCrypt.gensalt(12));
 
         Member member = new Member();
         member.setAccount(account);
@@ -63,14 +62,15 @@ public class MemberService {
         String account = request.account().trim();
         String password = request.password();
 
-        if (password.getBytes(StandardCharsets.UTF_8).length >72) {
+        if (password.getBytes(StandardCharsets.UTF_8).length > 72) {
             throw new LoginException("帳號或密碼錯誤。");
         }
 
         Member member = memberRepository.findByAccount(account)
-                        .orElseThrow(() -> new LoginException("帳號或密碼錯誤"));
+                .orElseThrow(() -> new LoginException("帳號或密碼錯誤"));
 
-        if (!BCrypt.checkpw(password, member.getPasswordHash())) {
+        if (member.getPasswordHash() == null
+                || !BCrypt.checkpw(password, member.getPasswordHash())) {
             throw new LoginException("帳號或密碼錯誤。");
         }
 
@@ -82,7 +82,8 @@ public class MemberService {
     }
 
     public Member getCurrentMember(Long memberId) {
-        if (memberId == null) throw new JwtAuthenticationException("請重新登入。");
+        if (memberId == null)
+            throw new JwtAuthenticationException("請重新登入。");
         Member member = memberRepository.findById(memberId)
                 .orElseThrow(() -> new JwtAuthenticationException("會員不存在，請重新登入。"));
         if (!"ACTIVE".equals(member.getStatus())) {
@@ -94,7 +95,8 @@ public class MemberService {
     @Transactional
     public Member updateProfile(Long memberId, UpdateProfileRequest request) {
         Member member = getCurrentMember(memberId);
-        if (request.name() != null) member.setName(request.name().trim());
+        if (request.name() != null)
+            member.setName(request.name().trim());
         if (request.phone() != null) {
             String phone = request.phone().trim();
             member.setPhone(phone.isEmpty() ? null : phone);
@@ -109,9 +111,37 @@ public class MemberService {
         return savedMember;
     }
 
+    @Transactional
+    public Member loginWithGoogle(
+            com.google.api.client.googleapis.auth.oauth2.GoogleIdToken.Payload payload) {
+        String sub = payload.getSubject();
+        Member member = memberRepository.findByGoogleSub(sub).orElse(null);
 
+        if (member == null) {
+            String email = payload.getEmail().trim();
+            if (memberRepository.existsByEmail(email)) {
+                throw new LoginException("此 Email 已有會員，請使用原登入方式；本版尚未提供綁定。");
+            }
+            member = new Member();
+            member.setGoogleSub(sub);
+            member.setAccount("g_" + java.util.UUID.randomUUID().toString().replace("-", ""));
+            member.setEmail(email);
+            member.setPasswordHash(null);
+            Object googleName = payload.get("name");
+            String name = googleName instanceof String ? ((String) googleName).trim() : "Google 會員";
+            if (name.isBlank())
+                name = "Google 會員";
+            member.setName(name.length() > 80 ? name.substring(0, 80) : name);
+            member.setRole("CUSTOMER");
+            member.setStatus("ACTIVE");
+            member = memberRepository.saveAndFlush(member);
+            entityManager.refresh(member);
+        }
 
-
-
+        if (!"ACTIVE".equals(member.getStatus())) {
+            throw new LoginException("此帳號目前無法登入，請聯絡管理員。");
+        }
+        return member;
+    }
 
 }

@@ -21,7 +21,8 @@ public class MemberExceptionHandler {
 
     @ExceptionHandler(HttpMessageNotReadableException.class)
     public ResponseEntity<Map<String, Object>> handleUnreadable(HttpMessageNotReadableException exception) {
-        return ResponseEntity.badRequest().body(Map.of("success", false, "message", "JSON 格式或欄位不正確，只能修改姓名、電話與地址。"));
+        return ResponseEntity.badRequest().body(Map.of(
+                "success", false, "message", "JSON 格式或欄位不正確。"));
     }
 
     @ExceptionHandler(MethodArgumentNotValidException.class)
@@ -33,8 +34,8 @@ public class MemberExceptionHandler {
         }
 
         Map<String, Object> responseData = Map.of("success", false,
-                                        "message", "請檢查輸入資料",
-                                        "errors", errors);
+                "message", "請檢查輸入資料",
+                "errors", errors);
 
         return ResponseEntity.badRequest().body(responseData);
     }
@@ -43,49 +44,40 @@ public class MemberExceptionHandler {
      * "請輸入帳號。", "password": "密碼至少需要 8 個字元。" } }
      */
 
-    @ExceptionHandler (RegistrationException.class)
-    public ResponseEntity<Map<String,Object>> handleRegistration(RegistrationException exception){
+    @ExceptionHandler(RegistrationException.class)
+    public ResponseEntity<Map<String, Object>> handleRegistration(RegistrationException exception) {
         return ResponseEntity.badRequest().body(Map.<String, Object>of(
-                                                "success", false,
-                                                "message", exception.getMessage()
-        )
-        );
+                "success", false,
+                "message", exception.getMessage()));
     }
+
     @ExceptionHandler(DataIntegrityViolationException.class)
     public ResponseEntity<Map<String, Object>> handleDataIntegrity(
-        DataIntegrityViolationException exception
-    ){
+            DataIntegrityViolationException exception) {
         return ResponseEntity.status(409).body(
-            Map.<String,Object>of(
-                "success", false,
-                "message", "資料與資料庫限制衝突，請確認帳號、Email或其他欄位。"
-            )
-        );
+                Map.<String, Object>of(
+                        "success", false,
+                        "message", "資料與資料庫限制衝突，請確認帳號、Email或其他欄位。"));
 
     }
 
     @ExceptionHandler(LoginException.class)
-    public ResponseEntity<Map<String,Object>> handleLogin(LoginException exception) {
+    public ResponseEntity<Map<String, Object>> handleLogin(LoginException exception) {
 
         return ResponseEntity.status(401).body(
-            Map.<String,Object>of(
-                "success", false,
-                "message", exception.getMessage()
-            )
-        );
+                Map.<String, Object>of(
+                        "success", false,
+                        "message", exception.getMessage()));
     }
 
     @ExceptionHandler(JwtAuthenticationException.class)
-    public ResponseEntity<Map<String,Object>> handleJwtAuthentication(
-        JwtAuthenticationException exception) {
+    public ResponseEntity<Map<String, Object>> handleJwtAuthentication(
+            JwtAuthenticationException exception) {
 
         return ResponseEntity.status(401).body(
-            Map.<String, Object>of(
-                "success", false,
-                "message", exception.getMessage()
-            )
-        );
+                Map.<String, Object>of(
+                        "success", false,
+                        "message", exception.getMessage()));
     }
-
 
 }

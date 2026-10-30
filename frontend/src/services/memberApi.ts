@@ -4,9 +4,11 @@ export class MemberApiError extends Error {
   status: number;
   constructor(message: string, status: number) { super(message); this.status = status; }
 }
+
 function isObject(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null;
 }
+
 function isMember(value: unknown): value is MemberInfo {
   return isObject(value) && typeof value.id === 'number'
     && typeof value.account === 'string' && typeof value.name === 'string'
@@ -16,6 +18,7 @@ function isMember(value: unknown): value is MemberInfo {
     && (typeof value.createdAt === 'string' || value.createdAt === null)
     && (typeof value.updatedAt === 'string' || value.updatedAt === null);
 }
+
 // 網路錯誤不等於 token 失效。保留 HTTP 狀態供 Provider 判斷 401 / 403。
 async function readResponse(response: Response) {
   let data: unknown;
@@ -31,6 +34,7 @@ async function readResponse(response: Response) {
   }
   return data;
 }
+
 export async function loginMember(account: string, password: string) {
   const data = await readResponse(await fetch('/api/member/login', {
     method: 'POST', headers: { 'Content-Type': 'application/json' },
@@ -41,6 +45,7 @@ export async function loginMember(account: string, password: string) {
   }
   return { token: data.token, member: data.member };
 }
+
 export async function getCurrentMember(token: string, signal?: AbortSignal) {
   const data = await readResponse(await fetch('/api/member/me', {
     headers: { Authorization: `Bearer ${token}` }, signal,
@@ -48,6 +53,7 @@ export async function getCurrentMember(token: string, signal?: AbortSignal) {
   if (!isMember(data.member)) throw new Error('會員資料格式不正確。');
   return data.member;
 }
+
 export async function updateCurrentMember(token: string, input: ProfileUpdate) {
   const data = await readResponse(await fetch('/api/member/me', {
     method: 'PATCH',
@@ -56,4 +62,27 @@ export async function updateCurrentMember(token: string, input: ProfileUpdate) {
   }));
   if (!isMember(data.member)) throw new Error('會員資料格式不正確。');
   return data.member;
+}
+
+export async function getGoogleNonce(signal?: AbortSignal): Promise<string> {
+  const data = await readResponse(await fetch('/api/member/google/nonce', {
+    credentials: 'same-origin', cache: 'no-store', signal,
+  }));
+  if (typeof data.nonce !== 'string' || !data.nonce) {
+    throw new Error('無法取得 Google 登入挑戰。');
+  }
+  return data.nonce;
+}
+
+export async function loginGoogleMember(credential: string) {
+  const data = await readResponse(await fetch('/api/member/google', {
+    method: 'POST',
+    credentials: 'same-origin',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ credential }),
+  }));
+  if (typeof data.token !== 'string' || !data.token.trim() || !isMember(data.member)) {
+    throw new Error('Google 登入回應缺少有效 token 或會員資料。');
+  }
+  return { token: data.token, member: data.member };
 }

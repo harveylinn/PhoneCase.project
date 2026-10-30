@@ -3,9 +3,10 @@ import { useState, type SubmitEvent } from "react";
 import { Link, Navigate, useLocation } from "react-router-dom";
 import { getAuthUrl, getReturnTo } from "../../utils/authRedirect";
 import { useAuth } from "../../auth/useAuth";
+import GoogleLoginButton from "../../components/GoogleLoginButton";
 
 export default function LoginPage() {
-  const { login, status, error, retry } = useAuth();
+  const { login, loginWithGoogle, status, error, retry } = useAuth();
   const location = useLocation();
   const destination = getReturnTo(location.search);
   const navigationState: unknown = location.state;
@@ -13,28 +14,41 @@ export default function LoginPage() {
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [resultMessage, setResultMessage] = useState(() => {
-    if (typeof navigationState === "object" && navigationState !== null
-      && "registrationSuccess" in navigationState && navigationState.registrationSuccess === true) {
+    if (
+      typeof navigationState === "object" &&
+      navigationState !== null &&
+      "registrationSuccess" in navigationState &&
+      navigationState.registrationSuccess === true
+    ) {
       return "註冊成功，請使用帳號與密碼登入。";
     }
     return "";
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const isChecking = status === 'checking';
+  const isChecking = status === "checking";
   async function handleSubmit(event: SubmitEvent<HTMLFormElement>) {
     event.preventDefault();
     if (isSubmitting || isChecking) return;
     setResultMessage("");
-    if (!account.trim() || !password) { setResultMessage("請輸入帳號與密碼。"); return; }
+    if (!account.trim() || !password) {
+      setResultMessage("請輸入帳號與密碼。");
+      return;
+    }
     setIsSubmitting(true);
     try {
       await login(account.trim(), password);
       setPassword("");
     } catch (failure) {
-      setResultMessage(failure instanceof Error && !(failure instanceof TypeError) ? failure.message : "無法完成登入，請確認網路與後端服務。");
-    } finally { setIsSubmitting(false); }
+      setResultMessage(
+        failure instanceof Error && !(failure instanceof TypeError)
+          ? failure.message
+          : "無法完成登入，請確認網路與後端服務。",
+      );
+    } finally {
+      setIsSubmitting(false);
+    }
   }
-  if (status === 'authenticated') return <Navigate to={destination} replace />;
+  if (status === "authenticated") return <Navigate to={destination} replace />;
   return (
     <div className="member-login">
       <a className="skip-link" href="#loginForm">
@@ -49,7 +63,11 @@ export default function LoginPage() {
             </h1>
             {isChecking && <p>正在確認會員身分…</p>}
             {error && <p>{error}</p>}
-            {status === 'error' && <button type="button" onClick={retry}>重新確認身分</button>}
+            {status === "error" && (
+              <button type="button" onClick={retry}>
+                重新確認身分
+              </button>
+            )}
             <form id="loginForm" onSubmit={handleSubmit} noValidate>
               <div className="form-group">
                 <label htmlFor="account">帳號</label>
@@ -109,6 +127,9 @@ export default function LoginPage() {
                 {resultMessage}
               </p>
             </form>
+            {!isSubmitting && status === "guest" && (
+              <GoogleLoginButton onLogin={loginWithGoogle} />
+            )}
             <div className="register-prompt">
               <span>還沒有帳號？</span>
               <Link to={getAuthUrl("/register", destination)}>
