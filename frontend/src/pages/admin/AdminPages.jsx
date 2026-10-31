@@ -76,9 +76,16 @@ export function UnlistedProductsPage() {
     [items, word]
   );
 
-  const draftOf = (item) => drafts[item.orderNo] || { price: item.salePrice || '', productId: '' };
+  // imageUrls 預設 2 個空白欄位，可再按「＋」新增；第一張為主圖
+  const draftOf = (item) =>
+    drafts[item.orderNo] || { price: item.salePrice || '', productId: '', imageUrls: ['', ''] };
   const updateDraft = (item, field, value) =>
     setDrafts((current) => ({ ...current, [item.orderNo]: { ...draftOf(item), [field]: value } }));
+  const updateImage = (item, index, value) =>
+    updateDraft(item, 'imageUrls', draftOf(item).imageUrls.map((url, i) => (i === index ? value : url)));
+  const addImageField = (item) => updateDraft(item, 'imageUrls', [...draftOf(item).imageUrls, '']);
+  const removeImageField = (item, index) =>
+    updateDraft(item, 'imageUrls', draftOf(item).imageUrls.filter((_, i) => i !== index));
 
   const publish = async (item) => {
     const draft = draftOf(item);
@@ -91,7 +98,11 @@ export function UnlistedProductsPage() {
     const response = await fetch(`/api/admin/inventory/${encodeURIComponent(item.orderNo)}/publish`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ price, productId: draft.productId ? Number(draft.productId) : null })
+      body: JSON.stringify({
+        price,
+        productId: draft.productId ? Number(draft.productId) : null,
+        imageUrls: draft.imageUrls.map((url) => url.trim()).filter(Boolean)
+      })
     }).catch(() => null);
     setPublishing('');
     if (response?.ok) {
@@ -105,7 +116,10 @@ export function UnlistedProductsPage() {
 
   return (
     <>
-      <AdminPageTitle title="未上架商品" desc="已進入庫存、尚未在商城販售的品項。填入售價後即可上架到商城。">
+      <AdminPageTitle
+        title="未上架商品"
+        desc="已進入庫存、尚未在商城販售的品項。填入圖片路徑與售價後即可上架到商城。"
+      >
         <span className="adm-status">共 {formatNumber(items.length)} 項</span>
       </AdminPageTitle>
       <main className="adm-main">
@@ -135,6 +149,7 @@ export function UnlistedProductsPage() {
                   <th className="r">庫存</th>
                   <th className="r">成本</th>
                   <th>商品系列</th>
+                  <th>商品圖片（第一張為主圖）</th>
                   <th>售價</th>
                   <th className="c">操作</th>
                 </tr>
@@ -175,6 +190,41 @@ export function UnlistedProductsPage() {
                           )}
                         </td>
                         <td>
+                          <div className="adm-image-fields">
+                            {draft.imageUrls.map((url, index) => (
+                              <div key={index} className="adm-image-field">
+                                <span className="adm-image-thumb">
+                                  {url.trim() ? (
+                                    <img src={url.trim()} alt="" onError={(e) => (e.currentTarget.style.visibility = 'hidden')} onLoad={(e) => (e.currentTarget.style.visibility = 'visible')} />
+                                  ) : (
+                                    index + 1
+                                  )}
+                                </span>
+                                <input
+                                  type="text"
+                                  className="adm-image-input"
+                                  placeholder={index === 0 ? '主圖路徑 /images/xxx.webp' : `圖片 ${index + 1} 路徑`}
+                                  value={url}
+                                  onChange={(e) => updateImage(item, index, e.target.value)}
+                                />
+                                {draft.imageUrls.length > 1 && (
+                                  <button
+                                    type="button"
+                                    className="adm-image-remove"
+                                    title="移除此欄位"
+                                    onClick={() => removeImageField(item, index)}
+                                  >
+                                    ×
+                                  </button>
+                                )}
+                              </div>
+                            ))}
+                            <button type="button" className="adm-image-add" onClick={() => addImageField(item)}>
+                              ＋ 新增圖片欄位
+                            </button>
+                          </div>
+                        </td>
+                        <td>
                           <input
                             type="number"
                             min="1"
@@ -198,7 +248,7 @@ export function UnlistedProductsPage() {
                   })
                 ) : (
                   <tr>
-                    <td colSpan={9} className="adm-empty">
+                    <td colSpan={10} className="adm-empty">
                       {loading ? '正在載入…' : '沒有未上架的商品'}
                     </td>
                   </tr>

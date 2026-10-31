@@ -150,6 +150,31 @@ const layoutStyles = `
 .adm-table-nowrap th, .adm-table-nowrap td { white-space: nowrap; }
 .adm-table-nowrap td.wrap { white-space: normal; min-width: 180px; }
 .adm-row-actions { display: flex; gap: 6px; justify-content: center; flex-wrap: wrap; }
+
+/* 未上架商品：多個圖片路徑欄位，左側為縮圖預覽 */
+.adm-image-fields { display: flex; flex-direction: column; gap: 6px; min-width: 280px; }
+.adm-image-field { display: flex; align-items: center; gap: 6px; }
+.adm-image-thumb {
+  flex: 0 0 34px;
+  width: 34px;
+  height: 34px;
+  border-radius: 6px;
+  border: 1px solid var(--adm-border);
+  background: var(--adm-soft);
+  color: var(--adm-faint);
+  font-size: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+.adm-image-thumb img { width: 100%; height: 100%; object-fit: cover; }
+.adm-image-input { flex: 1; min-width: 0; padding: 6px 8px; border: 1px solid var(--adm-border); border-radius: 6px; font-size: 13px; }
+.adm-image-input:focus { outline: none; border-color: var(--adm-navy); }
+.adm-image-remove { flex: 0 0 26px; height: 26px; border: none; border-radius: 6px; background: transparent; color: var(--adm-muted); font-size: 16px; }
+.adm-image-remove:hover { background: var(--adm-danger-soft); color: var(--adm-danger); }
+.adm-image-add { align-self: flex-start; padding: 2px 4px; border: none; background: transparent; color: var(--adm-muted); font-size: 12px; font-weight: 700; }
+.adm-image-add:hover { color: var(--adm-navy); }
 .adm-notice { padding: 10px 14px; border-radius: 8px; background: #eaf7ef; color: #247341; font-weight: 700; }
 .adm-error { padding: 10px 14px; border-radius: 8px; background: var(--adm-danger-soft); color: var(--adm-danger); font-weight: 700; }
 

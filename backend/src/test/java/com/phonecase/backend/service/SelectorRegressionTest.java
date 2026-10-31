@@ -30,7 +30,7 @@ class SelectorRegressionTest {
         var product = new Product(); product.setId(1L);
         when(products.findById(1L)).thenReturn(Optional.of(product));
         when(variants.save(any(ProductVariant.class))).thenAnswer(i -> i.getArgument(0));
-        assertEquals(0, new ProductVariantService(variants, products).addVariant(1L, request()).getStock());
+        assertEquals(0, new ProductVariantService(variants, products, mock(ShopSyncService.class)).addVariant(1L, request()).getStock());
     }
     @Test void editingWithoutStockPreservesExistingInventory() {
         var products = mock(ProductRepository.class);
@@ -39,7 +39,7 @@ class SelectorRegressionTest {
         var existing = new ProductVariant(); existing.setProduct(product); existing.setStock(23);
         when(variants.findById(2L)).thenReturn(Optional.of(existing));
         when(variants.save(any(ProductVariant.class))).thenAnswer(i -> i.getArgument(0));
-        var service = new ProductVariantService(variants, products);
+        var service = new ProductVariantService(variants, products, mock(ShopSyncService.class));
         assertEquals(23, service.updateVariant(1L, 2L, request()).getStock());
         var explicit = request(); explicit.setStock(0);
         assertEquals(0, service.updateVariant(1L, 2L, explicit).getStock());

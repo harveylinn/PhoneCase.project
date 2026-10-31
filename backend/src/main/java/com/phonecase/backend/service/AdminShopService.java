@@ -53,8 +53,11 @@ public class AdminShopService {
     }
 
     // price 售價；productId 商品系列（沒有對應商城規格時使用，未填則以品名找商品系列，找不到就新增）
-    public record PublishRequest(BigDecimal price, Long productId) {
+    // imageUrls 商品圖片路徑（可多張，依順序排列；規格還沒有主圖時，第一張設為主圖）
+    public record PublishRequest(BigDecimal price, Long productId, List<String> imageUrls) {
     }
+
+    private static final int IMAGE_URL_MAX_LENGTH = 500;
 
     private final JdbcTemplate jdbcTemplate;
     private final OrderRepository orderRepository;
@@ -128,6 +131,17 @@ public class AdminShopService {
         if (request.price() == null || request.price().signum() <= 0) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "售價必須大於 0");
         }
+        List<String> imageUrls = request.imageUrls() == null ? List.of() : request.imageUrls().stream()
+                .filter(url -> url != null && !url.isBlank())
+                .map(String::trim)
+                .distinct()
+                .toList();
+        for (String url : imageUrls) {
+            if (url.length() > IMAGE_URL_MAX_LENGTH) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                        "圖片路徑長度不可超過 " + IMAGE_URL_MAX_LENGTH + " 字：" + url.substring(0, 40) + "…");
+            }
+        }
         List<Map<String, Object>> rows = jdbcTemplate.queryForList(
                 "SELECT product_name, brand, model, color, quantity FROM inventory WHERE product_no = ?", productNo);
         if (rows.isEmpty()) {
@@ -151,7 +165,28 @@ public class AdminShopService {
             variantId = insertVariant(productId, productNo, inventory, request.price());
             jdbcTemplate.update("UPDATE products SET status = '上架' WHERE id = ?", productId);
         }
+        addImages(variantId, imageUrls);
         shopSyncService.syncVariant(variantId);
+    }
+
+    // 圖片接在規格既有圖片之後；已存在的路徑略過；規格還沒有主圖時，第一張新圖片設為主圖
+    private void addImages(long variantId, List<String> imageUrls) {
+        if (imageUrls.isEmpty()) {
+            return;
+        }
+        int nextOrder = (int) count(
+                "SELECT COALESCE(MAX(sort_order), 0) FROM product_images WHERE variant_id = ?", variantId) + 1;
+        boolean needPrimary = count(
+                "SELECT COUNT(*) FROM product_images WHERE variant_id = ? AND is_primary = 1", variantId) == 0;
+        for (String url : imageUrls) {
+            if (count("SELECT COUNT(*) FROM product_images WHERE variant_id = ? AND image_url = ?", variantId, url) > 0) {
+                continue;
+            }
+            jdbcTemplate.update(
+                    "INSERT INTO product_images (variant_id, image_url, sort_order, is_primary) VALUES (?, ?, ?, ?)",
+                    variantId, url, nextOrder++, needPrimary);
+            needPrimary = false;
+        }
     }
 
     private long requireProduct(long productId) {
