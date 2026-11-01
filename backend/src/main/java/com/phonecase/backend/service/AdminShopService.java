@@ -1,7 +1,9 @@
 package com.phonecase.backend.service;
 
+import com.phonecase.backend.entity.StockOut;
 import com.phonecase.backend.order.entity.OrderEntity;
 import com.phonecase.backend.order.repository.OrderRepository;
+import com.phonecase.backend.repository.StockOutRepository;
 import org.springframework.http.HttpStatus;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.support.GeneratedKeyHolder;
@@ -16,12 +18,15 @@ import java.sql.Statement;
 import java.sql.Timestamp;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
 // 後台管理頁面：總覽、商城訂單管理、會員管理、未上架商品上架
 // 商城訂單（order / order_item）狀態以 OrderEntity 修改，觸發 ShopOrderSyncListener 即時同步後台訂單 sales_order
+// 商城訂單「出貨」時，為每個明細對應的後台訂單自動建立出庫單並扣庫存（與手動出庫單相同的扣法）
 @Service
 public class AdminShopService {
 
@@ -59,15 +64,27 @@ public class AdminShopService {
 
     private static final int IMAGE_URL_MAX_LENGTH = 500;
 
+    // 出庫單編號 YYMMDDNNNN（以出貨當天日期編號）
+    private static final DateTimeFormatter STOCK_OUT_DATE_PREFIX = DateTimeFormatter.ofPattern("yyMMdd");
+
+    // stockOutNos：這次出貨自動建立的出庫單編號（其他狀態變更為空）
+    public record StatusChangeResult(String orderNumber, String orderStatus, List<String> stockOutNos) {
+    }
+
     private final JdbcTemplate jdbcTemplate;
     private final OrderRepository orderRepository;
     private final ShopSyncService shopSyncService;
+    private final InventoryService inventoryService;
+    private final StockOutRepository stockOutRepository;
 
     public AdminShopService(JdbcTemplate jdbcTemplate, OrderRepository orderRepository,
-            ShopSyncService shopSyncService) {
+            ShopSyncService shopSyncService, InventoryService inventoryService,
+            StockOutRepository stockOutRepository) {
         this.jdbcTemplate = jdbcTemplate;
         this.orderRepository = orderRepository;
         this.shopSyncService = shopSyncService;
+        this.inventoryService = inventoryService;
+        this.stockOutRepository = stockOutRepository;
     }
 
     // date 為瀏覽器日期
@@ -98,8 +115,10 @@ public class AdminShopService {
         return queryOrders("WHERE o.order_status IN (" + inList + ")", 0);
     }
 
+    // 出貨時自動建立出庫單：庫存不足或品號不在庫存時整筆回滾，訂單維持未出貨
+    // adminId 為操作的管理員（寫入出庫單建立人）
     @Transactional
-    public void updateOrderStatus(Long orderId, String status) {
+    public synchronized StatusChangeResult updateOrderStatus(Long orderId, String status, Long adminId) {
         Set<String> allowedFrom = ORDER_TRANSITIONS.get(status);
         if (allowedFrom == null) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "訂單狀態只能改為 SHIPPED、COMPLETED 或 CANCELLED");
@@ -111,7 +130,77 @@ public class AdminShopService {
                     "訂單 " + order.getOrderNumber() + " 目前狀態為 " + order.getOrderStatus() + "，無法改為 " + status);
         }
         order.setOrderStatus(status);
-        orderRepository.save(order);
+        orderRepository.saveAndFlush(order);
+
+        List<String> stockOutNos = "SHIPPED".equals(status)
+                ? createShippingStockOuts(orderId, creatorOf(adminId))
+                : List.of();
+        return new StatusChangeResult(order.getOrderNumber(), status, stockOutNos);
+    }
+
+    // 為這張商城訂單每個明細對應的後台訂單建立出庫單；已經有出庫單（例如手動建立）的明細略過，不重複扣庫存
+    private List<String> createShippingStockOuts(Long orderId, String creator) {
+        // 先補齊後台訂單（即時同步失敗時，這裡仍能找到每個明細的 sales_order）
+        shopSyncService.syncShopOrders();
+        List<Map<String, Object>> lines = jdbcTemplate.queryForList("""
+                SELECT s.order_no, s.product_name, s.product_no, s.brand, s.color, s.model,
+                       s.quantity, s.unit_price, s.supplier_name, s.supplier_id
+                FROM sales_order s
+                JOIN order_item oi ON oi.id = s.source_order_item_id
+                WHERE oi.order_id = ?
+                  AND NOT EXISTS (SELECT 1 FROM stock_out so WHERE so.sales_order_no = s.order_no)
+                ORDER BY oi.id
+                """, orderId);
+
+        List<String> stockOutNos = new ArrayList<>();
+        for (Map<String, Object> line : lines) {
+            String productNo = (String) line.get("product_no");
+            int quantity = ((Number) line.get("quantity")).intValue();
+            int unitPrice = ((Number) line.get("unit_price")).intValue();
+            // 與手動出庫單相同：以品號原子扣庫存，不足時拋出 409
+            inventoryService.changeQuantity(productNo, -quantity);
+
+            StockOut stockOut = new StockOut();
+            stockOut.setOrderNo(nextStockOutNo());
+            stockOut.setSalesOrderNo((String) line.get("order_no"));
+            stockOut.setProductName((String) line.get("product_name"));
+            stockOut.setProductNo(productNo);
+            stockOut.setBrand((String) line.get("brand"));
+            stockOut.setColor((String) line.get("color"));
+            stockOut.setModel((String) line.get("model"));
+            stockOut.setQuantity(quantity);
+            stockOut.setUnitPrice(unitPrice);
+            stockOut.setTotalPrice(quantity * unitPrice);
+            stockOut.setCustomerName((String) line.get("supplier_name"));
+            stockOut.setCustomerId((String) line.get("supplier_id"));
+            stockOut.setCreator(creator);
+            stockOutRepository.saveAndFlush(stockOut);
+            stockOutNos.add(stockOut.getOrderNo());
+        }
+        return stockOutNos;
+    }
+
+    // 下一個出庫單編號：今天日期 + 4 碼流水號，接在今天已用的最大編號之後（手動建立的出庫單也算在內）
+    private String nextStockOutNo() {
+        String prefix = LocalDate.now().format(STOCK_OUT_DATE_PREFIX);
+        String max = jdbcTemplate.queryForObject(
+                "SELECT MAX(stockout_no) FROM stock_out WHERE stockout_no LIKE ? AND stockout_no REGEXP '^[0-9]{10}$'",
+                String.class, prefix + "%");
+        int next = max == null ? 1 : Integer.parseInt(max.substring(6)) + 1;
+        if (next > 9999) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "今天的出庫單編號已用完：" + prefix);
+        }
+        return prefix + String.format("%04d", next);
+    }
+
+    // 出庫單建立人：操作的管理員帳號（找不到時沿用預設 admin）
+    private String creatorOf(Long adminId) {
+        if (adminId == null) {
+            return "admin";
+        }
+        List<String> accounts = jdbcTemplate.queryForList(
+                "SELECT account FROM members WHERE id = ?", String.class, adminId);
+        return accounts.isEmpty() ? "admin" : accounts.get(0);
     }
 
     public void updateMemberStatus(Long memberId, String status) {

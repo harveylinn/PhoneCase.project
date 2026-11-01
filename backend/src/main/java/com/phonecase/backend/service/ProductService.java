@@ -6,12 +6,15 @@ import com.phonecase.backend.entity.ProductVariant;
 import com.phonecase.backend.repository.ProductRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.http.HttpStatus;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.math.BigDecimal;
 import java.util.List;
 
 
+// 修改、刪除、上下架商品與同步後台庫存在同一個交易：同步失敗時商品一起回滾，API 回報失敗時資料也沒有寫入
+// 同步以 JdbcTemplate 讀取資料表，呼叫前先 flush，讓同步讀到這次修改後的商品
 @Service
 public class ProductService {
 
@@ -75,6 +78,7 @@ public class ProductService {
         return productRepository.save(product);
     }
 
+    @Transactional
     public Product updateProduct(Long id, ProductRequest request){
         validateStatus(request.getStatus());
         Product existingProduct = productRepository
@@ -90,12 +94,14 @@ public class ProductService {
         existingProduct.setDescription(request.getDescription());
         existingProduct.setStatus(request.getStatus());
         Product saved = productRepository.save(existingProduct);
+        productRepository.flush();
         // 商品名稱、上下架同步到後台庫存
         shopSyncService.syncProduct(saved.getId());
         return saved;
 
     }
 
+    @Transactional
     public void deleteProduct(Long id){
         Product existingProduct = productRepository
                 .findById(id)
@@ -108,10 +114,12 @@ public class ProductService {
         List<String> skus = existingProduct.getVariants() == null ? List.of()
                 : existingProduct.getVariants().stream().map(ProductVariant::getSku).toList();
         productRepository.delete(existingProduct);
+        productRepository.flush();
         // 後台庫存保留紀錄，只清空上架狀態
         shopSyncService.unlinkSkus(skus);
     }
 
+    @Transactional
     public Product updateStatus(Long id, String status){
         Product existingProduct = getProductById(id);
 
@@ -123,6 +131,7 @@ public class ProductService {
         }
         existingProduct.setStatus(status);
         Product saved = productRepository.save(existingProduct);
+        productRepository.flush();
         shopSyncService.syncProduct(saved.getId());
         return saved;
     }

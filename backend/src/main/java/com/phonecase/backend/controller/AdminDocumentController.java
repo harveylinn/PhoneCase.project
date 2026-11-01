@@ -3,6 +3,7 @@ package com.phonecase.backend.controller;
 import com.phonecase.backend.dto.AdminDocumentRequest;
 import com.phonecase.backend.entity.BaseDocument;
 import com.phonecase.backend.entity.Inventory;
+import com.phonecase.backend.member.security.CheckAdmin;
 import com.phonecase.backend.service.AdminDocumentService;
 import jakarta.validation.Valid;
 import org.springframework.format.annotation.DateTimeFormat;
@@ -12,6 +13,8 @@ import org.springframework.web.bind.annotation.*;
 import java.time.LocalDate;
 import java.util.List;
 
+// 後台 API：需要管理員登入
+@CheckAdmin
 @RestController
 @RequestMapping("/api/admin/documents")
 public class AdminDocumentController {

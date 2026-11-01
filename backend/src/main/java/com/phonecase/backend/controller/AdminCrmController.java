@@ -1,5 +1,6 @@
 package com.phonecase.backend.controller;
 
+import com.phonecase.backend.member.security.CheckAdmin;
 import com.phonecase.backend.service.CrmService;
 import com.phonecase.backend.service.ShopSyncService;
 import org.springframework.format.annotation.DateTimeFormat;
@@ -7,6 +8,8 @@ import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDate;
 
+// 後台 API：需要管理員登入
+@CheckAdmin
 @RestController
 @RequestMapping("/api/admin")
 public class AdminCrmController {

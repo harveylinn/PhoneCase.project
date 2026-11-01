@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { X, Search } from 'lucide-react';
+import { adminFetch } from './adminFetch.js';
 
 /* 後台專用樣式（全部以 .adm 為前綴，避免影響其他頁面），由 AdminLayout 載入 */
 export const adminStyles = `
@@ -510,7 +511,7 @@ export default function App() {
   // 開啟後台時先同步商城資料（商品規格 → 庫存、商城訂單 → 訂單），完成後重新讀取各區塊
   const [syncState, setSyncState] = useState('syncing');
   useEffect(() => {
-    fetch('/api/admin/sync', { method: 'POST' })
+    adminFetch('/api/admin/sync', { method: 'POST' })
       .then((response) => setSyncState(response.ok ? 'done' : 'failed'))
       .catch(() => setSyncState('failed'))
       .finally(refreshStats);
@@ -563,7 +564,7 @@ export default function App() {
     };
 
     try {
-      const response = await fetch('/api/admin/documents', {
+      const response = await adminFetch('/api/admin/documents', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload)
@@ -584,7 +585,7 @@ export default function App() {
 
   const handleSearch = async () => {
     try {
-      const response = await fetch(
+      const response = await adminFetch(
         `/api/admin/documents/search?docType=${encodeURIComponent(currentType)}&keyword=${encodeURIComponent(
           searchKeyword
         )}&operator=${encodeURIComponent(searchOperator)}`
@@ -606,7 +607,7 @@ export default function App() {
 
   const handleUpdateSubmit = async (item) => {
     try {
-      const response = await fetch(
+      const response = await adminFetch(
         `/api/admin/documents/${encodeURIComponent(item.orderNo)}?docType=${encodeURIComponent(currentType)}`,
         {
           method: 'PUT',
@@ -630,7 +631,7 @@ export default function App() {
 
   const executeDelete = async () => {
     try {
-      const response = await fetch(
+      const response = await adminFetch(
         `/api/admin/documents/${encodeURIComponent(pendingDeleteId)}?docType=${encodeURIComponent(currentType)}`,
         { method: 'DELETE' }
       );
@@ -748,7 +749,7 @@ function OverviewSection({ refreshKey }) {
   const [error, setError] = useState(false);
 
   useEffect(() => {
-    fetch(`/api/admin/overview?date=${getLocalDateString()}`)
+    adminFetch(`/api/admin/overview?date=${getLocalDateString()}`)
       .then((response) => {
         if (!response.ok) {
           throw new Error(`HTTP ${response.status}`);
@@ -878,7 +879,7 @@ function SalesStatsCard({ refreshKey }) {
     const date = getLocalDateString();
     setStatsDate(date);
 
-    fetch(`/api/admin/documents/stats?date=${date}`)
+    adminFetch(`/api/admin/documents/stats?date=${date}`)
       .then((response) => {
         if (!response.ok) {
           throw new Error(`HTTP ${response.status}`);
@@ -938,7 +939,7 @@ function SalesTrendChart({ refreshKey }) {
   const [hoverIndex, setHoverIndex] = useState(null);
 
   useEffect(() => {
-    fetch(`/api/admin/documents/stats/trend?date=${getLocalDateString()}`)
+    adminFetch(`/api/admin/documents/stats/trend?date=${getLocalDateString()}`)
       .then((response) => {
         if (!response.ok) {
           throw new Error(`HTTP ${response.status}`);
@@ -1118,7 +1119,7 @@ export function CrmSection({ refreshKey, manage = false }) {
     if (!window.confirm(`確定要${verb}會員「${customer.name}」（${customer.customerCode}）嗎？`)) {
       return;
     }
-    const response = await fetch(`/api/admin/members/${customer.id}/status`, {
+    const response = await adminFetch(`/api/admin/members/${customer.id}/status`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ status: next })
@@ -1132,7 +1133,7 @@ export function CrmSection({ refreshKey, manage = false }) {
   };
 
   useEffect(() => {
-    fetch(`/api/admin/crm?date=${getLocalDateString()}`)
+    adminFetch(`/api/admin/crm?date=${getLocalDateString()}`)
       .then((response) => {
         if (!response.ok) {
           throw new Error(`HTTP ${response.status}`);
@@ -1293,7 +1294,7 @@ function useReportData(url, refreshKey) {
   const [error, setError] = useState(false);
 
   useEffect(() => {
-    fetch(url)
+    adminFetch(url)
       .then((response) => {
         if (!response.ok) {
           throw new Error(`HTTP ${response.status}`);

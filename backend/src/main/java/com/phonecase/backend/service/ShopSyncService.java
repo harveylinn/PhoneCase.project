@@ -16,6 +16,7 @@ import org.springframework.transaction.support.TransactionTemplate;
 
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 
 // 商城（商品規格、會員、商城訂單）與後台單據（庫存、訂單）的同步
 // 商城的 order / order_item 目前沒有 JPA 實體（由其他組員負責），這裡以 JdbcTemplate 直接讀寫，避免重複對應同一張表
@@ -27,6 +28,11 @@ import java.util.Map;
 //   商城訂單明細 order_item.id       → 訂單 sales_order.source_order_item_id（一個明細一張訂單）
 //   商城訂單編號 order.order_number  → 訂單編號 sales_order.order_no = 商城訂單編號-明細序號
 //                                    （例如 ORDc8cd8a216f804569a4d85699-1，序號依同一張訂單的明細 id 排序）
+//
+// 庫存數量的唯一來源是 inventory.quantity，product_variants.stock 只是鏡像，一律由 inventory 單向覆蓋
+//   入庫單 / 出庫單：InventoryService 以品號原子增減 inventory，再鏡像到規格
+//   商品頁明確填寫庫存：syncVariant 把該數量寫入 inventory，再鏡像到規格
+//   不再依兩邊 updated_at 比較誰比較新（同秒異動或修改其他欄位都可能讓舊數量蓋掉正確數量）
 //
 // 商品頁、入庫單、出庫單、商城訂單異動時會即時同步；直接改資料庫的情況，由排程每 30 秒補同步一次
 @Service
@@ -91,7 +97,7 @@ public class ShopSyncService {
         }
     }
 
-    // 全部同步：商品規格 → 庫存、庫存數量雙向、商城訂單 → 訂單
+    // 全部同步：商品規格 → 庫存（品名、售價、狀態）、庫存數量 → 規格、商城訂單 → 訂單
     @Transactional
     public synchronized SyncResult syncAll() {
         int inventoryChanged = syncAllVariants();
@@ -99,6 +105,15 @@ public class ShopSyncService {
         int ordersUpdated = updateLinkedSalesOrders();
         int ordersRemoved = removeOrphanSalesOrders();
         return new SyncResult(inventoryChanged, ordersCreated, ordersUpdated, ordersRemoved);
+    }
+
+    // 只同步商城訂單 → 後台訂單（建立缺少的、更新狀態、移除孤兒），加入呼叫端的交易
+    // 商城訂單出貨自動建立出庫單前呼叫，確保每個明細都有對應的 sales_order
+    @Transactional
+    public synchronized void syncShopOrders() {
+        createMissingSalesOrders();
+        updateLinkedSalesOrders();
+        removeOrphanSalesOrders();
     }
 
     // 商城下單、付款、取消後（OrderEntity 寫入並提交），立即同步後台訂單
@@ -116,19 +131,38 @@ public class ShopSyncService {
         }
     }
 
-    // 商品頁新增、修改規格後呼叫
-    // 規格改了 SKU 時，先釋放舊品號的庫存，避免兩筆庫存對應同一個規格
+    // 未上架商品上架後呼叫：不改庫存數量
     @Transactional
-    public synchronized void syncVariant(Long variantId) {
+    public Optional<Integer> syncVariant(Long variantId) {
+        return syncVariant(variantId, null);
+    }
+
+    // 商品頁新增、修改規格後呼叫
+    // stock 為商品頁明確填寫的庫存（null = 沒有填寫，沿用 inventory 的數量）
+    // 規格改了 SKU 時，先釋放舊品號的庫存，避免兩筆庫存對應同一個規格
+    // 回傳同步後的庫存數量（以 inventory 為準），沒有對應庫存時為 empty
+    @Transactional
+    public synchronized Optional<Integer> syncVariant(Long variantId, Integer stock) {
         releaseUnlinkedInventory("");
         jdbcTemplate.update(insertMissingInventorySql("AND v.id = ?"), variantId);
         jdbcTemplate.update(updateInventoryFromVariantSql("AND v.id = ?"), variantId);
-        // 商品頁剛修改的庫存數量為最新資料
+        if (stock != null) {
+            jdbcTemplate.update("""
+                    UPDATE inventory i JOIN product_variants v ON v.sku = i.product_no
+                    SET i.total_price = ? * i.unit_price, i.quantity = ?
+                    WHERE v.id = ?
+                    """, stock, stock, variantId);
+        }
         jdbcTemplate.update("""
-                UPDATE inventory i JOIN product_variants v ON v.sku = i.product_no
-                SET i.quantity = v.stock, i.total_price = v.stock * i.unit_price
-                WHERE v.id = ? AND i.quantity <> v.stock
+                UPDATE product_variants v JOIN inventory i ON i.product_no = v.sku
+                SET v.stock = i.quantity
+                WHERE v.id = ? AND v.stock <> i.quantity
                 """, variantId);
+        List<Integer> quantities = jdbcTemplate.queryForList("""
+                SELECT i.quantity FROM inventory i JOIN product_variants v ON v.sku = i.product_no
+                WHERE v.id = ?
+                """, Integer.class, variantId);
+        return quantities.stream().findFirst();
     }
 
     // 商品頁修改商品名稱、上下架後呼叫（同一商品的全部規格）
@@ -158,11 +192,20 @@ public class ShopSyncService {
                 """.formatted(condition), args);
     }
 
-    // 入庫單、出庫單、後台「庫存」異動數量後呼叫：同步商品規格的庫存
+    // 後台直接修改「庫存」數量後呼叫（inventory 尚未寫入資料庫，直接帶入新數量）：同步商品規格的庫存
     public void pushStockToVariant(String sku, int quantity) {
         jdbcTemplate.update(
                 "UPDATE product_variants SET stock = ? WHERE sku = ? AND stock <> ?",
                 quantity, sku, quantity);
+    }
+
+    // 入庫單、出庫單已原子異動 inventory 後呼叫：規格庫存改為資料庫中 inventory 的數量
+    public void mirrorStockToVariant(String sku) {
+        jdbcTemplate.update("""
+                UPDATE product_variants v JOIN inventory i ON i.product_no = v.sku
+                SET v.stock = i.quantity
+                WHERE v.sku = ? AND v.stock <> i.quantity
+                """, sku);
     }
 
     public boolean isShopSku(String sku) {
@@ -190,12 +233,7 @@ public class ShopSyncService {
         int changed = releaseUnlinkedInventory("");
         changed += jdbcTemplate.update(insertMissingInventorySql(""));
 
-        // 庫存數量：以較晚更新的一方為準（同時間以後台庫存為準）
-        changed += jdbcTemplate.update("""
-                UPDATE inventory i JOIN product_variants v ON v.sku = i.product_no
-                SET i.quantity = v.stock, i.total_price = v.stock * i.unit_price
-                WHERE i.quantity <> v.stock AND v.updated_at > i.updated_at
-                """);
+        // 庫存數量：一律以 inventory 為準覆蓋規格（單向，不比較更新時間）
         changed += jdbcTemplate.update("""
                 UPDATE product_variants v JOIN inventory i ON i.product_no = v.sku
                 SET v.stock = i.quantity

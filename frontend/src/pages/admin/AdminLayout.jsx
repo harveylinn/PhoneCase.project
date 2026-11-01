@@ -1,6 +1,7 @@
-import React from 'react';
-import { NavLink, Outlet, useLocation } from 'react-router-dom';
+import React, { useEffect, useState } from 'react';
+import { Link, NavLink, Outlet, useLocation } from 'react-router-dom';
 import { adminStyles } from './admin.jsx';
+import { ADMIN_AUTH_EVENT, adminFetch } from './adminFetch.js';
 
 // 後台側邊選單：滑鼠移到有子選單的項目時展開子標籤（目前所在的區塊保持展開）
 const menu = [
@@ -187,6 +188,13 @@ const layoutStyles = `
 .adml .admin-page .button-outline { border-color: var(--adm-navy); color: var(--adm-navy); }
 .adml .admin-page .admin-list-item.is-selected { border-color: var(--adm-navy); }
 
+/* 未登入 / 非管理員提示 */
+.adm-gate { max-width: 520px; margin: 60px auto 0; padding: 36px 40px; text-align: center; }
+.adm-gate h2 { color: var(--adm-navy); font-size: 22px; font-weight: 800; }
+.adm-gate p { margin-top: 10px; color: var(--adm-muted); }
+.adm-gate-actions { display: flex; justify-content: center; gap: 10px; margin-top: 24px; }
+.adm-gate-actions a { text-decoration: none; }
+
 @media (max-width: 1024px) {
   .adm-kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
@@ -209,8 +217,63 @@ const layoutStyles = `
 }
 `;
 
+// 後台權限狀態：checking 確認中、ok 管理員、login 未登入或登入失效、forbidden 不是管理員、error 無法連線
+const authMessages = {
+  checking: ['確認管理員身分中…', ''],
+  login: ['請先登入管理員帳號', '後台僅限管理員使用。登入後再回到此頁，按「重新確認」。'],
+  forbidden: ['此帳號沒有後台權限', '目前登入的帳號不是管理員，請改用管理員帳號登入。'],
+  error: ['無法確認管理員身分', '請確認後端服務已啟動，再按「重新確認」。']
+};
+
+function AdminGate({ state, onRetry }) {
+  const [title, desc] = authMessages[state];
+  return (
+    <main className="adm-main">
+      <section className="adm-card adm-gate">
+        <h2>{title}</h2>
+        {desc && <p>{desc}</p>}
+        {state !== 'checking' && (
+          <div className="adm-gate-actions">
+            {state !== 'error' && (
+              <Link to="/login" className="adm-btn adm-btn-lg adm-btn-dark">
+                {state === 'forbidden' ? '切換帳號' : '前往登入'}
+              </Link>
+            )}
+            <button className="adm-btn adm-btn-lg adm-btn-white" onClick={onRetry}>
+              重新確認
+            </button>
+          </div>
+        )}
+      </section>
+    </main>
+  );
+}
+
 export default function AdminLayout() {
   const { pathname } = useLocation();
+  const [auth, setAuth] = useState('checking');
+  const [checkKey, setCheckKey] = useState(0);
+
+  // 開啟後台時確認登入者是管理員；之後任何後台 API 回 401 / 403 也會切回提示畫面
+  useEffect(() => {
+    if (!localStorage.getItem('token')) {
+      setAuth('login');
+      return;
+    }
+    setAuth('checking');
+    adminFetch('/api/admin/session')
+      .then((response) => {
+        if (response.ok) setAuth('ok');
+        else setAuth(response.status === 403 ? 'forbidden' : response.status === 401 ? 'login' : 'error');
+      })
+      .catch(() => setAuth('error'));
+  }, [checkKey]);
+
+  useEffect(() => {
+    const onAuthFailed = (event) => setAuth(event.detail === 403 ? 'forbidden' : 'login');
+    window.addEventListener(ADMIN_AUTH_EVENT, onAuthFailed);
+    return () => window.removeEventListener(ADMIN_AUTH_EVENT, onAuthFailed);
+  }, []);
 
   return (
     <div className="adm adml">
@@ -255,7 +318,7 @@ export default function AdminLayout() {
       </aside>
 
       <div className="adml-content">
-        <Outlet />
+        {auth === 'ok' ? <Outlet /> : <AdminGate state={auth} onRetry={() => setCheckKey((key) => key + 1)} />}
         <footer className="adm-footer">
           Phonecase Enterprise ERP &amp; Inventory Management System &copy; 2026. All rights reserved.
         </footer>

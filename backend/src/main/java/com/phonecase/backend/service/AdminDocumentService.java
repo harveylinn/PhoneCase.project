@@ -111,8 +111,7 @@ public class AdminDocumentService {
         applyRequest(document, request);
         applyProductNo(document, request.getProductNo(), true);
         applyReference(document, request.getRefNo(), true);
-        applyStock(docType, document.getProductName(), document.getModel(),
-                document.getColor(), document.getQuantity());
+        applyStock(docType, document.getProductNo(), document.getQuantity());
         pushInventoryToShop(document);
 
         return repository.save(document);
@@ -153,30 +152,23 @@ public class AdminDocumentService {
                 );
     }
 
-    // 入庫單、出庫單：同一品項只異動數量差額；換了品項則先撤銷舊品項再套用新品項
+    // 入庫單、出庫單：同一品號只異動數量差額；換了品號則先撤銷舊品號再套用新品號
     @Transactional
     public BaseDocument updateDocument(String docType, String orderNo, AdminDocumentRequest request) {
         BaseDocument existingDocument = getDocument(docType, orderNo);
 
-        String oldProductName = existingDocument.getProductName();
-        String oldModel = existingDocument.getModel();
-        String oldColor = existingDocument.getColor();
+        String oldProductNo = existingDocument.getProductNo();
         int oldQuantity = existingDocument.getQuantity();
 
         applyRequest(existingDocument, request);
         applyProductNo(existingDocument, request.getProductNo(), false);
         applyReference(existingDocument, request.getRefNo(), false);
 
-        boolean sameItem = Objects.equals(oldProductName, existingDocument.getProductName())
-                && Objects.equals(oldModel, existingDocument.getModel())
-                && Objects.equals(oldColor, existingDocument.getColor());
-        if (sameItem) {
-            applyStock(docType, oldProductName, oldModel, oldColor,
-                    existingDocument.getQuantity() - oldQuantity);
+        if (Objects.equals(oldProductNo, existingDocument.getProductNo())) {
+            applyStock(docType, oldProductNo, existingDocument.getQuantity() - oldQuantity);
         } else {
-            applyStock(docType, oldProductName, oldModel, oldColor, -oldQuantity);
-            applyStock(docType, existingDocument.getProductName(), existingDocument.getModel(),
-                    existingDocument.getColor(), existingDocument.getQuantity());
+            applyStock(docType, oldProductNo, -oldQuantity);
+            applyStock(docType, existingDocument.getProductNo(), existingDocument.getQuantity());
         }
         pushInventoryToShop(existingDocument);
 
@@ -212,8 +204,7 @@ public class AdminDocumentService {
             );
         }
 
-        applyStock(docType, existingDocument.getProductName(), existingDocument.getModel(),
-                existingDocument.getColor(), -existingDocument.getQuantity());
+        applyStock(docType, existingDocument.getProductNo(), -existingDocument.getQuantity());
         repositoryOf(docType).delete(existingDocument);
     }
 
@@ -319,11 +310,12 @@ public class AdminDocumentService {
 
     // quantity 為正數 = 套用單據，負數 = 撤銷單據
     // 只有入庫單會增加庫存、只有出庫單會減少庫存；訂單、採購單、庫存本身不影響庫存
-    private void applyStock(String docType, String productName, String model, String color, int quantity) {
+    // 以單據上的品號（唯一）找庫存，不再用 品名 + 型號 + 顏色
+    private void applyStock(String docType, String productNo, int quantity) {
         if (STOCK_IN.equals(docType)) {
-            inventoryService.changeQuantity(productName, model, color, quantity);
+            inventoryService.changeQuantity(productNo, quantity);
         } else if (STOCK_OUT.equals(docType)) {
-            inventoryService.changeQuantity(productName, model, color, -quantity);
+            inventoryService.changeQuantity(productNo, -quantity);
         }
     }
 
@@ -351,8 +343,8 @@ public class AdminDocumentService {
     }
 
     // 品號：訂單、採購單、入庫單、出庫單為 product_no 欄位（varchar(50)、不可空白）
-    // 新增時沒有傳入就以 品名 + 型號 + 顏色 從庫存找品號；修改時沒有傳入就沿用原本的品號
-    // 庫存的品號為主鍵，不在這裡處理
+    // 新增時沒有傳入就以 品名 + 型號 + 顏色 從庫存找品號（只有唯一一筆符合時才帶入，多筆時要求填寫品號）
+    // 修改時沒有傳入就沿用原本的品號；庫存的品號為主鍵，不在這裡處理
     private void applyProductNo(BaseDocument document, String productNo, boolean required) {
         if (document instanceof Inventory) {
             return;
@@ -361,15 +353,22 @@ public class AdminDocumentService {
         String no = trimToNull(productNo);
         if (no == null) {
             if (required) {
-                no = inventoryRepository.findProductNo(
-                                document.getProductName(), document.getModel(), document.getColor())
-                        .orElseThrow(() -> new ResponseStatusException(
-                                HttpStatus.BAD_REQUEST,
-                                "未填寫品號，且庫存中找不到對應品項（品名：" + document.getProductName()
-                                        + "、型號：" + Objects.toString(document.getModel(), "無")
-                                        + "、顏色：" + Objects.toString(document.getColor(), "無")
-                                        + "），請填寫品號或先在「庫存」新增該品項"
-                        ));
+                String item = "品名：" + document.getProductName()
+                        + "、型號：" + Objects.toString(document.getModel(), "無")
+                        + "、顏色：" + Objects.toString(document.getColor(), "無");
+                List<String> matches = inventoryRepository.findProductNos(
+                        document.getProductName(), document.getModel(), document.getColor());
+                if (matches.isEmpty()) {
+                    throw new ResponseStatusException(
+                            HttpStatus.BAD_REQUEST,
+                            "未填寫品號，且庫存中找不到對應品項（" + item + "），請填寫品號或先在「庫存」新增該品項");
+                }
+                if (matches.size() > 1) {
+                    throw new ResponseStatusException(
+                            HttpStatus.BAD_REQUEST,
+                            "庫存中有多筆品項符合（" + item + "）：" + String.join("、", matches) + "，請填寫品號");
+                }
+                no = matches.get(0);
             } else {
                 return;
             }

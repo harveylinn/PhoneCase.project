@@ -7,10 +7,14 @@ import com.phonecase.backend.repository.ProductVariantRepository;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import com.phonecase.backend.entity.Product;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.util.List;
+import java.util.Optional;
 
+// 新增、修改、刪除規格與同步後台庫存在同一個交易：同步失敗時規格一起回滾，API 回報失敗時資料也沒有寫入
+// 同步以 JdbcTemplate 讀取資料表，呼叫前先 flush，讓同步讀到這次修改後的規格
 @Service
 public class ProductVariantService {
 
@@ -26,6 +30,7 @@ public class ProductVariantService {
         this.shopSyncService = shopSyncService;
     }
 
+    @Transactional
     public ProductVariant addVariant(
             Long productId,
             ProductVariantRequest request) {
@@ -58,11 +63,18 @@ public class ProductVariantService {
                 );
         variant.setProduct(product);
         ProductVariant saved = productVariantRepository.save(variant);
-        // 同步到後台庫存（品號 = SKU）
-        shopSyncService.syncVariant(saved.getId());
+        productVariantRepository.flush();
+        // 同步到後台庫存（品號 = SKU）；庫存以 inventory 為準，只有明確填寫時才覆蓋
+        applySyncedStock(saved, shopSyncService.syncVariant(saved.getId(), request.getStock()));
         return saved;
     }
 
+    // 回傳給前端的規格庫存改為同步後 inventory 的數量
+    private void applySyncedStock(ProductVariant variant, Optional<Integer> stock) {
+        stock.ifPresent(variant::setStock);
+    }
+
+    @Transactional
     public ProductVariant updateVariant(
             Long productId,
             Long id,
@@ -100,8 +112,9 @@ public class ProductVariantService {
         existingVariant.setStatus(request.getStatus());
         existingVariant.setTags(request.getTags());
         ProductVariant saved = productVariantRepository.save(existingVariant);
-        // 同步到後台庫存（品號 = SKU）
-        shopSyncService.syncVariant(saved.getId());
+        productVariantRepository.flush();
+        // 同步到後台庫存（品號 = SKU）；庫存以 inventory 為準，只有明確填寫時才覆蓋
+        applySyncedStock(saved, shopSyncService.syncVariant(saved.getId(), request.getStock()));
         return saved;
     }
 
@@ -114,6 +127,7 @@ public class ProductVariantService {
         }
     }
 
+    @Transactional
     public ProductVariant updateStatus(Long productId, Long id, String status) {
         ProductVariant existingVariant = productVariantRepository.findById(id)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "找不到商品規格，id" + id));
@@ -122,9 +136,14 @@ public class ProductVariantService {
         }
         validateStatus(status);
         existingVariant.setStatus(status);
-        return productVariantRepository.save(existingVariant);
+        ProductVariant saved = productVariantRepository.save(existingVariant);
+        productVariantRepository.flush();
+        // 上架 / 下架同步到後台庫存狀態
+        shopSyncService.syncVariant(saved.getId());
+        return saved;
     }
 
+    @Transactional
     public void deleteVariant(
             Long productId,
             Long id) {
@@ -143,6 +162,7 @@ public class ProductVariantService {
             );
         }
         productVariantRepository.delete(existingVariant);
+        productVariantRepository.flush();
         // 後台庫存保留紀錄，只清空上架狀態
         shopSyncService.unlinkSkus(List.of(existingVariant.getSku()));
 

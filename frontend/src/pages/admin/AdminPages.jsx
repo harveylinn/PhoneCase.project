@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import AdminProducts from '../products/AdminProducts.jsx';
+import { adminFetch } from './adminFetch.js';
 import {
   AdminPageTitle,
   CrmSection,
@@ -42,7 +43,7 @@ export function UnlistedProductsPage() {
     setLoading(true);
     try {
       const [inventoryResponse, productResponse] = await Promise.all([
-        fetch('/api/admin/inventory'),
+        adminFetch('/api/admin/inventory'),
         fetch('/api/products')
       ]);
       if (!inventoryResponse.ok) {
@@ -95,7 +96,7 @@ export function UnlistedProductsPage() {
       return;
     }
     setPublishing(item.orderNo);
-    const response = await fetch(`/api/admin/inventory/${encodeURIComponent(item.orderNo)}/publish`, {
+    const response = await adminFetch(`/api/admin/inventory/${encodeURIComponent(item.orderNo)}/publish`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -266,7 +267,7 @@ export function UnlistedProductsPage() {
 const orderPages = {
   all: ['所有訂單', '商城所有訂單'],
   unpaid: ['未結帳', '已下單、尚未完成信用卡付款的訂單'],
-  unshipped: ['未出貨', '已付款或貨到付款、等待出貨的訂單'],
+  unshipped: ['未出貨', '已付款或貨到付款、等待出貨的訂單。按「出貨」會自動建立出庫單並扣庫存。'],
   unpicked: ['未取貨', '已出貨、顧客尚未取貨 / 簽收的訂單']
 };
 
@@ -293,10 +294,11 @@ export function AdminOrdersPage({ filter = 'all' }) {
   const [error, setError] = useState('');
   const [keyword, setKeyword] = useState('');
   const [reloadKey, setReloadKey] = useState(0);
+  const [notice, setNotice] = useState('');
 
   useEffect(() => {
     setLoading(true);
-    fetch(`/api/admin/orders?filter=${filter}`)
+    adminFetch(`/api/admin/orders?filter=${filter}`)
       .then(async (response) => {
         if (!response.ok) {
           throw new Error(await errorMessageOf(response));
@@ -323,16 +325,28 @@ export function AdminOrdersPage({ filter = 'all' }) {
       )
   );
 
+  // 出貨時後端會自動建立出庫單並扣庫存，完成後顯示出庫單編號
   const changeStatus = async (order, status, label) => {
-    if (!window.confirm(`確定要將訂單 ${order.orderNumber} 設為「${label}」嗎？`)) {
+    const hint = status === 'SHIPPED' ? '\n出貨後會自動建立出庫單並扣除庫存。' : '';
+    if (!window.confirm(`確定要將訂單 ${order.orderNumber} 設為「${label}」嗎？${hint}`)) {
       return;
     }
-    const response = await fetch(`/api/admin/orders/${order.id}/status`, {
+    const response = await adminFetch(`/api/admin/orders/${order.id}/status`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ status })
     }).catch(() => null);
     if (response?.ok) {
+      const result = await response.json().catch(() => null);
+      const stockOutNos = result?.stockOutNos || [];
+      setNotice(
+        status === 'SHIPPED'
+          ? stockOutNos.length > 0
+            ? `訂單 ${order.orderNumber} 已出貨，已建立出庫單：${stockOutNos.join('、')}`
+            : `訂單 ${order.orderNumber} 已出貨（各商品已有出庫單，未重複扣庫存）`
+          : `訂單 ${order.orderNumber} 已設為「${label}」`
+      );
+      window.setTimeout(() => setNotice(''), 6000);
       setReloadKey((key) => key + 1);
     } else {
       alert(`更新失敗：${await errorMessageOf(response)}`);
@@ -347,6 +361,7 @@ export function AdminOrdersPage({ filter = 'all' }) {
         <span className="adm-status">共 {formatNumber(orders.length)} 筆</span>
       </AdminPageTitle>
       <main className="adm-main">
+        {notice && <div className="adm-notice">{notice}</div>}
         {error && <div className="adm-error">{error}</div>}
         <section className="adm-card adm-section">
           <div className="adm-list-tools">
