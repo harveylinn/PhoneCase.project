@@ -53,6 +53,10 @@ public class ImageSample {
     @Column(name = "product_id")
     private Long productId;
 
+    /** 人工確認後的精確手機品項／規格。 */
+    @Column(name = "variant_id")
+    private Long variantId;
+
     @Column(name = "created_at", insertable = false, updatable = false)
     private LocalDateTime createdAt;
 

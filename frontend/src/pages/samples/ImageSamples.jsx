@@ -16,6 +16,8 @@ export default function ImageSamples() {
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
     const [analyzingId, setAnalyzingId] = useState(null);
+    const [editingDescriptionId, setEditingDescriptionId] = useState(null);
+    const [descriptionDraft, setDescriptionDraft] = useState('');
     const [candidates, setCandidates] = useState({});
     const [message, setMessage] = useState('');
 
@@ -117,11 +119,11 @@ export default function ImageSamples() {
         }
     }
 
-    async function confirmProduct(sampleId, productId) {
+    async function confirmProduct(sampleId, productId, variantId) {
         const response = await fetch(`/api/image-samples/${sampleId}/product`, {
             method: 'PATCH',
             headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({productId}),
+            body: JSON.stringify({productId, variantId}),
         });
         if (response.ok) {
             setMessage('商品關聯已確認');
@@ -129,6 +131,27 @@ export default function ImageSamples() {
         } else {
             setMessage('商品關聯確認失敗');
         }
+    }
+
+    function startDescriptionEdit(sample) {
+        setEditingDescriptionId(sample.id);
+        setDescriptionDraft(sample.aiDescription || '');
+    }
+
+    async function saveDescription(id) {
+        const response = await fetch(`/api/image-samples/${id}/description`, {
+            method: 'PATCH',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({aiDescription: descriptionDraft.trim()}),
+        });
+        if (!response.ok) {
+            setMessage('AI 分析修正失敗');
+            return;
+        }
+        setEditingDescriptionId(null);
+        setDescriptionDraft('');
+        setMessage('AI 分析已修正，請確認後再通過審核。');
+        await loadSamples();
     }
 
     return (
@@ -173,29 +196,58 @@ export default function ImageSamples() {
                                 <strong>{sample.reviewStatus}</strong>
                                 <p>來源：{sample.source || '未填寫'}</p>
                                 <p>授權：{sample.licenseType || '未填寫'}</p>
-                                <p>{sample.aiDescription || '尚未建立 AI 描述'}</p>
-                                {sample.aiMatchStatus && (
+                                {editingDescriptionId === sample.id ? (
+                                    <div className="sample-description-editor">
+                                        <textarea value={descriptionDraft}
+                                                  onChange={event => setDescriptionDraft(event.target.value)}
+                                                  rows="5"
+                                                  placeholder="修正品牌、型號、顏色、風格與鏡頭特徵"/>
+                                        <button onClick={() => saveDescription(sample.id)}
+                                                disabled={!descriptionDraft.trim()}>儲存修正</button>
+                                        <button onClick={() => {
+                                            setEditingDescriptionId(null);
+                                            setDescriptionDraft('');
+                                        }}>取消</button>
+                                    </div>
+                                ) : (
+                                    <p><strong>AI 辨識與圖片描述：</strong>{sample.aiDescription || '尚未建立 AI 描述'}</p>
+                                )}
+                                {(sample.aiMatchStatus || sample.variantId) && (
                                     <p>
-                                        商品比對：{sample.aiMatchStatus}
-                                        {sample.aiMatchConfidence != null &&
+                                        <strong>商品比對：</strong>
+                                        {sample.variantId ? '人工已確認' : sample.aiMatchStatus}
+                                        {!sample.variantId && sample.aiMatchConfidence != null &&
                                             `（${sample.aiMatchConfidence}%）`}
                                     </p>
                                 )}
                                 {sample.aiMatchReason && <p>{sample.aiMatchReason}</p>}
-                                {candidates[sample.id]?.length > 0 && (
-                                    <div>
+                                {sample.variantId && <p className="sample-confirmed-link">
+                                    已精確關聯手機品項：#{sample.variantId}
+                                </p>}
+                                {!sample.variantId && candidates[sample.id]?.length > 0 && (
+                                    <div className="sample-candidates">
                                         <p>請選擇候選商品：</p>
                                         {candidates[sample.id].map(candidate => (
-                                            <button
-                                                key={candidate.variantId}
-                                                onClick={() => confirmProduct(
-                                                    sample.id, candidate.productId)}
-                                            >
-                                                確認 {candidate.productName}（{candidate.model}）
-                                            </button>
+                                            <div className="sample-candidate" key={candidate.variantId}>
+                                                {candidate.imageUrl && <img src={candidate.imageUrl}
+                                                                            alt="候選商品圖片"/>}
+                                                <div>
+                                                    <strong>{candidate.productName}</strong>
+                                                    <p>{candidate.brand} {candidate.model}</p>
+                                                    <p>{candidate.color || '顏色未確認'} · SKU：{candidate.sku || '未提供'}</p>
+                                                </div>
+                                                <button onClick={() => confirmProduct(
+                                                    sample.id, candidate.productId, candidate.variantId)}>
+                                                    確認此品項
+                                                </button>
+                                            </div>
                                         ))}
                                     </div>
                                 )}
+                                {editingDescriptionId !== sample.id && <button
+                                    onClick={() => startDescriptionEdit(sample)}>
+                                    修正 AI 分析
+                                </button>}
                                 <button
                                     onClick={() => analyzeSample(sample.id)}
                                     disabled={analyzingId === sample.id}

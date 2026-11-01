@@ -4,6 +4,7 @@ import com.phonecase.backend.dto.AiProductRecommendation;
 import com.phonecase.backend.dto.AiVisionResult;
 import com.phonecase.backend.entity.Product;
 import com.phonecase.backend.entity.ProductVariant;
+import com.phonecase.backend.repository.ImageSampleRepository;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -15,9 +16,13 @@ import java.util.Comparator;
 public class ProductRecommendationService {
 
     private final ProductService productService;
+    private final ImageSampleRepository imageSampleRepository;
 
-    public ProductRecommendationService(ProductService productService) {
+    public ProductRecommendationService(
+            ProductService productService,
+            ImageSampleRepository imageSampleRepository) {
         this.productService = productService;
+        this.imageSampleRepository = imageSampleRepository;
     }
 
     public List<AiProductRecommendation> findMatches(
@@ -301,12 +306,27 @@ public class ProductRecommendationService {
     }
 
     private int score(ProductVariant variant, AiVisionResult criteria) {
-        int score = 0;
-        score += exactScore(variant.getBrand(), criteria.brand(), 3);
-        score += exactScore(variant.getModel(), criteria.model(), 4);
-        score += exactScore(variant.getColor(), criteria.color(), 2);
-        score += exactScore(variant.getTags(), criteria.styleTag(), 3);
-        return score;
+        int attributeScore = 0;
+        attributeScore += exactScore(variant.getBrand(), criteria.brand(), 3);
+        attributeScore += exactScore(variant.getModel(), criteria.model(), 4);
+        attributeScore += exactScore(variant.getColor(), criteria.color(), 2);
+        attributeScore += exactScore(variant.getTags(), criteria.styleTag(), 3);
+        if (attributeScore == 0) {
+            return 0;
+        }
+        return attributeScore + trustedSampleScore(variant.getId());
+    }
+
+    /**
+     * 已通過審核且人工關聯到此 variant 的樣本，代表這個品項有較可靠的圖片資料。
+     * 只用來處理候選同分時的排序，不會取代品牌、型號與標籤的實際比對。
+     */
+    private int trustedSampleScore(Long variantId) {
+        if (variantId == null) {
+            return 0;
+        }
+        long count = imageSampleRepository.countByReviewStatusAndVariantId("通過", variantId);
+        return (int) Math.min(count, 3);
     }
 
     private int exactScore(String source, String keyword, int points) {

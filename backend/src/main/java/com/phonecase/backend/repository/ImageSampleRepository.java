@@ -10,4 +10,6 @@ public interface ImageSampleRepository extends JpaRepository<ImageSample, Long> 
     List<ImageSample> findByReviewStatusOrderByCreatedAtDesc(String reviewStatus);
 
     List<ImageSample> findByProductIdOrderByCreatedAtDesc(Long productId);
+
+    long countByReviewStatusAndVariantId(String reviewStatus, Long variantId);
 }

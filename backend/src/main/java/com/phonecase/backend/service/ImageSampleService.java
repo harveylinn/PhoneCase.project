@@ -4,10 +4,12 @@ import com.phonecase.backend.entity.ImageSample;
 import com.phonecase.backend.entity.Product;
 import com.phonecase.backend.entity.ProductVariant;
 import com.phonecase.backend.dto.AiProductRecommendation;
+import com.phonecase.backend.dto.AiImageValidationResult;
 import com.phonecase.backend.dto.AiSearchRequest;
 import com.phonecase.backend.dto.AiVisionResult;
 import com.phonecase.backend.dto.ImageSampleAnalysisResponse;
 import com.phonecase.backend.repository.ImageSampleRepository;
+import com.phonecase.backend.repository.ProductVariantRepository;
 import org.springframework.http.HttpStatus;
 
 import org.springframework.stereotype.Service;
@@ -22,6 +24,7 @@ public class ImageSampleService {
     private final ImageSampleRepository repository;
     private final AiVisionService aiVisionService;
     private final ProductService productService;
+    private final ProductVariantRepository productVariantRepository;
     private final ProductRecommendationService productRecommendationService;
     private final SampleImageReader imageReader;
 
@@ -29,11 +32,13 @@ public class ImageSampleService {
             ImageSampleRepository repository,
             AiVisionService aiVisionService,
             ProductService productService,
+            ProductVariantRepository productVariantRepository,
             ProductRecommendationService productRecommendationService,
             SampleImageReader imageReader) {
         this.repository = repository;
         this.aiVisionService = aiVisionService;
         this.productService = productService;
+        this.productVariantRepository = productVariantRepository;
         this.productRecommendationService = productRecommendationService;
         this.imageReader = imageReader;
     }
@@ -98,7 +103,7 @@ public class ImageSampleService {
                 Product product = productService.getProductById(sample.getProductId());
                 var result = aiVisionService.validateImage(
                         imageBytes, mimeType, buildProductContext(product));
-                sample.setAiDescription(result.description());
+                sample.setAiDescription(buildValidationDescription(result));
                 sample.setAiMatchStatus(result.matchesProduct() == null
                         ? "待確認"
                         : result.matchesProduct() ? "符合" : "不符合");
@@ -113,14 +118,25 @@ public class ImageSampleService {
         }
     }
 
-    public ImageSample confirmProduct(Long id, Long productId) {
+    public ImageSample confirmProduct(Long id, Long productId, Long variantId) {
         if (productId == null) {
             throw new ResponseStatusException(
                     HttpStatus.BAD_REQUEST, "商品 ID 不可為空");
         }
         productService.getProductById(productId);
         ImageSample sample = findById(id);
+        if (variantId != null) {
+            ProductVariant variant = productVariantRepository.findById(variantId)
+                    .orElseThrow(() -> new ResponseStatusException(
+                            HttpStatus.NOT_FOUND, "找不到商品品項，id: " + variantId));
+            if (variant.getProduct() == null
+                    || !productId.equals(variant.getProduct().getId())) {
+                throw new ResponseStatusException(
+                        HttpStatus.BAD_REQUEST, "商品品項與商品系列不一致");
+            }
+        }
         sample.setProductId(productId);
+        sample.setVariantId(variantId);
         sample.setAiMatchStatus("已確認");
         return repository.save(sample);
     }
@@ -132,6 +148,17 @@ public class ImageSampleService {
                 + "、顏色=" + valueOrUnknown(criteria.color())
                 + "、風格=" + valueOrUnknown(criteria.styleTag())
                 + "、鏡頭特徵=" + valueOrUnknown(criteria.cameraLayout());
+    }
+
+    private String buildValidationDescription(
+            AiImageValidationResult result) {
+        return "AI 辨識：品牌=" + valueOrUnknown(
+                result.brand() != null ? result.brand() : inferBrandFromModel(result.model()))
+                + "、型號=" + valueOrUnknown(result.model())
+                + "、顏色=" + valueOrUnknown(result.color())
+                + "、風格=" + valueOrUnknown(result.styleTag())
+                + "、鏡頭特徵=" + valueOrUnknown(result.cameraLayout())
+                + "。圖片描述：" + valueOrUnknown(result.description());
     }
 
     private String buildCandidateReason(

@@ -62,7 +62,7 @@ public class ImageSampleController {
     public ImageSample confirmProduct(
             @PathVariable Long id,
             @RequestBody ProductRequest request) {
-        return service.confirmProduct(id, request.productId());
+        return service.confirmProduct(id, request.productId(), request.variantId());
     }
 
     @DeleteMapping("/{id}")
@@ -77,5 +77,5 @@ public class ImageSampleController {
 
     public record DescriptionRequest(String aiDescription) {}
 
-    public record ProductRequest(Long productId) {}
+    public record ProductRequest(Long productId, Long variantId) {}
 }
