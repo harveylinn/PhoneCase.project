@@ -110,6 +110,7 @@ type Props = {
   orders: Order[]
   onViewDetail: (orderId: string) => void
   onCancelOrder: (orderId: string) => void
+  onPaymentStarted: (orderId: string) => void
 }
 
 // ===================================
@@ -119,7 +120,8 @@ type Props = {
 function OrderListPage({
   orders,
   onViewDetail,
-  onCancelOrder
+  onCancelOrder,
+  onPaymentStarted
 }: Props) {
 
   // 訂單狀態篩選
@@ -177,6 +179,7 @@ function OrderListPage({
       paymentWindow.document.open()
       paymentWindow.document.write(body)
       paymentWindow.document.close()
+      onPaymentStarted(orderNumber)
     } catch (error) {
       paymentWindow.close()
       alert(error instanceof Error ? error.message : '無法開啟綠界測試付款頁面')

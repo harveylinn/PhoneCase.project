@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { Link, useLocation } from 'react-router-dom'
 import { getLoginUrl } from '../../utils/authRedirect'
 
@@ -52,6 +52,12 @@ function OrderModule({
   const [orders, setOrders] =
     useState<Order[]>([])
 
+  const [waitingPayment, setWaitingPayment] = useState<{
+    orderId: string
+    expiresAt: number
+  } | null>(null)
+  const latestRefresh = useRef(0)
+
   // 是否正在查詢
   const [loading, setLoading] =
     useState(true)
@@ -88,30 +94,40 @@ function OrderModule({
   // 3. 從 MySQL 讀取訂單
   // ========================================
 
-  const refreshOrders = useCallback(async () => {
+  const refreshOrders = useCallback(async (background = false) => {
 
-    setLoading(true)
-    setErrorMessage('')
+    const requestId = ++latestRefresh.current
+    if (!background) {
+      setLoading(true)
+      setErrorMessage('')
+    }
 
     try {
 
       const data = await getOrders()
 
-      setOrders(data)
+      if (requestId === latestRefresh.current) {
+        setOrders(data)
+        setErrorMessage('')
+      }
 
     } catch (error) {
 
       console.error('讀取訂單失敗：', error)
 
-      setErrorMessage(
-        error instanceof Error
-          ? error.message
-          : '無法取得訂單資料'
-      )
+      if (!background && requestId === latestRefresh.current) {
+        setErrorMessage(
+          error instanceof Error
+            ? error.message
+            : '無法取得訂單資料'
+        )
+      }
 
     } finally {
 
-      setLoading(false)
+      if (requestId === latestRefresh.current) {
+        setLoading(false)
+      }
 
     }
 
@@ -126,6 +142,50 @@ function OrderModule({
     void refreshOrders()
 
   }, [refreshOrders])
+
+  // 切回訂單頁時更新；開啟付款後，在前景每 3 秒查詢，最多等待 10 分鐘。
+  useEffect(() => {
+    if (currentPage === 'checkout') return
+
+    let checking = false
+    const checkPayment = async () => {
+      if (document.visibilityState !== 'visible' || checking) return
+      checking = true
+      try {
+        await refreshOrders(true)
+      } finally {
+        checking = false
+      }
+    }
+
+    window.addEventListener('focus', checkPayment)
+    document.addEventListener('visibilitychange', checkPayment)
+
+    const interval = waitingPayment
+      ? window.setInterval(() => void checkPayment(), 3000)
+      : undefined
+    const timeout = waitingPayment
+      ? window.setTimeout(
+          () => setWaitingPayment(null),
+          Math.max(0, waitingPayment.expiresAt - Date.now())
+        )
+      : undefined
+
+    return () => {
+      window.removeEventListener('focus', checkPayment)
+      document.removeEventListener('visibilitychange', checkPayment)
+      window.clearInterval(interval)
+      window.clearTimeout(timeout)
+    }
+  }, [currentPage, waitingPayment, refreshOrders])
+
+  useEffect(() => {
+    if (!waitingPayment) return
+    const order = orders.find((item) => item.id === waitingPayment.orderId)
+    if (order && order.status !== '待付款') {
+      setWaitingPayment(null)
+    }
+  }, [orders, waitingPayment])
 
   // ========================================
   // 5. 取得目前查看的訂單
@@ -412,6 +472,10 @@ function OrderModule({
           orders={orders}
           onViewDetail={handleViewDetail}
           onCancelOrder={handleCancelOrder}
+          onPaymentStarted={(orderId) => setWaitingPayment({
+            orderId,
+            expiresAt: Date.now() + 10 * 60 * 1000
+          })}
         />
 
       )}
