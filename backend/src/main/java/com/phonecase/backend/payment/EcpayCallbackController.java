@@ -140,17 +140,17 @@ public class EcpayCallbackController {
 
         System.out.println("付款狀態碼：" + rtnCode);
 
-        // ========================================
-        // 8. 排除綠界模擬付款通知
-        // ========================================
+        // Stage 的模擬交易只允許在官方測試特店下更新本機測試訂單。
+        // 正式特店若收到此旗標，不得因此將訂單標記為已付款。
+        if ("1".equals(simulatePaid) && !"2000132".equals(merchantId)) {
+            System.out.println("正式特店拒絕模擬付款通知");
+            return ResponseEntity
+                    .badRequest()
+                    .body("0|SIMULATION_NOT_ALLOWED");
+        }
 
         if ("1".equals(simulatePaid)) {
-
-            System.out.println(
-                    "這是綠界模擬付款通知，不更新 MySQL"
-            );
-
-            return ResponseEntity.ok("1|OK");
+            System.out.println("收到綠界 Stage 模擬付款通知，依測試結果更新本機訂單");
         }
 
         // ========================================
@@ -183,47 +183,12 @@ public class EcpayCallbackController {
         // 11. 檢查訂單專屬交易編號
         // ========================================
 
-        if (tradeNo == null ||
-                !tradeNo.matches("PC[0-9A-Z]+")) {
-
-            System.out.println("交易編號格式不正確");
-
-            return ResponseEntity
-                    .badRequest()
-                    .body("0|INVALID_TRADE_NO");
-        }
-
-        // ========================================
-        // 12. 解析 MySQL 訂單 ID
-        // ========================================
-
         Long orderId;
 
         try {
-
-            String encodedId = tradeNo.substring(2);
-
-            orderId = Long.parseLong(encodedId, 36);
-
-            if (orderId <= 0) {
-                throw new NumberFormatException();
-            }
-
-            // 確認編碼和目前付款程式一致
-            String expectedTradeNo =
-                    "PC" + Long.toString(
-                            orderId, 36
-                    ).toUpperCase(Locale.ROOT);
-
-            if (!tradeNo.equals(expectedTradeNo)) {
-
-                return ResponseEntity
-                        .badRequest()
-                        .body("0|INVALID_TRADE_NO");
-            }
-
-        } catch (NumberFormatException ex) {
-
+            orderId = EcpayTradeNumber.parseOrderId(tradeNo);
+        } catch (IllegalArgumentException ex) {
+            System.out.println("交易編號格式不正確");
             return ResponseEntity
                     .badRequest()
                     .body("0|INVALID_TRADE_NO");

@@ -13,3 +13,8 @@
 .env
 .env.*
 !.env.example
+!/frontend/.env
+
+# Runtime-uploaded images
+/uploads/
+/backend/uploads/

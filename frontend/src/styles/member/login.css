@@ -286,6 +286,70 @@ input:focus {
     margin: 12px 0 0;
 }
 
+.google-login {
+    margin-top: 24px;
+}
+
+.google-login-divider {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    color: var(--muted);
+    font-size: 12px;
+}
+
+.google-login-divider::before,
+.google-login-divider::after {
+    content: "";
+    flex: 1;
+    height: 1px;
+    background: #ecebe5;
+}
+
+.google-login-content {
+    margin-top: 18px;
+    text-align: center;
+}
+
+.google-login-host {
+    width: min(100%, 280px);
+    margin-inline: auto;
+}
+
+.google-login-status {
+    margin: 12px 0 0;
+    color: var(--muted);
+    font-size: 12px;
+    line-height: 1.7;
+    overflow-wrap: anywhere;
+}
+
+.google-login-status:empty {
+    margin: 0;
+}
+
+.google-login-error {
+    color: #814a31;
+}
+
+.google-login-retry {
+    margin-top: 12px;
+    min-height: 44px;
+    max-width: 100%;
+    padding: 10px 18px;
+    border: 1px solid #dadfd6;
+    border-radius: 9px;
+    background: transparent;
+    color: var(--ink);
+    font-size: 13px;
+    cursor: pointer;
+}
+
+.google-login-retry:hover {
+    background: #f0f2ea;
+    border-color: #6b806d;
+}
+
 .register-prompt {
     margin-top: 27px;
     padding-top: 24px;

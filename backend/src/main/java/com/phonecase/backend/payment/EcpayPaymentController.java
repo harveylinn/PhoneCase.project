@@ -2,9 +2,9 @@ package com.phonecase.backend.payment;
 
 import com.phonecase.backend.order.entity.OrderEntity;
 import com.phonecase.backend.order.repository.OrderRepository;
+import com.phonecase.backend.member.security.CheckJwt;
 
 import jakarta.servlet.http.HttpServletRequest;
-import jakarta.servlet.http.HttpSession;
 
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
@@ -19,12 +19,18 @@ import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.util.LinkedHashMap;
-import java.util.Locale;
 import java.util.Map;
 import java.util.UUID;
 
 @RestController
 @RequestMapping("/api/payment/ecpay")
+@CrossOrigin(
+        origins = {
+                "http://localhost:5173",
+                "http://localhost:5174"
+        },
+        allowCredentials = "true"
+)
 public class EcpayPaymentController {
 
     // =====================================
@@ -45,6 +51,9 @@ public class EcpayPaymentController {
 
     @Value("${ECPAY_RETURN_URL:}")
     private String returnUrl;
+
+    @Value("${ECPAY_CLIENT_BACK_URL:http://localhost:5173/orderlist}")
+    private String clientBackUrl;
 
     private final OrderRepository orderRepository;
 
@@ -88,6 +97,7 @@ public class EcpayPaymentController {
             value = "/order/{orderNumber}",
             produces = MediaType.TEXT_HTML_VALUE
     )
+    @CheckJwt
     public String payOrder(
             @PathVariable String orderNumber,
             HttpServletRequest request
@@ -97,17 +107,7 @@ public class EcpayPaymentController {
         // 3-1. 確認會員登入
         // =================================
 
-        HttpSession session = request.getSession(false);
-
-        if (session == null) {
-            throw new ResponseStatusException(
-                    HttpStatus.UNAUTHORIZED,
-                    "請先登入會員"
-            );
-        }
-
-        Object memberIdValue =
-                session.getAttribute("memberId");
+        Object memberIdValue = request.getAttribute("authenticatedMemberId");
 
         if (!(memberIdValue instanceof Number)) {
             throw new ResponseStatusException(
@@ -195,21 +195,16 @@ public class EcpayPaymentController {
             );
         }
 
-        // =================================
-        // 3-7. 根據資料庫 ID 產生交易編號
-        // =================================
-
-        // Long 轉成 36 進位，縮短交易編號
-        String tradeNo =
-                "PC" + Long.toString(
-                        order.getId(), 36
-                ).toUpperCase(Locale.ROOT);
-
-        // 綠界限制 MerchantTradeNo 最多 20 碼
-        if (tradeNo.length() > 20) {
+        // Each payment attempt needs a fresh MerchantTradeNo. ECPay Stage
+        // rejects a trade number that has already been used, even if the local
+        // order was deleted and recreated with the same database ID.
+        String tradeNo;
+        try {
+            tradeNo = EcpayTradeNumber.create(order.getId());
+        } catch (IllegalArgumentException exception) {
             throw new ResponseStatusException(
                     HttpStatus.BAD_REQUEST,
-                    "交易編號過長"
+                    exception.getMessage()
             );
         }
 
@@ -294,6 +289,9 @@ public class EcpayPaymentController {
         params.put("ItemName", "PhoneCase");
 
         params.put("ReturnURL", returnUrl);
+
+        // 付款完成頁的「返回商店」連結；ReturnURL 則是伺服器通知網址。
+        params.put("ClientBackURL", clientBackUrl);
 
         params.put("ChoosePayment", "Credit");
 

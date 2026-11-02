@@ -1,4 +1,6 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
+import { Link, useLocation } from 'react-router-dom'
+import { getLoginUrl } from '../../utils/authRedirect'
 
 import CheckoutPage from './CheckoutPage'
 
@@ -35,15 +37,26 @@ type CancelInfo = {
 // 2. App
 // ========================================
 
-function OrderModule() {
+function OrderModule({
+  initialPage = 'checkout'
+}: {
+  initialPage?: 'checkout' | 'list' | 'detail'
+}) {
+  const location = useLocation()
 
   // 目前頁面
   const [currentPage, setCurrentPage] =
-    useState('checkout')
+  useState(initialPage)
 
   // MySQL 訂單資料
   const [orders, setOrders] =
     useState<Order[]>([])
+
+  const [waitingPayment, setWaitingPayment] = useState<{
+    orderId: string
+    expiresAt: number
+  } | null>(null)
+  const latestRefresh = useRef(0)
 
   // 是否正在查詢
   const [loading, setLoading] =
@@ -81,30 +94,40 @@ function OrderModule() {
   // 3. 從 MySQL 讀取訂單
   // ========================================
 
-  const refreshOrders = useCallback(async () => {
+  const refreshOrders = useCallback(async (background = false) => {
 
-    setLoading(true)
-    setErrorMessage('')
+    const requestId = ++latestRefresh.current
+    if (!background) {
+      setLoading(true)
+      setErrorMessage('')
+    }
 
     try {
 
       const data = await getOrders()
 
-      setOrders(data)
+      if (requestId === latestRefresh.current) {
+        setOrders(data)
+        setErrorMessage('')
+      }
 
     } catch (error) {
 
       console.error('讀取訂單失敗：', error)
 
-      setErrorMessage(
-        error instanceof Error
-          ? error.message
-          : '無法取得訂單資料'
-      )
+      if (!background && requestId === latestRefresh.current) {
+        setErrorMessage(
+          error instanceof Error
+            ? error.message
+            : '無法取得訂單資料'
+        )
+      }
 
     } finally {
 
-      setLoading(false)
+      if (requestId === latestRefresh.current) {
+        setLoading(false)
+      }
 
     }
 
@@ -119,6 +142,50 @@ function OrderModule() {
     void refreshOrders()
 
   }, [refreshOrders])
+
+  // 切回訂單頁時更新；開啟付款後，在前景每 3 秒查詢，最多等待 10 分鐘。
+  useEffect(() => {
+    if (currentPage === 'checkout') return
+
+    let checking = false
+    const checkPayment = async () => {
+      if (document.visibilityState !== 'visible' || checking) return
+      checking = true
+      try {
+        await refreshOrders(true)
+      } finally {
+        checking = false
+      }
+    }
+
+    window.addEventListener('focus', checkPayment)
+    document.addEventListener('visibilitychange', checkPayment)
+
+    const interval = waitingPayment
+      ? window.setInterval(() => void checkPayment(), 3000)
+      : undefined
+    const timeout = waitingPayment
+      ? window.setTimeout(
+          () => setWaitingPayment(null),
+          Math.max(0, waitingPayment.expiresAt - Date.now())
+        )
+      : undefined
+
+    return () => {
+      window.removeEventListener('focus', checkPayment)
+      document.removeEventListener('visibilitychange', checkPayment)
+      window.clearInterval(interval)
+      window.clearTimeout(timeout)
+    }
+  }, [currentPage, waitingPayment, refreshOrders])
+
+  useEffect(() => {
+    if (!waitingPayment) return
+    const order = orders.find((item) => item.id === waitingPayment.orderId)
+    if (order && order.status !== '待付款') {
+      setWaitingPayment(null)
+    }
+  }, [orders, waitingPayment])
 
   // ========================================
   // 5. 取得目前查看的訂單
@@ -335,44 +402,6 @@ function OrderModule() {
     <div>
 
       {/* ================================= */}
-      {/* 頁面切換 */}
-      {/* ================================= */}
-
-      <div
-        style={{
-          display: 'flex',
-          justifyContent: 'center',
-          gap: '15px',
-          padding: '20px',
-          background: '#f5f5f5',
-          flexWrap: 'wrap'
-        }}
-      >
-
-        <button
-          type="button"
-          onClick={() => setCurrentPage('checkout')}
-        >
-          確認訂單
-        </button>
-
-        <button
-          type="button"
-          onClick={handleOpenOrderList}
-        >
-          我的訂單
-        </button>
-
-        <button
-          type="button"
-          onClick={() => setCurrentPage('detail')}
-        >
-          訂單明細
-        </button>
-
-      </div>
-
-      {/* ================================= */}
       {/* API 狀態 */}
       {/* ================================= */}
 
@@ -389,7 +418,7 @@ function OrderModule() {
 
       )}
 
-      {errorMessage && (
+      {errorMessage && currentPage !== 'checkout' && (
 
         <div
           style={{
@@ -403,6 +432,10 @@ function OrderModule() {
         >
 
           <p>{errorMessage}</p>
+
+          {errorMessage.includes('登入') && (
+            <p><Link to={getLoginUrl(location)}>前往會員登入</Link></p>
+          )}
 
           <button
             type="button"
@@ -439,6 +472,10 @@ function OrderModule() {
           orders={orders}
           onViewDetail={handleViewDetail}
           onCancelOrder={handleCancelOrder}
+          onPaymentStarted={(orderId) => setWaitingPayment({
+            orderId,
+            expiresAt: Date.now() + 10 * 60 * 1000
+          })}
         />
 
       )}
@@ -450,6 +487,29 @@ function OrderModule() {
       {currentPage === 'detail' && (
 
         <>
+
+          <div
+            style={{
+              maxWidth: '900px',
+              margin: '28px auto -24px',
+              boxSizing: 'border-box'
+            }}
+          >
+            <button
+              type="button"
+              onClick={handleOpenOrderList}
+              style={{
+                padding: '9px 14px',
+                border: '1px solid #ddd',
+                borderRadius: '6px',
+                background: 'white',
+                color: '#333',
+                cursor: 'pointer'
+              }}
+            >
+              ← 返回我的訂單
+            </button>
+          </div>
 
           <OrderDetailPage
             order={selectedOrder}
@@ -565,8 +625,13 @@ function OrderModule() {
                 style={{
                   display: 'flex',
                   alignItems: 'center',
+                  width: '100%',
+                  minWidth: 0,
                   gap: '12px',
                   padding: '12px 0',
+                  margin: 0,
+                  textAlign: 'left',
+                  lineHeight: 1.5,
                   cursor: 'pointer'
                 }}
               >
@@ -577,12 +642,30 @@ function OrderModule() {
                   value={reason}
                   checked={cancelReason === reason}
                   disabled={isCancelling}
+                  style={{
+                    display: 'block',
+                    flex: '0 0 18px',
+                    width: '18px',
+                    minWidth: '18px',
+                    height: '18px',
+                    margin: 0,
+                    padding: 0
+                  }}
                   onChange={(e) => {
                     setCancelReason(e.target.value)
                   }}
                 />
 
-                <span>{reason}</span>
+                <span
+                  style={{
+                    flex: 1,
+                    minWidth: 0,
+                    whiteSpace: 'normal',
+                    overflowWrap: 'anywhere'
+                  }}
+                >
+                  {reason}
+                </span>
 
               </label>
 

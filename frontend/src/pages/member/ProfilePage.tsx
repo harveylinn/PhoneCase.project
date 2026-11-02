@@ -2,6 +2,7 @@ import { useState, type SubmitEvent } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../../auth/useAuth';
 import '../../styles/member/profile.css';
+import { formatMemberTime } from '../../utils/memberTime';
 
 export default function ProfilePage() {
   const { currentMember, updateProfile, logout } = useAuth();
@@ -78,7 +79,7 @@ export default function ProfilePage() {
         <h2>會員中心</h2>
         <nav className="profile-nav">
           <Link className="is-active" to="/profile">個人資料</Link>
-          <div className="profile-nav-unavailable">我的訂單 <small>尚未整合</small></div>
+          <Link to="/orderlist">我的訂單</Link>
           <button type="button" onClick={logout}>登出</button>
           <Link to="/">返回首頁</Link>
         </nav>
@@ -118,11 +119,11 @@ export default function ProfilePage() {
               </div>
               <div className="profile-field">
                 <label htmlFor="profileCreatedAt">建立時間 <span>（僅顯示）</span></label>
-                <input className="readonly-field" id="profileCreatedAt" value="暫未提供" readOnly />
+                <input className="readonly-field" id="profileCreatedAt" value={formatMemberTime(currentMember.createdAt)} readOnly />
               </div>
               <div className="profile-field">
                 <label htmlFor="profileUpdatedAt">更新時間 <span>（僅顯示）</span></label>
-                <input className="readonly-field" id="profileUpdatedAt" value="暫未提供" readOnly />
+                <input className="readonly-field" id="profileUpdatedAt" value={formatMemberTime(currentMember.updatedAt)} readOnly />
               </div>
             </div>
           </fieldset>

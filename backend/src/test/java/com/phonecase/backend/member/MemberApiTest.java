@@ -7,6 +7,9 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
 import java.time.Instant;
+import java.time.LocalDateTime;
+import jakarta.persistence.EntityManager;
+import org.mockito.InOrder;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.Map;
@@ -36,6 +39,7 @@ class MemberApiTest {
     JwtToken jwt = new JwtToken();
     Map<Long, Member> members;
     MemberRepository repository;
+    EntityManager entityManager;
 
     @BeforeEach
     void setup() {
@@ -51,8 +55,11 @@ class MemberApiTest {
             members.put(member.getId(), member);
             return member;
         });
+        when(repository.saveAndFlush(any(Member.class))).thenAnswer(call -> repository.save(call.getArgument(0)));
+        entityManager = mock(EntityManager.class);
         MemberService service = new MemberService();
         ReflectionTestUtils.setField(service, "memberRepository", repository);
+        ReflectionTestUtils.setField(service, "entityManager", entityManager);
         MemberController controller = new MemberController();
         ReflectionTestUtils.setField(controller, "memberService", service);
         ReflectionTestUtils.setField(controller, "jwtToken", jwt);
@@ -72,6 +79,8 @@ class MemberApiTest {
 
     Member addMember(String account) {
         Member member = new Member();
+        member.setCreatedAt(LocalDateTime.of(2026, 10, 1, 9, 10, 11));
+        member.setUpdatedAt(LocalDateTime.of(2026, 10, 2, 12, 13, 14));
         member.setAccount(account); member.setName("測試會員"); member.setEmail(account + "@example.com");
         member.setPasswordHash(BCrypt.hashpw("test123456", BCrypt.gensalt(4)));
         return repository.save(member);
@@ -96,11 +105,16 @@ class MemberApiTest {
         String json = mvc.perform(post("/api/member/login").contentType(MediaType.APPLICATION_JSON)
             .content("{\"account\":\"buyer\",\"password\":\"test123456\"}"))
             .andExpect(status().isOk()).andExpect(jsonPath("$.member.email").value("buyer@example.com"))
+            .andExpect(jsonPath("$.member.createdAt").value("2026-10-01T09:10:11"))
+            .andExpect(jsonPath("$.member.updatedAt").value("2026-10-02T12:13:14"))
             .andExpect(jsonPath("$.member.passwordHash").doesNotExist()).andReturn().getResponse().getContentAsString();
         String token = new JsonMapper().readTree(json).get("token").asText();
         assertEquals(member.getId().toString(), jwt.verifyToken(token).getSubject());
         mvc.perform(get("/api/member/me").header("Authorization", "Bearer " + token))
-            .andExpect(status().isOk()).andExpect(jsonPath("$.member.phone").isEmpty());
+            .andExpect(status().isOk()).andExpect(jsonPath("$.member.phone").isEmpty())
+            .andExpect(jsonPath("$.member.createdAt").value("2026-10-01T09:10:11"))
+            .andExpect(jsonPath("$.member.updatedAt").value("2026-10-02T12:13:14"))
+            .andExpect(jsonPath("$.member.passwordHash").doesNotExist());
         mvc.perform(post("/api/member/login").contentType(MediaType.APPLICATION_JSON)
             .content("{\"account\":\"buyer\",\"password\":\"wrong-password\"}")).andExpect(status().isUnauthorized());
         mvc.perform(post("/api/member/login").contentType(MediaType.APPLICATION_JSON)
@@ -127,6 +141,31 @@ class MemberApiTest {
             .andExpect(status().isUnauthorized());
     }
 
+    @Test void profileUpdateReturnsRefreshedDatabaseTimestamps() throws Exception {
+        Member member = addMember("timestamps");
+        // 模擬資料庫產生時間；此測試只驗證 flush、refresh 與回應契約。
+        doAnswer(call -> {
+            Member refreshed = call.getArgument(0);
+            refreshed.setUpdatedAt(LocalDateTime.of(2026, 10, 29, 14, 30, 5));
+            return null;
+        }).when(entityManager).refresh(member);
+        clearInvocations(repository, entityManager);
+        String bearer = "Bearer " + jwt.createToken(member.getId());
+        mvc.perform(patch("/api/member/me").header("Authorization", bearer)
+            .contentType(MediaType.APPLICATION_JSON).content("{\"name\":\"更新姓名\"}"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.member.createdAt").value("2026-10-01T09:10:11"))
+            .andExpect(jsonPath("$.member.updatedAt").value("2026-10-29T14:30:05"))
+            .andExpect(jsonPath("$.member.passwordHash").doesNotExist());
+        InOrder order = inOrder(repository, entityManager);
+        order.verify(repository).saveAndFlush(member);
+        order.verify(entityManager).refresh(member);
+        mvc.perform(get("/api/member/me").header("Authorization", bearer))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.member.createdAt").value("2026-10-01T09:10:11"))
+            .andExpect(jsonPath("$.member.updatedAt").value("2026-10-29T14:30:05"));
+    }
+
     @Test void profileUpdateOwnershipValidationAndEmptyValues() throws Exception {
         Member first = addMember("first"); Member other = addMember("other");
         String bearer = "Bearer " + jwt.createToken(first.getId());
@@ -139,7 +178,7 @@ class MemberApiTest {
         for (String body : new String[] {"{\"name\":\" \"}", "{\"phone\":\"bad\"}", "{\"name\":\"" + "a".repeat(81) + "\"}", "{\"defaultAddress\":\"" + "a".repeat(501) + "\"}", "{"}) {
             mvc.perform(patch("/api/member/me").header("Authorization", bearer).contentType(MediaType.APPLICATION_JSON).content(body)).andExpect(status().isBadRequest());
         }
-        for (String field : new String[] {"id", "account", "email", "role", "status", "passwordHash"}) {
+        for (String field : new String[] {"id", "account", "email", "role", "status", "passwordHash", "createdAt", "updatedAt"}) {
             mvc.perform(patch("/api/member/me").header("Authorization", bearer).contentType(MediaType.APPLICATION_JSON).content("{\"" + field + "\":\"forbidden\"}"))
                 .andExpect(status().isBadRequest());
         }

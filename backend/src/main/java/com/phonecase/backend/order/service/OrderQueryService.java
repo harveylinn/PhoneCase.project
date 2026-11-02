@@ -12,6 +12,7 @@ import org.springframework.web.server.ResponseStatusException;
 
 import java.math.BigDecimal;
 import java.util.List;
+import java.util.stream.Collectors;
 
 @Service
 public class OrderQueryService {
@@ -79,25 +80,28 @@ public class OrderQueryService {
         List<OrderItemEntity> items =
                 orderItemRepository.findByOrderId(order.getId());
 
-        // 目前結帳頁只有一種測試商品
-        // 因此先顯示第一筆商品
-        OrderItemEntity firstItem =
-                items.isEmpty() ? null : items.get(0);
+        // 多商品訂單以完整商品摘要呈現，保留既有列表資料格式。
+        String productName = items.stream()
+                .map(OrderItemEntity::getProductName)
+                .filter(name -> name != null && !name.isBlank())
+                .distinct()
+                .collect(Collectors.joining("、"));
 
-        String productName =
-                firstItem == null
-                        ? "沒有商品資料"
-                        : firstItem.getProductName();
+        String model = items.stream()
+                .map(OrderItemEntity::getModelName)
+                .filter(name -> name != null && !name.isBlank())
+                .distinct()
+                .collect(Collectors.joining("、"));
 
-        String model =
-                firstItem == null
-                        ? ""
-                        : firstItem.getModelName();
+        Integer quantity = items.stream()
+                .map(OrderItemEntity::getQuantity)
+                .filter(itemQuantity -> itemQuantity != null)
+                .mapToInt(Integer::intValue)
+                .sum();
 
-        Integer quantity =
-                firstItem == null
-                        ? 0
-                        : firstItem.getQuantity();
+        if (productName.isBlank()) {
+            productName = "沒有商品資料";
+        }
 
         // MySQL 的日期轉成 YYYY-MM-DD
         String date =

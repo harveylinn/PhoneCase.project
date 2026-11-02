@@ -1,0 +1,115 @@
+package com.phonecase.backend.service;
+
+import com.phonecase.backend.dto.AiSearchRequest;
+import com.phonecase.backend.dto.AiVisionResult;
+import com.phonecase.backend.dto.AiImageValidationResult;
+import org.springframework.ai.chat.client.ChatClient;
+import org.springframework.core.io.ByteArrayResource;
+import org.springframework.stereotype.Service;
+import org.springframework.util.MimeTypeUtils;
+
+import java.util.Base64;
+
+@Service
+public class AiVisionService {
+
+    private final ChatClient chatClient;
+
+    public AiVisionService(ChatClient.Builder chatClientBuilder) {
+        this.chatClient = chatClientBuilder.build();
+    }
+
+    public AiVisionResult analyze(AiSearchRequest request) {
+        var promptRequest = chatClient.prompt()
+                .system("""
+                        你是 PhoneCase 搜尋條件分析器。
+                        只負責從使用者文字或圖片抽取搜尋條件，不負責推薦商品。
+                        回傳 JSON 欄位：brand、model、color、styleTag、cameraLayout、reason。
+                        無法確認的欄位必須是 null，不可以猜測。
+                        reason 必須使用繁體中文，簡短說明你實際辨識到的條件；不要照抄使用者原文，也不要輸出英文分析句子。
+                        color 只描述手機殼本身的顏色或透明度，不要把手機本體、背景或反光的顏色當成手機殼顏色。
+                        如果手機殼是透明材質或能清楚看到手機原色，color 請填「透明」。
+                        如果只能看出手機型號的大致系列、無法確認完整型號，model 必須填 null，不能把推測寫進 model 或 reason。
+                        styleTag 只能填使用者明確提到的風格，或圖片中非常明確的風格；不確定就填 null。
+                        cameraLayout 只能描述圖片看得到的鏡頭孔排列、數量與閃光燈位置；看不到就填 null。
+                        brand 只有在圖片或文字能明確判斷時才填寫。
+                        若型號明確包含 iPhone，品牌請填 Apple；包含 Galaxy，品牌請填 Samsung；包含 Pixel，品牌請填 Google；包含 Xiaomi 或 Redmi，品牌請填 Xiaomi。
+                        不要把商品資料、價格、庫存或其他商品的標籤加入結果。
+                        """);
+
+        try {
+            if (request.hasImage()) {
+                byte[] imageBytes = Base64.getDecoder().decode(request.imageBase64());
+                String text = request.hasQuestion()
+                        ? request.text()
+                        : "請分析這張圖片中的手機型號、顏色與手機殼風格。";
+                if (request.imageFileName() != null && !request.imageFileName().isBlank()) {
+                    text += "\n圖片檔名提供的輔助 metadata（只能用來交叉確認，不可取代圖片辨識）："
+                            + request.imageFileName();
+                }
+                final String analysisText = text;
+
+                return promptRequest.user(user -> user
+                                .text(analysisText)
+                                .media(
+                                        MimeTypeUtils.parseMimeType(request.imageMimeType()),
+                                        new ByteArrayResource(imageBytes)
+                                ))
+                        .call()
+                        .entity(AiVisionResult.class);
+            }
+
+            return promptRequest.user(request.text())
+                    .call()
+                    .entity(AiVisionResult.class);
+        } catch (IllegalArgumentException error) {
+            throw new IllegalArgumentException("圖片 Base64 或 MIME type 格式錯誤", error);
+        }
+    }
+
+    public String describeImage(byte[] imageBytes, String imageMimeType) {
+        return chatClient.prompt()
+                .system("""
+                        你是商品圖片標註助手。
+                        請用繁體中文描述圖片中看得到的手機殼特徵，包含外觀風格、顏色、材質、透明度、磁吸環或邊框等資訊。
+                        只能描述圖片中明確看得到的內容，不要猜測手機型號、品牌、價格或庫存。
+                        回覆 1 到 3 句簡潔文字，不要使用 Markdown 或 JSON。
+                        """)
+                .user(user -> user
+                        .text("請建立這張商品圖片的 AI 描述。")
+                        .media(
+                                MimeTypeUtils.parseMimeType(imageMimeType),
+                                new ByteArrayResource(imageBytes)
+                        ))
+                .call()
+                .content();
+    }
+
+    public AiImageValidationResult validateImage(
+            byte[] imageBytes,
+            String imageMimeType,
+            String productContext) {
+        return chatClient.prompt()
+                .system("""
+                        你是商品圖片審核助手。
+                        請根據圖片與提供的商品資料，判斷圖片是否可能屬於這個商品。
+                        只能根據圖片中明確看得到的特徵判斷，不要因為商品資料存在就直接判定符合。
+                        回傳 JSON 欄位：matchesProduct、confidence、description、reason。
+                        matchesProduct 只能是 true、false 或 null；不確定時填 null。
+                        confidence 是 0 到 100 的整數；不確定時填 0。
+                        description 用繁體中文描述圖片中看得到的手機殼特徵。
+                        reason 用繁體中文說明判斷依據。
+                        """)
+                .user(user -> user
+                        .text("""
+                                請審核這張圖片是否符合以下商品資料：
+                                %s
+                                """.formatted(productContext))
+                        .media(
+                                MimeTypeUtils.parseMimeType(imageMimeType),
+                                new ByteArrayResource(imageBytes)
+                        ))
+                .call()
+                .entity(AiImageValidationResult.class);
+    }
+}
