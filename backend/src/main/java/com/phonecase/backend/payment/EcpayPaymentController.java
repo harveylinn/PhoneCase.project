@@ -19,7 +19,6 @@ import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.util.LinkedHashMap;
-import java.util.Locale;
 import java.util.Map;
 import java.util.UUID;
 
@@ -196,21 +195,16 @@ public class EcpayPaymentController {
             );
         }
 
-        // =================================
-        // 3-7. 根據資料庫 ID 產生交易編號
-        // =================================
-
-        // Long 轉成 36 進位，縮短交易編號
-        String tradeNo =
-                "PC" + Long.toString(
-                        order.getId(), 36
-                ).toUpperCase(Locale.ROOT);
-
-        // 綠界限制 MerchantTradeNo 最多 20 碼
-        if (tradeNo.length() > 20) {
+        // Each payment attempt needs a fresh MerchantTradeNo. ECPay Stage
+        // rejects a trade number that has already been used, even if the local
+        // order was deleted and recreated with the same database ID.
+        String tradeNo;
+        try {
+            tradeNo = EcpayTradeNumber.create(order.getId());
+        } catch (IllegalArgumentException exception) {
             throw new ResponseStatusException(
                     HttpStatus.BAD_REQUEST,
-                    "交易編號過長"
+                    exception.getMessage()
             );
         }
 
