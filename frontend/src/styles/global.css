@@ -792,6 +792,187 @@ textarea::placeholder {
     white-space: nowrap;
 }
 
+.sample-card {
+    container-type: inline-size;
+}
+
+.sample-sku-create {
+    margin: 16px 0 12px;
+    padding: 18px;
+    border: 1px solid #dce5ef;
+    border-radius: 14px;
+    background: linear-gradient(160deg, #ffffff, #f7f9fc);
+    box-shadow: 0 8px 24px #122b500d;
+}
+
+.sample-sku-heading {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 12px;
+}
+
+.sample-sku-heading span:first-child {
+    color: #75849a;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: .12em;
+    text-transform: uppercase;
+}
+
+.sample-sku-heading h3 {
+    margin: 4px 0 0;
+    color: var(--navy);
+    font-size: 18px;
+}
+
+.sample-sku-step {
+    flex: 0 0 auto;
+    padding: 6px 9px;
+    border-radius: 999px;
+    background: #eaf1fb;
+    color: #35547b;
+    font-size: 11px;
+    font-weight: 700;
+}
+
+.sample-sku-help {
+    margin: 8px 0 16px !important;
+    color: #718198 !important;
+    font-size: 12px !important;
+}
+
+.sample-sku-fields {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px;
+}
+
+.sample-sku-field {
+    display: grid;
+    min-width: 0;
+    gap: 6px;
+    color: #43556e;
+    font-size: 12px;
+    font-weight: 700;
+}
+
+.sample-sku-field-wide {
+    grid-column: 1 / -1;
+}
+
+.sample-sku-field input,
+.sample-sku-field select {
+    box-sizing: border-box;
+    width: 100%;
+    min-width: 0;
+    height: 40px;
+    padding: 0 11px;
+    border: 1px solid #d6e0eb;
+    border-radius: 9px;
+    background: #fff;
+    color: var(--navy);
+    font: inherit;
+    font-size: 13px;
+    font-weight: 500;
+    outline: none;
+    transition: border-color .18s ease, box-shadow .18s ease;
+}
+
+.sample-sku-field input:focus,
+.sample-sku-field select:focus {
+    border-color: #6f8db5;
+    box-shadow: 0 0 0 3px #6f8db51c;
+}
+
+.sample-sku-price,
+.sample-sku-code-row {
+    display: flex;
+    min-width: 0;
+    align-items: center;
+    gap: 8px;
+}
+
+.sample-sku-price > span {
+    color: #8794a6;
+    font-size: 12px;
+    font-weight: 600;
+}
+
+.sample-sku-price input,
+.sample-sku-code-row input {
+    flex: 1;
+}
+
+.sample-sku-field .sample-sku-code-row input {
+    font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
+    letter-spacing: .025em;
+}
+
+.sample-sku-create .sample-sku-regenerate,
+.sample-card .sample-sku-create .sample-sku-regenerate {
+    flex: 0 0 auto;
+    margin: 0;
+    padding: 9px 10px;
+    border: 1px solid #d7e1ed;
+    background: #fff;
+    color: #405875;
+    font-size: 11px;
+}
+
+.sample-sku-actions {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+    margin-top: 16px;
+}
+
+.sample-sku-actions button,
+.sample-card .sample-sku-actions button {
+    margin: 0;
+}
+
+.sample-card .sample-sku-actions .sample-sku-cancel {
+    border: 1px solid #d9e2ec;
+    background: #fff;
+    color: #52647a;
+}
+
+.sample-sku-actions > span {
+    margin-left: auto;
+    color: #8390a1;
+    font-size: 11px;
+}
+
+@container (max-width: 380px) {
+    .sample-sku-create {
+        padding: 14px;
+    }
+
+    .sample-sku-fields {
+        grid-template-columns: 1fr;
+    }
+
+    .sample-sku-field-wide {
+        grid-column: auto;
+    }
+
+    .sample-sku-heading {
+        display: block;
+    }
+
+    .sample-sku-step {
+        display: inline-block;
+        margin-top: 8px;
+    }
+
+    .sample-sku-actions > span {
+        width: 100%;
+        margin-left: 0;
+    }
+}
+
 .admin-heading h1 {
     margin: 0;
     color: var(--navy);

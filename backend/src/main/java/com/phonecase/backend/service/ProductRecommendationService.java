@@ -88,8 +88,33 @@ public class ProductRecommendationService {
     }
 
     private boolean matchesIdentifiedDevice(ProductVariant variant, AiVisionResult criteria) {
-        return contains(variant.getBrand(), criteria.brand())
+        return matchesIdentifiedBrand(variant.getBrand(), criteria.brand())
                 && contains(variant.getModel(), criteria.model());
+    }
+
+    /** 品牌一旦有辨識結果就嚴格限制同品牌，避免把其他品牌當成候選。 */
+    private boolean matchesIdentifiedBrand(String candidateBrand, String identifiedBrand) {
+        if (!hasValue(identifiedBrand)) {
+            return true;
+        }
+        String expected = canonicalBrand(identifiedBrand);
+        String actual = canonicalBrand(candidateBrand);
+        return expected != null && expected.equals(actual);
+    }
+
+    /** 將常見品牌寫法統一，其他未知品牌則採大小寫不敏感的完整名稱比對。 */
+    private String canonicalBrand(String brand) {
+        if (brand == null || brand.isBlank()) {
+            return null;
+        }
+        String normalized = brand.trim().toLowerCase(Locale.ROOT)
+                .replaceAll("\\s+", " ");
+        if (normalized.contains("samsung") || normalized.contains("三星")) return "samsung";
+        if (normalized.contains("apple") || normalized.contains("iphone")) return "apple";
+        if (normalized.contains("google") || normalized.contains("pixel")) return "google";
+        if (normalized.contains("xiaomi") || normalized.contains("redmi")
+                || normalized.contains("小米")) return "xiaomi";
+        return normalized;
     }
 
     private AiVisionResult correctCriteria(

@@ -2,6 +2,7 @@ package com.phonecase.backend.service;
 
 import com.phonecase.backend.entity.ImageSample;
 import com.phonecase.backend.entity.Product;
+import com.phonecase.backend.entity.ProductImage;
 import com.phonecase.backend.entity.ProductVariant;
 import com.phonecase.backend.dto.AiProductRecommendation;
 import com.phonecase.backend.dto.AiImageValidationResult;
@@ -10,9 +11,11 @@ import com.phonecase.backend.dto.AiVisionResult;
 import com.phonecase.backend.dto.ImageSampleAnalysisResponse;
 import com.phonecase.backend.repository.ImageSampleRepository;
 import com.phonecase.backend.repository.ProductVariantRepository;
+import com.phonecase.backend.repository.ProductImageRepository;
 import org.springframework.http.HttpStatus;
 
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.util.Base64;
@@ -25,6 +28,7 @@ public class ImageSampleService {
     private final AiVisionService aiVisionService;
     private final ProductService productService;
     private final ProductVariantRepository productVariantRepository;
+    private final ProductImageRepository productImageRepository;
     private final ProductRecommendationService productRecommendationService;
     private final SampleImageReader imageReader;
 
@@ -33,12 +37,14 @@ public class ImageSampleService {
             AiVisionService aiVisionService,
             ProductService productService,
             ProductVariantRepository productVariantRepository,
+            ProductImageRepository productImageRepository,
             ProductRecommendationService productRecommendationService,
             SampleImageReader imageReader) {
         this.repository = repository;
         this.aiVisionService = aiVisionService;
         this.productService = productService;
         this.productVariantRepository = productVariantRepository;
+        this.productImageRepository = productImageRepository;
         this.productRecommendationService = productRecommendationService;
         this.imageReader = imageReader;
     }
@@ -65,15 +71,45 @@ public class ImageSampleService {
         return repository.save(sample);
     }
 
+    @Transactional
     public ImageSample updateReview(Long id, String reviewStatus, String reviewerNote) {
         ImageSample sample = findById(id);
         if (!List.of("待審核", "通過", "退回").contains(reviewStatus)) {
             throw new ResponseStatusException(
                     HttpStatus.BAD_REQUEST, "審核狀態只能是待審核、通過或退回");
         }
+        if ("通過".equals(reviewStatus) && sample.getVariantId() == null) {
+            throw new ResponseStatusException(
+                    HttpStatus.BAD_REQUEST, "請先確認並關聯正確的手機品項，再通過樣本審核");
+        }
+        if ("通過".equals(reviewStatus)) {
+            addSampleImageToVariant(sample);
+        }
         sample.setReviewStatus(reviewStatus);
         sample.setReviewerNote(reviewerNote);
         return repository.save(sample);
+    }
+
+    /** 通過審核時將樣本圖加入已確認品項；既有主圖不會被取代。 */
+    private void addSampleImageToVariant(ImageSample sample) {
+        Long variantId = sample.getVariantId();
+        List<ProductImage> existingImages = productImageRepository.findByVariantId(variantId);
+        boolean alreadyAttached = existingImages.stream()
+                .anyMatch(image -> sample.getImageUrl().equals(image.getImageUrl()));
+        if (alreadyAttached) {
+            return;
+        }
+
+        ProductVariant variant = productVariantRepository.findById(variantId)
+                .orElseThrow(() -> new ResponseStatusException(
+                        HttpStatus.NOT_FOUND, "找不到商品品項，id: " + variantId));
+        ProductImage image = new ProductImage();
+        image.setVariant(variant);
+        image.setImageUrl(sample.getImageUrl());
+        image.setSortOrder(existingImages.size());
+        image.setIsPrimary(existingImages.stream().noneMatch(
+                existing -> Boolean.TRUE.equals(existing.getIsPrimary())));
+        productImageRepository.save(image);
     }
 
     public ImageSample updateDescription(Long id, String aiDescription) {
@@ -116,6 +152,31 @@ public class ImageSampleService {
             throw new ResponseStatusException(
                     HttpStatus.BAD_GATEWAY, "AI 圖片分析失敗", error);
         }
+    }
+
+    /** 依管理員修正後的條件重新產生同品牌／型號候選。 */
+    public List<AiProductRecommendation> findCandidatesByCorrection(
+            Long id, String brand, String model, String color, String styleTag) {
+        ImageSample sample = findById(id);
+        AiVisionResult corrected = new AiVisionResult(
+                cleanCorrection(brand), cleanCorrection(model), cleanCorrection(color),
+                cleanCorrection(styleTag), null, "管理員人工修正");
+        List<AiProductRecommendation> candidates =
+                productRecommendationService.findSimilar(corrected, null);
+        sample.setAiDescription("人工確認條件：品牌=" + valueOrUnknown(brand)
+                + "、型號=" + valueOrUnknown(model)
+                + "、顏色=" + valueOrUnknown(color)
+                + "、風格=" + valueOrUnknown(styleTag));
+        sample.setAiMatchStatus(candidates.isEmpty() ? "找不到候選" : "人工條件待確認");
+        sample.setAiMatchReason(candidates.isEmpty()
+                ? "依人工修正條件找不到候選，請搜尋其他商品規格或調整條件。"
+                : "候選已依人工修正條件重新產生，請確認正確品項。");
+        repository.save(sample);
+        return candidates;
+    }
+
+    private String cleanCorrection(String value) {
+        return value == null || value.isBlank() ? null : value.trim();
     }
 
     public ImageSample confirmProduct(Long id, Long productId, Long variantId) {

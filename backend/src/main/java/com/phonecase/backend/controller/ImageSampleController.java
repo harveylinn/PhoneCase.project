@@ -2,6 +2,7 @@ package com.phonecase.backend.controller;
 
 import com.phonecase.backend.entity.ImageSample;
 import com.phonecase.backend.dto.ImageSampleAnalysisResponse;
+import com.phonecase.backend.dto.AiProductRecommendation;
 import com.phonecase.backend.service.ImageSampleService;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
@@ -58,6 +59,13 @@ public class ImageSampleController {
         return service.analyzeImage(id);
     }
 
+    @PostMapping("/{id}/candidates")
+    public List<AiProductRecommendation> findCandidatesByCorrection(
+            @PathVariable Long id, @RequestBody CandidateCorrectionRequest request) {
+        return service.findCandidatesByCorrection(
+                id, request.brand(), request.model(), request.color(), request.styleTag());
+    }
+
     @PatchMapping("/{id}/product")
     public ImageSample confirmProduct(
             @PathVariable Long id,
@@ -78,4 +86,7 @@ public class ImageSampleController {
     public record DescriptionRequest(String aiDescription) {}
 
     public record ProductRequest(Long productId, Long variantId) {}
+
+    public record CandidateCorrectionRequest(
+            String brand, String model, String color, String styleTag) {}
 }
