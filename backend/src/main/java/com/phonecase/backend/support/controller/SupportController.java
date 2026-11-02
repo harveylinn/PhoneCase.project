@@ -33,6 +33,12 @@ public class SupportController {
         return supportService.addMessage(conversationId, request);
     }
 
+    @GetMapping("/conversations/{conversationId}/customer-messages")
+    public List<SupportMessage> listGuestMessages(@PathVariable Long conversationId,
+                                                   @RequestParam String guestId) {
+        return supportService.listGuestMessages(conversationId, guestId);
+    }
+
     @PostMapping("/conversations/{conversationId}/staff-messages")
     @AdminOnly
     @ResponseStatus(HttpStatus.CREATED)

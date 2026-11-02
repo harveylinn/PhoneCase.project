@@ -4,6 +4,7 @@ import com.phonecase.backend.entity.ImageSample;
 import com.phonecase.backend.dto.ImageSampleAnalysisResponse;
 import com.phonecase.backend.dto.AiProductRecommendation;
 import com.phonecase.backend.service.ImageSampleService;
+import com.phonecase.backend.member.security.AdminOnly;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
 import org.springframework.web.bind.annotation.*;
@@ -20,17 +21,20 @@ public class ImageSampleController {
         this.service = service;
     }
 
+    @AdminOnly
     @GetMapping
     public List<ImageSample> findAll(
             @RequestParam(required = false) String reviewStatus) {
         return service.findAll(reviewStatus);
     }
 
+    @AdminOnly
     @GetMapping("/{id}")
     public ImageSample findById(@PathVariable Long id) {
         return service.findById(id);
     }
 
+    @AdminOnly
     @PostMapping
     public ImageSample create(@Valid @RequestBody ImageSample sample) {
         return service.create(sample);
@@ -39,6 +43,7 @@ public class ImageSampleController {
     /**
      * 後台人工審核圖片樣本。
      */
+    @AdminOnly
     @PatchMapping("/{id}/review")
     public ImageSample updateReview(
             @PathVariable Long id,
@@ -47,6 +52,7 @@ public class ImageSampleController {
                 id, request.reviewStatus(), request.reviewerNote());
     }
 
+    @AdminOnly
     @PatchMapping("/{id}/description")
     public ImageSample updateDescription(
             @PathVariable Long id,
@@ -54,11 +60,13 @@ public class ImageSampleController {
         return service.updateDescription(id, request.aiDescription());
     }
 
+    @AdminOnly
     @PostMapping("/{id}/analyze")
     public ImageSampleAnalysisResponse analyzeImage(@PathVariable Long id) {
         return service.analyzeImage(id);
     }
 
+    @AdminOnly
     @PostMapping("/{id}/candidates")
     public List<AiProductRecommendation> findCandidatesByCorrection(
             @PathVariable Long id, @RequestBody CandidateCorrectionRequest request) {
@@ -66,6 +74,7 @@ public class ImageSampleController {
                 id, request.brand(), request.model(), request.color(), request.styleTag());
     }
 
+    @AdminOnly
     @PatchMapping("/{id}/product")
     public ImageSample confirmProduct(
             @PathVariable Long id,
@@ -73,6 +82,7 @@ public class ImageSampleController {
         return service.confirmProduct(id, request.productId(), request.variantId());
     }
 
+    @AdminOnly
     @DeleteMapping("/{id}")
     public void delete(@PathVariable Long id) {
         service.delete(id);

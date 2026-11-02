@@ -1,5 +1,6 @@
 import {useEffect, useState} from 'react';
 import {Link} from 'react-router-dom';
+import {adminFetch} from '../admin/adminFetch.js';
 
 const emptyForm = {
     imageUrl: '',
@@ -77,7 +78,7 @@ export default function ImageSamples() {
     async function loadSamples() {
         setLoading(true);
         try {
-            const response = await fetch('/api/image-samples');
+            const response = await adminFetch('/api/image-samples');
             if (!response.ok) throw new Error('無法讀取圖片樣本');
             setSamples(await response.json());
         } catch (error) {
@@ -107,7 +108,7 @@ export default function ImageSamples() {
                 || !/^\/[^/]+\/image\/upload\/.+/.test(url.pathname)) {
                 throw new Error('請貼上 Cloudinary 的 HTTPS 圖片網址');
             }
-            const response = await fetch('/api/image-samples', {
+            const response = await adminFetch('/api/image-samples', {
                 method: 'POST',
                 headers: {'Content-Type': 'application/json'},
                 body: JSON.stringify({
@@ -131,7 +132,7 @@ export default function ImageSamples() {
     }
 
     async function reviewSample(id, reviewStatus) {
-        const response = await fetch(`/api/image-samples/${id}/review`, {
+        const response = await adminFetch(`/api/image-samples/${id}/review`, {
             method: 'PATCH',
             headers: {'Content-Type': 'application/json'},
             body: JSON.stringify({reviewStatus, reviewerNote: ''}),
@@ -150,7 +151,7 @@ export default function ImageSamples() {
     async function setSampleAsPrimaryImage(sample) {
         if (!sample.variantId) return;
         try {
-            const productsResponse = await fetch('/api/products');
+            const productsResponse = await adminFetch('/api/products');
             if (!productsResponse.ok) throw new Error('無法讀取商品圖片資料');
             const productList = await productsResponse.json();
             const variant = productList.flatMap(product => product.variants || [])
@@ -169,7 +170,7 @@ export default function ImageSamples() {
                 sortOrder: Math.max(1, Number(existingImage?.sortOrder) || images.length + 1),
                 isPrimary: true,
             };
-            const imageResponse = await fetch(existingImage
+            const imageResponse = await adminFetch(existingImage
                 ? `/api/variants/${sample.variantId}/images/${existingImage.id}`
                 : `/api/variants/${sample.variantId}/images`, {
                 method: existingImage ? 'PUT' : 'POST',
@@ -188,7 +189,7 @@ export default function ImageSamples() {
 
     async function deleteSample(id) {
         if (!window.confirm('確定要刪除這筆圖片樣本嗎？')) return;
-        const response = await fetch(`/api/image-samples/${id}`, {method: 'DELETE'});
+        const response = await adminFetch(`/api/image-samples/${id}`, {method: 'DELETE'});
         if (response.ok) await loadSamples();
         else setMessage('刪除樣本失敗');
     }
@@ -198,7 +199,7 @@ export default function ImageSamples() {
         setCandidates(current => ({...current, [id]: []}));
         setMessage('AI 正在分析圖片…');
         try {
-            const response = await fetch(`/api/image-samples/${id}/analyze`, {
+            const response = await adminFetch(`/api/image-samples/${id}/analyze`, {
                 method: 'POST',
             });
             if (!response.ok) {
@@ -252,7 +253,7 @@ export default function ImageSamples() {
         setCandidates(current => ({...current, [sampleId]: []}));
         setMessage('依人工修正條件重新搜尋候選…');
         try {
-            const response = await fetch(`/api/image-samples/${sampleId}/candidates`, {
+            const response = await adminFetch(`/api/image-samples/${sampleId}/candidates`, {
                 method: 'POST',
                 headers: {'Content-Type': 'application/json'},
                 body: JSON.stringify({
@@ -277,7 +278,7 @@ export default function ImageSamples() {
     }
 
     async function confirmProduct(sampleId, productId, variantId) {
-        const response = await fetch(`/api/image-samples/${sampleId}/product`, {
+        const response = await adminFetch(`/api/image-samples/${sampleId}/product`, {
             method: 'PATCH',
             headers: {'Content-Type': 'application/json'},
             body: JSON.stringify({productId, variantId}),
@@ -292,7 +293,7 @@ export default function ImageSamples() {
 
     async function openSkuForm(sample) {
         try {
-            const response = await fetch('/api/products');
+            const response = await adminFetch('/api/products');
             if (!response.ok) throw new Error('無法讀取商品系列');
             const productList = await response.json();
             setProducts(productList);
@@ -351,7 +352,7 @@ export default function ImageSamples() {
             return;
         }
         try {
-            const response = await fetch(`/api/products/${draft.productId}/variants`, {
+            const response = await adminFetch(`/api/products/${draft.productId}/variants`, {
                 method: 'POST',
                 headers: {'Content-Type': 'application/json'},
                 body: JSON.stringify({
@@ -375,7 +376,7 @@ export default function ImageSamples() {
     }
 
     async function saveDescription(id) {
-        const response = await fetch(`/api/image-samples/${id}/description`, {
+        const response = await adminFetch(`/api/image-samples/${id}/description`, {
             method: 'PATCH',
             headers: {'Content-Type': 'application/json'},
             body: JSON.stringify({aiDescription: descriptionDraft.trim()}),

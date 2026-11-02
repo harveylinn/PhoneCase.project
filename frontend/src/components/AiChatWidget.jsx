@@ -1,8 +1,14 @@
-import {useState} from 'react';
+import {useEffect, useState} from 'react';
 import {Link} from 'react-router-dom';
 import {searchProductsWithAi} from '../services/aiSearchApi.js';
 import {addToGuestCart} from '../utils/cartStorage';
-import {addSupportMessage, createSupportConversation} from '../services/supportApi.js';
+import {
+    addSupportMessage,
+    createSupportConversation,
+    getSavedSupportConversationId,
+    listSupportMessages,
+    saveSupportConversationId,
+} from '../services/supportApi.js';
 
 export default function AiChatWidget() {
     const [open, setOpen] = useState(false);
@@ -11,7 +17,36 @@ export default function AiChatWidget() {
     const [loading, setLoading] = useState(false);
     const [imageFile, setImageFile] = useState(null);
     const [imagePreview, setImagePreview] = useState('');
-    const [supportConversationId, setSupportConversationId] = useState(null);
+    const [supportConversationId, setSupportConversationId] = useState(getSavedSupportConversationId);
+
+    useEffect(() => {
+        if (!open || !supportConversationId) return undefined;
+
+        let active = true;
+        const refreshSupportMessages = async () => {
+            try {
+                const supportMessages = await listSupportMessages(supportConversationId);
+                if (!active) return;
+                const staffMessages = supportMessages.filter(item => item.senderType === 'STAFF');
+                setMessages(current => {
+                    const knownIds = new Set(current.map(item => item.supportMessageId).filter(Boolean));
+                    const newMessages = staffMessages
+                        .filter(item => !knownIds.has(item.id))
+                        .map(item => ({role: 'assistant', content: item.message, supportMessageId: item.id}));
+                    return newMessages.length ? [...current, ...newMessages] : current;
+                });
+            } catch {
+                // A transient polling error should not interrupt the chat.
+            }
+        };
+
+        refreshSupportMessages();
+        const timer = window.setInterval(refreshSupportMessages, 4000);
+        return () => {
+            active = false;
+            window.clearInterval(timer);
+        };
+    }, [open, supportConversationId]);
 
     const quickQuestions = [
         '我想找適合我的手機殼',
@@ -30,6 +65,7 @@ export default function AiChatWidget() {
             try {
                 const conversation = await createSupportConversation('使用者申請轉接人工客服');
                 setSupportConversationId(conversation.id);
+                saveSupportConversationId(conversation.id);
                 setMessages(current => [
                     ...current,
                     {role: 'assistant', content: `已建立人工客服案件 #${conversation.id}。請留下你的問題，客服人員會查看。`},
