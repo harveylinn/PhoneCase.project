@@ -1,11 +1,14 @@
 package com.phonecase.backend.order.entity;
 
+import com.phonecase.backend.service.ShopOrderSyncListener;
 import jakarta.persistence.*;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
 @Entity
 @Table(name = "`order`")
+// 訂單異動後立即同步到後台訂單 sales_order
+@EntityListeners(ShopOrderSyncListener.class)
 public class OrderEntity {
 
     // ==========================

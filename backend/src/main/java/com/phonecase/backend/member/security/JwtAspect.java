@@ -6,6 +6,7 @@ import org.aspectj.lang.JoinPoint;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 import com.phonecase.backend.member.entity.Member;
+import com.phonecase.backend.member.exception.AdminAccessException;
 import com.phonecase.backend.member.exception.JwtAuthenticationException;
 import com.phonecase.backend.member.repository.MemberRepository;
 import io.jsonwebtoken.Claims;
@@ -27,8 +28,28 @@ public class JwtAspect {
     @Autowired
     private MemberRepository memberRepository;
 
+<<<<<<< HEAD
     @Before("@annotation(com.phonecase.backend.member.security.CheckJwt) || @annotation(com.phonecase.backend.member.security.AdminOnly)")
     public void CheckJwt(JoinPoint joinPoint) {
+=======
+    @Before("@annotation(com.phonecase.backend.member.security.CheckJwt)")
+    public void CheckJwt() {
+        authenticate();
+    }
+
+    // 後台 API：先做與 @CheckJwt 相同的驗證，再確認會員角色為 ADMIN
+    @Before("@within(com.phonecase.backend.member.security.CheckAdmin)"
+            + " || @annotation(com.phonecase.backend.member.security.CheckAdmin)")
+    public void checkAdmin() {
+        Member member = authenticate();
+        if (!"ADMIN".equals(member.getRole())) {
+            throw new AdminAccessException("此帳號沒有後台管理權限。");
+        }
+    }
+
+    // 驗證 Authorization: Bearer token，成功時把會員 id 放進 request，回傳會員
+    private Member authenticate() {
+>>>>>>> origin/develop
         String authorization = request .getHeader("Authorization");
 
         if (authorization == null || authorization.isBlank()) {
@@ -73,11 +94,15 @@ public class JwtAspect {
         }
 
         request.setAttribute("authenticatedMemberId", member.getId());
+<<<<<<< HEAD
 
         boolean adminRequired = ((org.aspectj.lang.reflect.MethodSignature) joinPoint.getSignature())
                 .getMethod().isAnnotationPresent(AdminOnly.class);
         if (adminRequired && !"ADMIN".equalsIgnoreCase(member.getRole())) {
             throw new JwtAuthenticationException("只有管理員可以使用此功能。");
         }
+=======
+        return member;
+>>>>>>> origin/develop
     }
 }
