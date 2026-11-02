@@ -4,21 +4,21 @@ import type { CartItem } from '../pages/cart/CartItem'
 const CART_STORAGE_KEY = 'guestCart'
 
 // 讀取訪客購物車
-export function getGuestCart(): CartItem[] {
-    const savedCart = localStorage.getItem(CART_STORAGE_KEY)
-
-    if (savedCart === null) {
-        return []
-    }
-
+export function getGuestCart(): CartItem[] | null {
     try {
-        const parsedCart: unknown = JSON.parse(savedCart)
+        const savedCart = localStorage.getItem(CART_STORAGE_KEY)
 
-        if (!Array.isArray(parsedCart)) {
+        if (savedCart === null) {
             return []
         }
 
-        // 檢查每筆商品是否符合目前的 CartItem 格式
+        const parsedCart: unknown = JSON.parse(savedCart)
+
+        if (!Array.isArray(parsedCart)) {
+            console.warn('購物車資料不是陣列')
+            return null
+        }
+
         const isValidCart = parsedCart.every((item) =>
             item !== null &&
             typeof item === 'object' &&
@@ -38,26 +38,32 @@ export function getGuestCart(): CartItem[] {
             typeof item.selected === 'boolean'
         )
 
-        if (isValidCart) {
-            return parsedCart as CartItem[]
+        if (!isValidCart) {
+            console.warn('購物車資料格式不符合目前版本')
+            return null
         }
 
-        console.warn('購物車資料格式不符合目前版本')
+        return parsedCart as CartItem[]
     } catch (error) {
         console.error('讀取購物車失敗：', error)
+        return null
     }
-
-    return []
 }
 
 // 保存訪客購物車
-export function saveGuestCart(items: CartItem[]): void {
-    localStorage.setItem(
-        CART_STORAGE_KEY,
-        JSON.stringify(items)
-    )
+export function saveGuestCart(items: CartItem[]): boolean {
+    try {
+        localStorage.setItem(
+            CART_STORAGE_KEY,
+            JSON.stringify(items)
+        )
 
-    window.dispatchEvent(new Event('cartUpdated'))
+        window.dispatchEvent(new Event('cartUpdated'))
+        return true
+    } catch (error) {
+        console.error('儲存購物車失敗：', error)
+        return false
+    }
 }
 
 // 新增商品到訪客購物車
@@ -71,6 +77,11 @@ export function addToGuestCart(
     }
 
     const cart = getGuestCart()
+
+    if (cart === null) {
+    console.error('無法讀取購物車，已取消新增商品')
+    return
+}
 
     // 檢查購物車是否已有相同商品
     const existingItem = cart.find(
@@ -104,7 +115,13 @@ export function addToGuestCart(
 // 計算購物車內所有商品的總數量
 
 export function getGuestCartCount(): number {
-    return getGuestCart().reduce(
+    const cart = getGuestCart()
+
+    if (cart === null) {
+        return 0
+    }
+
+    return cart.reduce(
         (total, item) => total + item.quantity,
         0
     )
