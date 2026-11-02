@@ -76,6 +76,8 @@ public class ProductRecommendationService {
                         .filter(variant -> "上架".equals(variant.getStatus()))
                         .filter(variant -> variant.getStock() != null
                                 && variant.getStock() > 0)
+                        // 已辨識出的品牌與型號是候選的必要條件，避免 Samsung 圖片列出 Apple 商品。
+                        .filter(variant -> matchesIdentifiedDevice(variant, correctedCriteria))
                         .filter(variant -> score(variant, correctedCriteria) > 0)
                         .sorted(Comparator.comparingInt(
                                 (ProductVariant variant) -> score(variant, correctedCriteria)
@@ -83,6 +85,11 @@ public class ProductRecommendationService {
                         .map(variant -> toRecommendation(product, variant)))
                 .limit(3)
                 .toList();
+    }
+
+    private boolean matchesIdentifiedDevice(ProductVariant variant, AiVisionResult criteria) {
+        return contains(variant.getBrand(), criteria.brand())
+                && contains(variant.getModel(), criteria.model());
     }
 
     private AiVisionResult correctCriteria(
