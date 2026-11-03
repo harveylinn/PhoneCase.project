@@ -30,8 +30,8 @@ export default function App() {
   const isAdminRoute = location.pathname === '/admin'
     || location.pathname.startsWith('/admin/')
     || location.pathname.startsWith('/admin-products');
-  // 後台版面（/admin、/admin/products、/admin/orders、/admin/members）有自己的側邊欄，不顯示商城頁首
-  const isAdminLayout = /^\/admin(\/(products|orders|members)(\/.*)?)?\/?$/.test(location.pathname);
+  // 後台版面（/admin、商品、訂單、會員、圖片樣本庫）使用共用側邊欄，不顯示商城頁首
+  const isAdminLayout = /^\/admin(\/(products|orders|members|samples)(\/.*)?)?\/?$/.test(location.pathname);
 
   return (
     <>
@@ -60,9 +60,9 @@ export default function App() {
           <Route path="orders/unshipped" element={<AdminOrdersPage key="unshipped" filter="unshipped" />} />
           <Route path="orders/unpicked" element={<AdminOrdersPage key="unpicked" filter="unpicked" />} />
           <Route path="members" element={<AdminMembersPage />} />
+          <Route path="samples" element={<ImageSamples />} />
         </Route>
         <Route path="/admin-products/variants" element={<VariantsCatalog />} />
-        <Route path="/admin/samples" element={<ImageSamples />} />
         <Route path="/admin/support" element={<SupportAdmin />} />
         <Route path="*" element={<ProductList />} />
       </Routes>

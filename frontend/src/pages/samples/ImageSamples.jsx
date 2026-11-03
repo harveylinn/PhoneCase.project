@@ -1,5 +1,4 @@
 import {useEffect, useState} from 'react';
-import {Link} from 'react-router-dom';
 import {adminFetch} from '../admin/adminFetch.js';
 
 const emptyForm = {
@@ -400,16 +399,7 @@ export default function ImageSamples() {
                     <p className="muted">管理圖片來源、授權資訊、AI 描述與人工審核狀態。</p>
                 </div>
             </div>
-
-            <div className="admin-with-sidebar">
-                <aside className="admin-sidebar panel">
-                    <p className="admin-sidebar-title">後台管理</p>
-                    <Link to="/admin-products">商品系列管理</Link>
-                    <Link to="/admin-products/variants">手機品項／SKU</Link>
-                    <Link className="is-active" to="/admin/samples">圖片樣本庫</Link>
-                </aside>
-
-                <section className="sample-admin-content">
+            <section className="sample-admin-content">
                     <p className="sample-page-intro">先將圖片上傳到 Cloudinary，再貼上圖片網址加入樣本庫；本系統只儲存網址。</p>
 
                     <form className="sample-form" onSubmit={createSample}>
@@ -569,8 +559,7 @@ export default function ImageSamples() {
                     {!samples.length && <p>目前沒有圖片樣本。</p>}
                 </section>
                     )}
-                </section>
-            </div>
+            </section>
         </main>
     );
 }

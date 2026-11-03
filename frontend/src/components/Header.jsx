@@ -34,10 +34,6 @@ export default function Header() {
 
         <Link to="/">商品專區</Link>
 
-        <Link to="/admin/samples">
-          圖片樣本庫
-        </Link>
-
         <a href="#design">設計理念</a>
 
         <a href="#story">品牌故事</a>
