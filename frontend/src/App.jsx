@@ -11,9 +11,7 @@ import LoginPage from './pages/member/LoginPage';
 import ProfilePage from './pages/member/ProfilePage';
 import MemberRoute from './auth/MemberRoute';
 import Admin from './pages/admin/admin.jsx';
-<<<<<<< HEAD
 import SupportAdmin from './pages/admin/SupportAdmin.jsx';
-=======
 import AdminLayout from './pages/admin/AdminLayout.jsx';
 import {
   AdminMembersPage,
@@ -21,7 +19,6 @@ import {
   AdminProductsPage,
   UnlistedProductsPage
 } from './pages/admin/AdminPages.jsx';
->>>>>>> origin/develop
 import CheckOutPage from './pages/order/CheckoutPage.tsx'
 import OrderModule from './pages/order/OrderModule';
 import Header from './components/Header';
@@ -31,8 +28,8 @@ import Header from './components/Header';
 export default function App() {
   const location = useLocation();
   const isAdminRoute = location.pathname === '/admin'
-      || location.pathname.startsWith('/admin/')
-      || location.pathname.startsWith('/admin-products');
+    || location.pathname.startsWith('/admin/')
+    || location.pathname.startsWith('/admin-products');
   // 後台版面（/admin、/admin/products、/admin/orders、/admin/members）有自己的側邊欄，不顯示商城頁首
   const isAdminLayout = /^\/admin(\/(products|orders|members)(\/.*)?)?\/?$/.test(location.pathname);
 
