@@ -8,4 +8,5 @@ export interface CartItem {
   quantity: number        // 購買數量
   imageUrl: string        // 商品圖片
   selected: boolean       // 是否勾選結帳
+  cartItemId?: number     // 會員購物車項目 ID，對應 cart_items.id（訪客無此欄位）
 }
