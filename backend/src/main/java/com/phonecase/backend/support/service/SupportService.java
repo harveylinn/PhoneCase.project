@@ -9,6 +9,7 @@ import com.phonecase.backend.support.repository.SupportMessageRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import java.util.List;
+import java.util.Base64;
 
 /** 人工客服案件服務，先完成案件與訊息保存。 */
 @Service
@@ -75,6 +76,16 @@ public class SupportService {
         if (!dataUrl.matches("^data:image/(png|jpeg|webp|gif);base64,[A-Za-z0-9+/]*={0,2}$")
                 || dataUrl.length() > 7_000_000) {
             throw new IllegalArgumentException("圖片格式不支援或超過 5MB");
+        }
+        byte[] imageBytes;
+        try {
+            String encodedImage = dataUrl.substring(dataUrl.indexOf(',') + 1);
+            imageBytes = Base64.getDecoder().decode(encodedImage);
+        } catch (IllegalArgumentException invalidBase64) {
+            throw new IllegalArgumentException("圖片附件格式錯誤");
+        }
+        if (imageBytes.length > 5 * 1024 * 1024) {
+            throw new IllegalArgumentException("圖片不可超過 5MB");
         }
     }
 
