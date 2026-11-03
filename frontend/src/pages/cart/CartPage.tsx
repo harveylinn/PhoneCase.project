@@ -28,6 +28,11 @@ import {
     type ProductData
 } from './cartMapper'
 
+// 訪客登入後自動合併會員購物車
+import {
+    mergeGuestCartAfterLogin
+} from '../../utils/cartMerge'
+
 
 // ==========================================
 // TypeScript 型別定義
@@ -292,7 +297,24 @@ function CartPage() {
                     throw new Error('找不到會員登入 Token')
                 }
 
-                // 6. 呼叫 Spring Boot GET API
+                // 6-A. 確認目前的登入工作階段是否仍有效
+                const isActiveSession = () =>
+                    !cancelled &&
+                    sessionVersionRef.current === requestVersion &&
+                    currentIdentityRef.current === requestOwner
+
+                // 6-B. 登入會員後，先將訪客商品合併到 MySQL
+                //      訪客購物車為空時，此函式會直接返回
+                await mergeGuestCartAfterLogin(
+                    token,
+                    memberId,
+                    isActiveSession
+                )
+
+                // 6-C. 如果使用者已登出或切換會員，停止舊請求
+                if (!isActiveSession()) return
+
+                // 6-D. 合併完成後，再取得最新會員購物車
                 const memberItems = await getMemberCart(token)
 
                 // 7. 確認請求仍屬於目前工作階段
@@ -361,6 +383,9 @@ function CartPage() {
                     state: 'success',
                     error: null
                 })
+
+                // 通知 Navbar 重新取得會員購物車數量
+                window.dispatchEvent(new Event('memberCartUpdated'))
 
             } catch (error) {
 
@@ -536,6 +561,9 @@ function CartPage() {
 
                 if (!isSameSession()) return
 
+                // 會員刪除商品成功，通知 Navbar
+                window.dispatchEvent(new Event('memberCartUpdated'))
+
                 // 後端刪除成功才從畫面移除
                 setCartData(previous => {
                     if (previous.owner !== requestOwner) {
@@ -568,6 +596,9 @@ function CartPage() {
                     )
 
                 if (!isSameSession()) return
+
+                // 會員商品數量更新成功，通知 Navbar
+                window.dispatchEvent(new Event('memberCartUpdated'))
 
                 // 14. 後端成功後才更新畫面數量
                 setCartData(previous => {
