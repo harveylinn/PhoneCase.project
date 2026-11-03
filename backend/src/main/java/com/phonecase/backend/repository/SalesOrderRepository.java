@@ -9,6 +9,15 @@ import java.util.List;
 
 public interface SalesOrderRepository extends DocumentRepository<SalesOrder> {
 
+    // 新增出庫單時的關聯單據選項：還沒有任何出庫單引用、且未取消的訂單
+    @Query("""
+            SELECT s FROM SalesOrder s
+            WHERE s.status <> '已取消'
+              AND NOT EXISTS (SELECT 1 FROM StockOut o WHERE o.salesOrderNo = s.orderNo)
+            ORDER BY s.orderNo DESC
+            """)
+    List<SalesOrder> findNotStockedOut();
+
     // 銷售統計：以訂單日期（order_date）篩選 from（含）~ to（不含）區間
     @Query(value = """
             SELECT COALESCE(SUM(total_price), 0) AS amount,

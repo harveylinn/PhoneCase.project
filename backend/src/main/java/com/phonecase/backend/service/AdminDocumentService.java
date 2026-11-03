@@ -140,6 +140,16 @@ public class AdminDocumentService {
         };
     }
 
+    // 關聯單據選項：入庫單 → 尚未入庫的採購單；出庫單 → 尚未出庫的訂單；其他類型沒有關聯單據
+    @Transactional(readOnly = true)
+    public List<? extends BaseDocument> getReferenceCandidates(String docType) {
+        return switch (docType == null ? "" : docType) {
+            case STOCK_IN -> purchaseOrderRepository.findNotStockedIn();
+            case STOCK_OUT -> salesOrderRepository.findNotStockedOut();
+            default -> List.of();
+        };
+    }
+
     @Transactional(readOnly = true)
     public BaseDocument getDocument(String docType, String orderNo) {
         return repositoryOf(docType)

@@ -485,8 +485,15 @@ const emptyForm = {
   model: '',
   quantity: 1,
   unitPrice: 0,
-  targetName: ''
+  targetName: '',
+  refNo: ''
 };
+
+// 入庫單關聯採購單、出庫單關聯訂單（後端 refNo）
+const referenceTypes = { 入庫單: '採購單', 出庫單: '訂單' };
+
+// 單據上已存的關聯單號：入庫單為 purchaseNo、出庫單為 salesOrderNo
+const referenceOf = (item) => item.purchaseNo || item.salesOrderNo || '';
 
 export default function App() {
   const [mainModalOpen, setMainModalOpen] = useState(false);
@@ -560,7 +567,8 @@ export default function App() {
       model: formData.model,
       quantity: Number(formData.quantity) || 0,
       unitPrice: Number(formData.unitPrice) || 0,
-      customerName: formData.targetName
+      customerName: formData.targetName,
+      refNo: formData.refNo
     };
 
     try {
@@ -612,7 +620,7 @@ export default function App() {
         {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(item)
+          body: JSON.stringify({ ...item, refNo: item.refNo ?? referenceOf(item) })
         }
       );
       if (response.ok) {
@@ -1470,6 +1478,57 @@ function FormField({ label, children }) {
   );
 }
 
+/* 關聯單據：輸入框 + datalist，可從下拉選項挑選尚未入庫的採購單／尚未出庫的訂單，也可以自行輸入單號 */
+function ReferenceField({ type, value, onChange, candidates }) {
+  const refType = referenceTypes[type];
+  const listId = `adm-ref-options-${type}`;
+  return (
+    <FormField label={`關聯單據（${refType}單號）`}>
+      <input
+        type="text"
+        list={listId}
+        placeholder={`選擇或輸入${refType}單號`}
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        className="adm-input"
+      />
+      <datalist id={listId}>
+        {candidates.map((doc) => (
+          <option key={doc.orderNo} value={doc.orderNo}>
+            {[doc.productName, doc.model, doc.color].filter(Boolean).join(' ')} × {doc.quantity}
+            {doc.customerName ? `（${doc.customerName}）` : ''}
+          </option>
+        ))}
+      </datalist>
+      <span className="adm-hint">
+        {candidates.length > 0
+          ? `共 ${candidates.length} 張尚未${type === '入庫單' ? '入庫' : '出庫'}的${refType}可選`
+          : `目前沒有尚未${type === '入庫單' ? '入庫' : '出庫'}的${refType}，可直接輸入單號`}
+      </span>
+    </FormField>
+  );
+}
+
+// 讀取關聯單據選項（只有入庫單、出庫單需要）
+function useReferenceCandidates(type) {
+  const [candidates, setCandidates] = useState([]);
+  useEffect(() => {
+    if (!referenceTypes[type]) {
+      setCandidates([]);
+      return;
+    }
+    let cancelled = false;
+    adminFetch(`/api/admin/documents/references?docType=${encodeURIComponent(type)}`)
+      .then((response) => (response.ok ? response.json() : []))
+      .then((data) => !cancelled && setCandidates(data))
+      .catch(() => !cancelled && setCandidates([]));
+    return () => {
+      cancelled = true;
+    };
+  }, [type]);
+  return candidates;
+}
+
 function MainModal({
   type,
   action,
@@ -1491,6 +1550,28 @@ function MainModal({
 }) {
   const timestamp = new Date().toLocaleString();
   const updateField = (field) => (e) => setFormData({ ...formData, [field]: e.target.value });
+  const candidates = useReferenceCandidates(type);
+
+  // 選到下拉清單中的單據時，帶入該單據的商品資料；自行輸入的單號只更新關聯單號
+  const updateReference = (refNo) => {
+    const source = candidates.find((doc) => doc.orderNo === refNo.trim());
+    setFormData(
+      source
+        ? {
+            ...formData,
+            refNo,
+            productName: source.productName || '',
+            productCode: source.productNo || '',
+            brand: source.brand || '',
+            color: source.color || '',
+            model: source.model || '',
+            quantity: source.quantity ?? formData.quantity,
+            unitPrice: source.unitPrice ?? formData.unitPrice,
+            targetName: source.customerName || formData.targetName
+          }
+        : { ...formData, refNo }
+    );
+  };
 
   return (
     <div className="adm-overlay">
@@ -1523,6 +1604,14 @@ function MainModal({
                     className="adm-input"
                   />
                 </FormField>
+                {referenceTypes[type] && (
+                  <ReferenceField
+                    type={type}
+                    value={formData.refNo}
+                    onChange={updateReference}
+                    candidates={candidates}
+                  />
+                )}
                 <FormField label="品名">
                   <input
                     type="text"
@@ -1652,6 +1741,7 @@ function MainModal({
                       <tr>
                         <th>單號 (Op: {searchOperator})</th>
                         <th>品名</th>
+                        {referenceTypes[type] && <th>關聯單據</th>}
                         <th className="r">數量</th>
                         <th className="r">總計</th>
                         <th className="c">操作</th>
@@ -1663,6 +1753,7 @@ function MainModal({
                           <tr key={item.orderNo}>
                             <td className="mono">{item.orderNo}</td>
                             <td>{item.productName}</td>
+                            {referenceTypes[type] && <td className="mono">{referenceOf(item) || '-'}</td>}
                             <td className="r">{item.quantity}</td>
                             <td className="r">${item.totalPrice}</td>
                             <td className="c">
@@ -1695,7 +1786,7 @@ function MainModal({
                         ))
                       ) : (
                         <tr>
-                          <td colSpan="5" className="adm-empty">
+                          <td colSpan={referenceTypes[type] ? 6 : 5} className="adm-empty">
                             查無符合條件之單據
                           </td>
                         </tr>
@@ -1749,6 +1840,20 @@ function MainModal({
                       <span className="adm-detail-label">客戶名稱：</span>
                       <span>{selectedItem.customerName || '-'}</span>
                     </div>
+                    {referenceTypes[type] &&
+                      (action === '修改' ? (
+                        <ReferenceField
+                          type={type}
+                          value={selectedItem.refNo ?? referenceOf(selectedItem)}
+                          onChange={(refNo) => setSelectedItem({ ...selectedItem, refNo })}
+                          candidates={candidates}
+                        />
+                      ) : (
+                        <div>
+                          <span className="adm-detail-label">關聯單據：</span>
+                          <span className="adm-detail-mono">{referenceOf(selectedItem) || '-'}</span>
+                        </div>
+                      ))}
                   </div>
 
                   {action === '修改' && (

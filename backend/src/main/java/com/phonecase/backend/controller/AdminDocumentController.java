@@ -39,6 +39,12 @@ public class AdminDocumentController {
         return adminDocumentService.searchDocuments(docType, keyword, operator);
     }
 
+    // 關聯單據下拉選項：docType=入庫單 回傳未入庫的採購單、docType=出庫單 回傳未出庫的訂單
+    @GetMapping("/references")
+    public List<? extends BaseDocument> getReferenceCandidates(@RequestParam String docType) {
+        return adminDocumentService.getReferenceCandidates(docType);
+    }
+
     // 銷售統計：date 為瀏覽器日期，格式 yyyy-MM-dd
     @GetMapping("/stats")
     public AdminDocumentService.SalesStats getSalesStats(
