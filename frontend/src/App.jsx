@@ -1,5 +1,4 @@
 import { Link, Route, Routes, useLocation } from 'react-router-dom';
-import { useEffect, useState } from 'react';
 import ProductList from './pages/products/ProductList.jsx';
 import ProductDetail from './pages/products/ProductDetail.jsx';
 import AdminProducts from './pages/products/AdminProducts.jsx';
@@ -10,10 +9,7 @@ import CartPage from './pages/cart/CartPage';
 import RegisterPage from './pages/member/RegisterPage';
 import LoginPage from './pages/member/LoginPage';
 import ProfilePage from './pages/member/ProfilePage';
-import { useAuth } from './auth/useAuth';
 import MemberRoute from './auth/MemberRoute';
-import MemberMenu from './components/MemberMenu';
-import { getLoginUrl } from './utils/authRedirect';
 import Admin from './pages/admin/admin.jsx';
 import AdminLayout from './pages/admin/AdminLayout.jsx';
 import {
@@ -23,50 +19,9 @@ import {
   UnlistedProductsPage
 } from './pages/admin/AdminPages.jsx';
 import CheckOutPage from './pages/order/CheckoutPage.tsx'
-import { getGuestCartCount } from './utils/cartStorage';
 import OrderModule from './pages/order/OrderModule';
+import Header from './components/Header';
 
-
-// 首頁欄
-function Header() {
-  const location = useLocation();
-  const { currentMember, status } = useAuth();
-  const [cartCount, setCartCount] = useState(getGuestCartCount);
-
-  useEffect(() => {
-    const updateCartCount = () => {
-      setCartCount(getGuestCartCount());
-    };
-
-    window.addEventListener('cartUpdated', updateCartCount);
-    window.addEventListener('storage', updateCartCount);
-
-    return () => {
-      window.removeEventListener('cartUpdated', updateCartCount);
-      window.removeEventListener('storage', updateCartCount);
-    };
-  }, []);
-
-  return (
-    <header className="site-header">
-      <Link className="brand" to="/">CASELAB</Link>
-
-      <nav className="header-nav" style={{ flexWrap: 'wrap', alignItems: 'center' }}>
-        <Link to="/">商品專區</Link>
-        <Link to="/admin/samples">圖片樣本庫</Link>
-        <a href="#design">設計理念</a>
-        <a href="#story">品牌故事</a>
-        <Link to="/orderlist">我的訂單</Link>
-        <Link to="/cart" className="header-cart-link">購物車 ({cartCount})</Link>
-        {status === 'checking' && <span>身分確認中…</span>}
-        {currentMember ? <MemberMenu /> : <>
-          <Link to={getLoginUrl(location)}>登入/註冊</Link>
-        </>}
-        <Link className="nav-placeholder" to="/admin">後台管理</Link>
-      </nav>
-    </header>
-  );
-}
 
 // 分頁
 export default function App() {
