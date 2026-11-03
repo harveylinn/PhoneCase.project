@@ -1,4 +1,4 @@
-import {useEffect, useState} from 'react';
+import {useEffect, useRef, useState} from 'react';
 import {Link} from 'react-router-dom';
 
 async function api(url, options = {}) {
@@ -19,6 +19,8 @@ export default function SupportAdmin() {
     const [reply, setReply] = useState('');
     const [error, setError] = useState('');
     const [statusFilter, setStatusFilter] = useState('ALL');
+    const messageRequestId = useRef(0);
+    const selectedConversationId = useRef(null);
 
     async function loadConversations() {
         try { setConversations(await api('/api/support/conversations')); setError(''); }
@@ -26,9 +28,18 @@ export default function SupportAdmin() {
     }
 
     async function selectConversation(conversation) {
+        const requestId = ++messageRequestId.current;
+        selectedConversationId.current = conversation.id;
         setSelected(conversation);
-        try { setMessages(await api(`/api/support/conversations/${conversation.id}/messages`)); }
-        catch (exception) { setError(exception.message); }
+        setMessages([]);
+        setReply('');
+        setError('');
+        try {
+            const result = await api(`/api/support/conversations/${conversation.id}/messages`);
+            if (requestId === messageRequestId.current) setMessages(result);
+        } catch (exception) {
+            if (requestId === messageRequestId.current) setError(exception.message);
+        }
     }
 
     useEffect(() => { loadConversations(); }, []);
@@ -46,12 +57,13 @@ export default function SupportAdmin() {
     async function sendReply(event) {
         event.preventDefault();
         if (!selected || !reply.trim()) return;
+        const currentId = selected.id;
         try {
-            await api(`/api/support/conversations/${selected.id}/staff-messages`, {
+            await api(`/api/support/conversations/${currentId}/staff-messages`, {
                 method: 'POST', body: JSON.stringify({message: reply.trim()}),
             });
             setReply('');
-            await selectConversation(selected);
+            if (selectedConversationId.current === currentId) await selectConversation({id: currentId});
         } catch (exception) { setError(exception.message); }
     }
 
@@ -59,6 +71,7 @@ export default function SupportAdmin() {
         if (!selected) return;
         try {
             const updated = await api(`/api/support/conversations/${selected.id}/status?status=${status}`, {method: 'PATCH'});
+            if (selectedConversationId.current !== updated.id) return;
             setSelected(updated);
             setConversations(items => items.map(item => item.id === updated.id ? updated : item));
         } catch (exception) { setError(exception.message); }
@@ -93,7 +106,7 @@ export default function SupportAdmin() {
                     {!selected ? <p>請選擇左側客服案件。</p> : <>
                         <h2>案件 #{selected.id}</h2>
                         <label>案件狀態<select value={selected.status} onChange={event => changeStatus(event.target.value)}><option value="OPEN">待處理</option><option value="IN_PROGRESS">處理中</option><option value="CLOSED">已完成</option></select></label>
-                        <div className="support-message-list">{messages.map(item => <div className={`support-message ${item.senderType === 'STAFF' ? 'is-staff' : ''}`} key={item.id}><small>{item.senderType}</small><p>{item.message}</p></div>)}</div>
+                        <div className="support-message-list">{messages.map(item => <div className={`support-message ${item.senderType === 'STAFF' ? 'is-staff' : ''}`} key={item.id}><small>{item.senderType}</small><p>{item.message}</p>{item.attachmentDataUrl && <img className="support-attachment" src={item.attachmentDataUrl} alt="客戶上傳的圖片附件" />}</div>)}</div>
                         <form onSubmit={sendReply}><textarea value={reply} onChange={event => setReply(event.target.value)} placeholder="輸入客服回覆" rows="4"/><button className="button button-primary" type="submit">送出回覆</button></form>
                     </>}
                 </section>

@@ -31,7 +31,7 @@ public class SupportService {
         conversation.setGuestId(request.guestId());
         SupportConversation saved = conversationRepository.save(conversation);
         if (!isBlank(request.message())) {
-            saveMessage(saved.getId(), request.message(), "CUSTOMER");
+            saveMessage(saved.getId(), request.message(), null, "CUSTOMER");
         }
         return saved;
     }
@@ -41,25 +41,41 @@ public class SupportService {
         if (request == null || isBlank(request.guestId())) {
             throw new IllegalArgumentException("訪客識別碼無效");
         }
-        requireGuestConversation(conversationId, request.guestId());
-        return saveMessage(conversationId, request.message(), "CUSTOMER");
+        SupportConversation conversation = requireGuestConversation(conversationId, request.guestId());
+        if ("CLOSED".equals(conversation.getStatus())) {
+            throw new IllegalArgumentException("此客服案件已結束，請重新建立客服案件");
+        }
+        return saveMessage(conversationId, request.message(), request.attachmentDataUrl(), "CUSTOMER");
     }
 
     @Transactional
     public SupportMessage addStaffMessage(Long conversationId, CreateSupportMessageRequest request) {
         requireConversation(conversationId);
-        return saveMessage(conversationId, request == null ? null : request.message(), "STAFF");
+        return saveMessage(conversationId, request == null ? null : request.message(),
+                request == null ? null : request.attachmentDataUrl(), "STAFF");
     }
 
-    private SupportMessage saveMessage(Long conversationId, String content, String senderType) {
-        if (isBlank(content)) {
+    private SupportMessage saveMessage(Long conversationId, String content,
+                                       String attachmentDataUrl, String senderType) {
+        if (isBlank(content) && isBlank(attachmentDataUrl)) {
             throw new IllegalArgumentException("客服訊息不可為空白");
         }
+        validateAttachment(attachmentDataUrl);
         SupportMessage message = new SupportMessage();
         message.setConversationId(conversationId);
         message.setSenderType(senderType);
-        message.setMessage(content.trim());
+        message.setMessage(isBlank(content) ? "" : content.trim());
+        message.setAttachmentDataUrl(attachmentDataUrl);
         return messageRepository.save(message);
+    }
+
+    /** 只接受明確的圖片 data URL，並限制單張圖片大小，避免任意內容灌入資料庫。 */
+    private void validateAttachment(String dataUrl) {
+        if (isBlank(dataUrl)) return;
+        if (!dataUrl.matches("^data:image/(png|jpeg|webp|gif);base64,[A-Za-z0-9+/]*={0,2}$")
+                || dataUrl.length() > 7_000_000) {
+            throw new IllegalArgumentException("圖片格式不支援或超過 5MB");
+        }
     }
 
     private SupportConversation requireConversation(Long conversationId) {
@@ -87,6 +103,13 @@ public class SupportService {
         }
         requireGuestConversation(conversationId, guestId);
         return messageRepository.findByConversationIdOrderByCreatedAtAsc(conversationId);
+    }
+
+    @Transactional
+    public SupportConversation closeGuestConversation(Long conversationId, String guestId) {
+        SupportConversation conversation = requireGuestConversation(conversationId, guestId);
+        conversation.setStatus("CLOSED");
+        return conversationRepository.save(conversation);
     }
 
     @Transactional

@@ -26,6 +26,12 @@ public class SupportController {
         return supportService.createConversation(request);
     }
 
+    @PostMapping("/conversations/{conversationId}/customer-close")
+    public SupportConversation closeCustomerConversation(@PathVariable Long conversationId,
+                                                         @RequestParam String guestId) {
+        return supportService.closeGuestConversation(conversationId, guestId);
+    }
+
     @PostMapping("/conversations/{conversationId}/messages")
     @ResponseStatus(HttpStatus.CREATED)
     public SupportMessage addMessage(@PathVariable Long conversationId,

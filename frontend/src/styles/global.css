@@ -2380,3 +2380,33 @@ textarea::placeholder {
 }
 
 
+
+
+/* 客服模式控制與訊息圖片附件 */
+.ai-chat-header-actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.ai-chat-header-actions button:first-child {
+    width: auto;
+    height: auto;
+    padding: 8px 12px;
+    border: 1px solid rgba(255, 255, 255, 0.35);
+    border-radius: 999px;
+    font-size: 13px;
+    white-space: nowrap;
+}
+
+.ai-chat-message-image,
+.support-attachment {
+    display: block;
+    max-width: min(100%, 320px);
+    max-height: 320px;
+    margin-top: 10px;
+    border: 1px solid #e5eaf0;
+    border-radius: 12px;
+    object-fit: contain;
+    background: #fff;
+}

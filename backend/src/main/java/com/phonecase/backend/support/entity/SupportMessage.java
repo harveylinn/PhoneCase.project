@@ -24,6 +24,9 @@ public class SupportMessage {
     @Column(nullable = false, columnDefinition = "TEXT")
     private String message;
 
+    @Column(name = "attachment_data_url", columnDefinition = "LONGTEXT")
+    private String attachmentDataUrl;
+
     @Column(name = "created_at", insertable = false, updatable = false)
     private LocalDateTime createdAt;
 }

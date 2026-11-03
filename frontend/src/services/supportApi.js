@@ -29,11 +29,20 @@ export function createSupportConversation(message = '') {
     });
 }
 
-export function addSupportMessage(conversationId, message) {
+export function addSupportMessage(conversationId, message, attachmentDataUrl = null) {
     return request(`/api/support/conversations/${conversationId}/messages`, {
         method: 'POST',
-        body: JSON.stringify({message, guestId: getGuestId()}),
+        body: JSON.stringify({message, guestId: getGuestId(), attachmentDataUrl}),
     });
+}
+
+export function closeSupportConversation(conversationId) {
+    const guestId = encodeURIComponent(getGuestId());
+    return request(`/api/support/conversations/${conversationId}/customer-close?guestId=${guestId}`, {method: 'POST'});
+}
+
+export function clearSavedSupportConversationId() {
+    window.localStorage.removeItem(conversationKey);
 }
 
 export function listSupportMessages(conversationId) {

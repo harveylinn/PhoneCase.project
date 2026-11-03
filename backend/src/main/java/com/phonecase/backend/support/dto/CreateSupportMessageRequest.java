@@ -1,4 +1,4 @@
 package com.phonecase.backend.support.dto;
 
-public record CreateSupportMessageRequest(String message, String guestId) {
+public record CreateSupportMessageRequest(String message, String guestId, String attachmentDataUrl) {
 }

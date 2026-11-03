@@ -51,7 +51,7 @@ class SelectorRegressionTest {
         var disabled = new ProductVariant(); disabled.setId(3L); disabled.setBrand("Apple"); disabled.setStock(8); disabled.setStatus("下架");
         product.setVariants(List.of(disabled, live));
         when(products.getAvailableProducts()).thenReturn(List.of(product));
-        var service = new ProductRecommendationService(products);
+        var service = new ProductRecommendationService(products, mock(ImageSampleRepository.class));
         var criteria = new AiVisionResult("Apple", null, null, null, null, null);
         assertEquals(List.of(2L), service.findMatches(criteria, "Apple").stream().map(AiProductRecommendation::variantId).toList());
         assertEquals(List.of(2L), service.findSimilar(criteria, "Apple").stream().map(AiProductRecommendation::variantId).toList());

@@ -84,6 +84,8 @@ public class ImageSampleService {
         }
         if ("通過".equals(reviewStatus)) {
             addSampleImageToVariant(sample);
+        } else if ("通過".equals(sample.getReviewStatus())) {
+            detachSampleImageFromVariant(sample);
         }
         sample.setReviewStatus(reviewStatus);
         sample.setReviewerNote(reviewerNote);
@@ -97,6 +99,15 @@ public class ImageSampleService {
         boolean alreadyAttached = existingImages.stream()
                 .anyMatch(image -> sample.getImageUrl().equals(image.getImageUrl()));
         if (alreadyAttached) {
+            // 只有本系統先前由樣本建立的圖片連結才會被追蹤。
+            if (sample.getProductImageId() == null) {
+                repository.findByVariantIdAndImageUrlAndProductImageIdIsNotNull(
+                                variantId, sample.getImageUrl())
+                        .stream()
+                        .findFirst()
+                        .ifPresent(existingSample -> sample.setProductImageId(
+                                existingSample.getProductImageId()));
+            }
             return;
         }
 
@@ -109,7 +120,22 @@ public class ImageSampleService {
         image.setSortOrder(existingImages.size());
         image.setIsPrimary(existingImages.stream().noneMatch(
                 existing -> Boolean.TRUE.equals(existing.getIsPrimary())));
-        productImageRepository.save(image);
+        ProductImage savedImage = productImageRepository.save(image);
+        sample.setProductImageId(savedImage.getId());
+    }
+
+    /** 退回已通過樣本時，若無其他通過樣本共用此連結才移除。 */
+    private void detachSampleImageFromVariant(ImageSample sample) {
+        Long productImageId = sample.getProductImageId();
+        if (productImageId == null) {
+            return;
+        }
+        long otherApprovedSamples = repository.countByReviewStatusAndProductImageIdAndIdNot(
+                "通過", productImageId, sample.getId());
+        if (otherApprovedSamples == 0) {
+            productImageRepository.deleteById(productImageId);
+        }
+        sample.setProductImageId(null);
     }
 
     public ImageSample updateDescription(Long id, String aiDescription) {

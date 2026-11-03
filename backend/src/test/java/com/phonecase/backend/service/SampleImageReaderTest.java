@@ -72,13 +72,13 @@ class SampleImageReaderTest {
         var criteria = new com.phonecase.backend.dto.AiVisionResult("Apple", "iPhone 16 Pro", null, null, null, null);
         when(vision.analyze(any())).thenReturn(criteria);
         when(recommendations.findSimilar(criteria, null)).thenReturn(List.of());
-        var service = new ImageSampleService(repo, vision, products, recommendations, reader);
+        var service = new ImageSampleService(repo, vision, products, mock(com.phonecase.backend.repository.ProductVariantRepository.class), mock(com.phonecase.backend.repository.ProductImageRepository.class), recommendations, reader);
         assertEquals(criteria, service.analyzeImage(1L).criteria());
         verify(vision).analyze(argThat(r -> "AQ==".equals(r.imageBase64()) && "image/webp".equals(r.imageMimeType())));
     }
     @Test void validatesCloudUrlWhenSavingSample() {
         var repo = mock(com.phonecase.backend.repository.ImageSampleRepository.class);
-        var service = new ImageSampleService(repo, mock(AiVisionService.class), mock(ProductService.class), mock(ProductRecommendationService.class), mock(SampleImageReader.class));
+        var service = new ImageSampleService(repo, mock(AiVisionService.class), mock(ProductService.class), mock(com.phonecase.backend.repository.ProductVariantRepository.class), mock(com.phonecase.backend.repository.ProductImageRepository.class), mock(ProductRecommendationService.class), mock(SampleImageReader.class));
         var sample = new com.phonecase.backend.entity.ImageSample(); sample.setImageUrl("http://localhost/secret");
         assertThrows(ResponseStatusException.class, () -> service.create(sample));
         verifyNoInteractions(repo);

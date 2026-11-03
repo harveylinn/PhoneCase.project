@@ -4,6 +4,8 @@ import {searchProductsWithAi} from '../services/aiSearchApi.js';
 import {addToGuestCart} from '../utils/cartStorage';
 import {
     addSupportMessage,
+    clearSavedSupportConversationId,
+    closeSupportConversation,
     createSupportConversation,
     getSavedSupportConversationId,
     listSupportMessages,
@@ -84,6 +86,27 @@ export default function AiChatWidget() {
         setText(question);
     }
 
+    async function handleReturnToAi() {
+        if (!supportConversationId || loading) return;
+        setLoading(true);
+        try {
+            await closeSupportConversation(supportConversationId);
+            clearSavedSupportConversationId();
+            setSupportConversationId(null);
+            setMessages([]);
+            setImageFile(null);
+            setImagePreview('');
+            setText('');
+        } catch (error) {
+            setMessages(current => [...current, {
+                role: 'assistant',
+                content: `結束客服失敗：${error.message}`,
+            }]);
+        } finally {
+            setLoading(false);
+        }
+    }
+
     async function handleSubmit(event) {
         event.preventDefault();
 
@@ -108,6 +131,7 @@ export default function AiChatWidget() {
             {
                 role: 'user',
                 content: question || '圖片',
+                imageDataUrl: imagePreview || null,
             },
         ];
 
@@ -117,7 +141,12 @@ export default function AiChatWidget() {
 
         try {
             if (supportConversationId) {
-                await addSupportMessage(supportConversationId, question || '使用者上傳了一張圖片');
+                const attachmentDataUrl = imageFile ? await fileToDataUrl(imageFile) : null;
+                await addSupportMessage(
+                    supportConversationId,
+                    question,
+                    attachmentDataUrl
+                );
                 setMessages([
                     ...nextMessages,
                     {role: 'assistant', content: '訊息已送出，人工客服會查看你的問題。'},
@@ -146,6 +175,13 @@ export default function AiChatWidget() {
             setImageFile(null);
             setImagePreview('');
         } catch (error) {
+            if (supportConversationId) {
+                setMessages([
+                    ...nextMessages,
+                    {role: 'assistant', content: `訊息傳送失敗：${error.message}`},
+                ]);
+                return;
+            }
             const message = error.code === 'AI_SERVICE_UNAVAILABLE'
                 ? 'AI 服務目前無法回應，請確認 Ollama 已啟動，稍後再試。'
                 : error.code === 'AI_REQUEST_TIMEOUT'
@@ -163,18 +199,18 @@ export default function AiChatWidget() {
             setLoading(false);
         }
     }
-    function fileToBase64(file) {
+    function fileToDataUrl(file) {
         return new Promise((resolve, reject) => {
             const reader = new FileReader();
-
-            reader.onload = () => {
-                const result = String(reader.result);
-                resolve(result.split(',')[1]);
-            };
-
+            reader.onload = () => resolve(String(reader.result));
             reader.onerror = reject;
             reader.readAsDataURL(file);
         });
+    }
+
+    async function fileToBase64(file) {
+        const dataUrl = await fileToDataUrl(file);
+        return dataUrl.split(',')[1];
     }
     function handleImageChange(event) {
         const file = event.target.files?.[0];
@@ -221,11 +257,17 @@ export default function AiChatWidget() {
             {open && (
                 <section className="ai-chat-window">
                     <header className="ai-chat-header">
-                        <strong>PhoneCase 商品助手</strong>
-
-                        <button type="button" onClick={() => setOpen(false)}>
-                            ×
-                        </button>
+                        <strong>{supportConversationId ? '人工客服案件' : 'PhoneCase 商品助手'}</strong>
+                        <div className="ai-chat-header-actions">
+                            {supportConversationId && (
+                                <button type="button" onClick={handleReturnToAi} disabled={loading}>
+                                    返回 AI
+                                </button>
+                            )}
+                            <button type="button" aria-label="關閉聊天視窗" onClick={() => setOpen(false)}>
+                                ×
+                            </button>
+                        </div>
                     </header>
 
                     <div className="ai-chat-messages">
@@ -235,7 +277,7 @@ export default function AiChatWidget() {
                                     你好！我可以協助商品推薦、圖片搜尋與常見問題。
                                 </p>
                                 <p className="ai-chat-scope-note">
-                                    目前提供商品推薦與圖片搜尋；人工客服功能尚未連接。
+                                    商品推薦、圖片搜尋與人工客服皆可使用。
                                 </p>
                                 <div className="ai-chat-quick-actions" aria-label="常見問題">
                                     {quickQuestions.map(question => (
@@ -253,6 +295,9 @@ export default function AiChatWidget() {
                                 key={`${message.role}-${index}`}
                             >
                                 {message.content}
+                                {message.imageDataUrl && (
+                                    <img className="ai-chat-message-image" src={message.imageDataUrl} alt="客服訊息附件" />
+                                )}
                                 {message.products?.length > 0 && (
                                     <div className="ai-chat-product-list">
                                         {message.products.map(product => (
