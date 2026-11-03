@@ -76,16 +76,10 @@ function Header() {
 export default function App() {
   const location = useLocation();
   const isAdminRoute = location.pathname === '/admin'
-<<<<<<< HEAD
-    || location.pathname.startsWith('/admin-products')
-    || location.pathname.startsWith('/admin/samples')
-    || location.pathname.startsWith('/admin/support');
-=======
-    || location.pathname.startsWith('/admin/')
-    || location.pathname.startsWith('/admin-products');
+      || location.pathname.startsWith('/admin/')
+      || location.pathname.startsWith('/admin-products');
   // 後台版面（/admin、/admin/products、/admin/orders、/admin/members）有自己的側邊欄，不顯示商城頁首
   const isAdminLayout = /^\/admin(\/(products|orders|members)(\/.*)?)?\/?$/.test(location.pathname);
->>>>>>> origin/develop
 
   return (
     <>
