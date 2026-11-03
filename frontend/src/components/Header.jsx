@@ -1,5 +1,6 @@
 
-import { Link, useLocation } from 'react-router-dom';
+import { useEffect, useRef, useState } from 'react';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../auth/useAuth';
 import { getLoginUrl } from '../utils/authRedirect';
 
@@ -15,14 +16,65 @@ import CartNavLink from './CartNavLink';
 export default function Header() {
 
   const location = useLocation();
+  const navigate = useNavigate();
+  const [isSearchOpen, setIsSearchOpen] = useState(false);
+  const [searchTerm, setSearchTerm] = useState(() => new URLSearchParams(location.search).get('q') ?? '');
+  const searchInputRef = useRef(null);
+  const showCatalogSearch = location.pathname === '/' || location.pathname.startsWith('/products');
+
+  useEffect(() => {
+    setSearchTerm(new URLSearchParams(location.search).get('q') ?? '');
+  }, [location.search]);
+
+  useEffect(() => {
+    if (isSearchOpen) searchInputRef.current?.focus();
+  }, [isSearchOpen]);
+
+  function submitSearch(event) {
+    event.preventDefault();
+    const query = searchTerm.trim();
+    navigate(query ? `/?q=${encodeURIComponent(query)}` : '/');
+    setIsSearchOpen(false);
+  }
   const { currentMember, status } = useAuth();
 
   return (
     <header className="site-header">
 
-      <Link className="brand" to="/">
-        CASELAB
-      </Link>
+      <div className="header-brand-group">
+        <Link className="brand" to="/">CASELAB</Link>
+        {showCatalogSearch && (
+          <div className="header-search-wrap">
+            <button
+              className="header-search-toggle"
+              type="button"
+              onClick={() => setIsSearchOpen(open => !open)}
+              aria-label={isSearchOpen ? '關閉商品搜尋' : '開啟商品搜尋'}
+              aria-expanded={isSearchOpen}
+              aria-controls="header-catalog-search"
+            >
+              {isSearchOpen ? (
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 6 12 12M18 6 6 18" /></svg>
+              ) : (
+                <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7" /><path d="m16 16 4 4" /></svg>
+              )}
+            </button>
+            {isSearchOpen && (
+              <form id="header-catalog-search" className="header-search-form" role="search" onSubmit={submitSearch}>
+                <input
+                  ref={searchInputRef}
+                  type="search"
+                  value={searchTerm}
+                  onChange={event => setSearchTerm(event.target.value)}
+                  placeholder="搜尋商品、型號、顏色或風格"
+                  aria-label="搜尋商品、型號、顏色或風格"
+                />
+                <button type="submit">搜尋</button>
+              </form>
+            )}
+          </div>
+        )}
+      </div>
 
       <nav
         className="header-nav"

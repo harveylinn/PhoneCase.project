@@ -2530,3 +2530,146 @@ textarea::placeholder {
         font-size: 14px;
     }
 }
+
+/* CASELAB 品牌旁的展開式商品搜尋 */
+.header-brand-group {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    flex: 0 0 auto;
+}
+
+.header-search-wrap {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.header-search-toggle {
+    display: grid;
+    width: 40px;
+    height: 40px;
+    flex: 0 0 40px;
+    place-items: center;
+    padding: 0;
+    border: 1px solid transparent;
+    border-radius: 50%;
+    color: var(--navy);
+    background: transparent;
+    cursor: pointer;
+    transition: color .2s ease, background .2s ease, border-color .2s ease;
+}
+
+.header-search-toggle:hover,
+.header-search-toggle:focus-visible {
+    border-color: var(--line);
+    color: var(--coral);
+    background: #f7f9fc;
+}
+
+.header-search-toggle:focus-visible {
+    outline: 3px solid rgba(18, 43, 80, .16);
+    outline-offset: 2px;
+}
+
+.header-search-toggle svg {
+    width: 23px;
+    height: 23px;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 1.8;
+    stroke-linecap: round;
+}
+
+.header-search-form {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    width: clamp(230px, 25vw, 340px);
+    padding: 5px 6px 5px 14px;
+    border: 1px solid var(--line);
+    border-radius: 999px;
+    background: #fff;
+    box-shadow: 0 5px 16px rgba(18, 43, 80, .08);
+    animation: header-search-expand .2s ease-out;
+}
+
+.header-search-form:focus-within {
+    border-color: var(--navy);
+    box-shadow: 0 0 0 3px rgba(18, 43, 80, .08), 0 5px 16px rgba(18, 43, 80, .08);
+}
+
+.header-search-form input {
+    width: 100%;
+    min-width: 0;
+    padding: 9px 0;
+    border: 0;
+    outline: 0;
+    color: var(--navy);
+    background: transparent;
+    font: inherit;
+    font-size: 14px;
+}
+
+.header-search-form input::placeholder {
+    color: #91a0b2;
+}
+
+.header-search-form input::-webkit-search-cancel-button {
+    display: none;
+}
+
+.header-search-form button {
+    min-height: 36px;
+    padding: 0 14px;
+    border: 0;
+    border-radius: 999px;
+    color: #fff;
+    background: var(--navy);
+    font: inherit;
+    font-size: 13px;
+    font-weight: 700;
+    white-space: nowrap;
+    cursor: pointer;
+}
+
+.header-search-form button:hover {
+    background: #1c3b69;
+}
+
+@keyframes header-search-expand {
+    from { opacity: 0; transform: translateX(-6px); }
+    to { opacity: 1; transform: translateX(0); }
+}
+
+@media (max-width: 640px) {
+    .header-brand-group {
+        gap: 8px;
+        margin-bottom: 14px;
+    }
+
+    .header-search-wrap {
+        gap: 6px;
+    }
+
+    .header-search-toggle {
+        width: 36px;
+        height: 36px;
+        flex-basis: 36px;
+    }
+
+    .header-search-form {
+        width: min(300px, calc(100vw - 180px));
+        padding-left: 10px;
+    }
+
+    .header-search-form input {
+        font-size: 13px;
+    }
+
+    .header-search-form button {
+        min-height: 32px;
+        padding: 0 10px;
+        font-size: 12px;
+    }
+}
