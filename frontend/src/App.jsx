@@ -22,6 +22,8 @@ import {
 import CheckOutPage from './pages/order/CheckoutPage.tsx'
 import OrderModule from './pages/order/OrderModule';
 import Header from './components/Header';
+import HomePage from './pages/home/HomePage.jsx';
+import Footer from './components/Footer.jsx';
 
 
 // 分頁
@@ -37,7 +39,8 @@ export default function App() {
     <>
       {!isAdminLayout && <Header />}
       <Routes>
-        <Route path="/" element={<ProductList />} />
+        <Route path="/" element={<HomePage />} />
+        <Route path="/products" element={<ProductList />} />
         <Route path="/products/:id" element={<ProductDetail />} />
         <Route path="/admin-products" element={<AdminProducts />} />
 
@@ -66,6 +69,8 @@ export default function App() {
         <Route path="/admin/support" element={<SupportAdmin />} />
         <Route path="*" element={<ProductList />} />
       </Routes>
+      {/* 商城共用 Footer：後台不顯示 */}
+      {!isAdminRoute && <Footer />}
       {!isAdminRoute && <AiChatWidget />}
     </>
   );
