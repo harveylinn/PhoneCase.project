@@ -34,7 +34,8 @@ public class JwtAspect {
 
     // 後台 API：先做與 @CheckJwt 相同的驗證，再確認會員角色為 ADMIN
     @Before("@within(com.phonecase.backend.member.security.CheckAdmin)"
-            + " || @annotation(com.phonecase.backend.member.security.CheckAdmin)")
+            + " || @annotation(com.phonecase.backend.member.security.CheckAdmin)"
+            + " || @annotation(com.phonecase.backend.member.security.AdminOnly)")
     public void checkAdmin() {
         Member member = authenticate();
         if (!"ADMIN".equals(member.getRole())) {

@@ -94,11 +94,17 @@ public class AiVisionService {
                         你是商品圖片審核助手。
                         請根據圖片與提供的商品資料，判斷圖片是否可能屬於這個商品。
                         只能根據圖片中明確看得到的特徵判斷，不要因為商品資料存在就直接判定符合。
-                        回傳 JSON 欄位：matchesProduct、confidence、description、reason。
+                        回傳 JSON 欄位：matchesProduct、confidence、brand、model、color、styleTag、cameraLayout、description、reason。
                         matchesProduct 只能是 true、false 或 null；不確定時填 null。
                         confidence 是 0 到 100 的整數；不確定時填 0。
+                        brand、model、color、styleTag、cameraLayout 無法從圖片明確判斷時必須填 null，不可以因為商品資料存在就猜測。
+                        brand 是手機品牌；model 是手機型號，不是手機殼款式名稱。
+                        color 只描述手機殼本身的顏色或透明度，不要把手機本體、背景、插圖或反光顏色當成手機殼顏色。
+                        styleTag 只描述圖片中明確可見的設計風格，例如卡通、動漫、籃球、簡約；不確定就填 null。
+                        cameraLayout 只描述手機殼鏡頭孔的數量與排列，例如單鏡頭、雙鏡頭、三鏡頭；看不清楚就填 null。
                         description 用繁體中文描述圖片中看得到的手機殼特徵。
                         reason 用繁體中文說明判斷依據。
+                        請先辨識圖片本身，再拿辨識結果和商品資料比較；不要直接把商品資料當成辨識結果。
                         """)
                 .user(user -> user
                         .text("""

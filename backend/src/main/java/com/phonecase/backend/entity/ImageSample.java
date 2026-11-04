@@ -53,6 +53,14 @@ public class ImageSample {
     @Column(name = "product_id")
     private Long productId;
 
+    /** 人工確認後的精確手機品項／規格。 */
+    @Column(name = "variant_id")
+    private Long variantId;
+
+    /** 此樣本建立的商品圖片連結，用於退回時安全解除。 */
+    @Column(name = "product_image_id")
+    private Long productImageId;
+
     @Column(name = "created_at", insertable = false, updatable = false)
     private LocalDateTime createdAt;
 

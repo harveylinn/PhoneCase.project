@@ -11,7 +11,8 @@ const menu = [
     to: '/admin/products',
     children: [
       { label: '所有商品', to: '/admin/products', end: true },
-      { label: '未上架', to: '/admin/products/unlisted' }
+      { label: '未上架', to: '/admin/products/unlisted' },
+      { label: '圖片樣本庫', to: '/admin/samples' }
     ]
   },
   {
@@ -288,7 +289,7 @@ export default function AdminLayout() {
         </div>
         <nav className="adml-nav">
           {menu.map((item) => {
-            const isOpen = item.children && pathname.startsWith(item.to);
+            const isOpen = item.children && item.children.some((child) => pathname === child.to || pathname.startsWith(child.to + '/'));
             return (
               <div
                 key={item.label}
