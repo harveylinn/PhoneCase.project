@@ -1,10 +1,19 @@
 
 import { useEffect, useRef, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useLocation,useNavigate } from 'react-router-dom'
 
 import type { CartItem } from './CartItem'
 import CartItemCard from './CartItemCard'
 import './CartPage.css'
+
+// 1. 訪客登入導向
+import { getLoginUrl } from '../../utils/authRedirect'
+
+// 2. Cart → Order 共用資料型別
+import type {
+    CheckoutSelection
+} from '../../types/CheckoutSelection'
+
 
 // 訪客購物車：使用 localStorage
 import {
@@ -68,7 +77,11 @@ function CartPage() {
     // 一、取得路由與會員登入狀態
     // ==========================================
 
+    // 1. 頁面跳轉
     const navigate = useNavigate()
+
+    // 2. 取得目前路由，提供登入後導回使用
+    const location = useLocation()
 
     // 透過 AuthProvider 取得會員狀態
     const { status, currentMember } = useAuth()
@@ -868,42 +881,67 @@ function CartPage() {
         status === 'guest' ||
         (isMemberReady && !isMemberCartUpdating)
 
-
+    
     // ==========================================
-    // 十五、前往結帳
+    // 十五、會員結帳入口
+    // Step 26：Cart → Order 資料交接
     // ==========================================
-
-    // 目前只保留原本給組員測試的訪客結帳流程
-    // 會員結帳待後續整合完成
-    // 不修改 Checkout 頁面
 
     const handleCheckout = () => {
-        // 1. 登入狀態尚未確認完成，不允許結帳
+
+        // 1. 登入狀態尚未確認或發生錯誤
         if (status === 'checking' || status === 'error') {
             return
         }
 
-        // 2. 會員購物車必須已載入且沒有正在修改的商品
+        // 2. 訪客必須先登入會員
+        // 登入後回到購物車，完成合併並重新勾選商品
+        if (status === 'guest') {
+            navigate(getLoginUrl(location))
+            return
+        }
+
+        // 3. 必須是有效會員
         if (
-            status === 'authenticated' &&
-            (!isMemberReady || isMemberCartUpdating)
+            status !== 'authenticated' ||
+            memberId == null
         ) {
             return
         }
 
-        // 3. 取得已勾選商品
+        // 4. 確認會員購物車已載入完成
+        // 避免 API 修改進行中就跳轉結帳
+        if (!isMemberReady || isMemberCartUpdating) {
+            return
+        }
+
+        // 5. 取得會員已勾選的商品
         const selectedItems = cartItems.filter(
             item => item.selected
         )
 
-        // 4. 沒有勾選商品，不允許結帳
+        // 6. 沒有勾選商品，不允許結帳
         if (selectedItems.length === 0) {
             return
         }
 
-        // 5. 導向組員負責的 Checkout 頁面
-        navigate('/checkout')
+        // 7. 組成 Cart → Order 交接資料
+        const checkoutSelection: CheckoutSelection = {
+            source: 'member-cart',
+            memberId,
+            items: selectedItems.map(item => ({
+                variantId: item.variantId,
+                quantity: item.quantity
+            }))
+        }
+
+        // 8. 前往 Checkout
+        // 不傳送商品價格，價格由 Order 後端重新確認
+        navigate('/checkout', {
+            state: checkoutSelection
+        })
     }
+
 
 
 
@@ -1011,7 +1049,7 @@ function CartPage() {
                     NT$ {totalPrice.toLocaleString('en-US')}
                 </h2>
 
-                {/* 前往結帳：目前只保留訪客測試流程 */}
+                {/* 前往結帳：訪客先登入，會員傳遞已勾選商品 */}
                 <button
                     type="button"
                     className="cart-checkout-button"
