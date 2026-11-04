@@ -20,6 +20,80 @@ async function errorMessageOf(response) {
 
 const formatDateTime = (value) => (value ? value.replace('T', ' ').slice(0, 16) : '-');
 
+/* 圖片預覽視窗：左側大圖、下方縮圖切換；圖片路徑錯誤時顯示提示 */
+function ImagePreviewModal({ title, urls, startIndex, onClose }) {
+  const [index, setIndex] = useState(startIndex);
+  const [failed, setFailed] = useState({});
+  const current = urls[index];
+
+  // 先逐張預載，載入失敗的圖片在大圖與縮圖都顯示提示
+  useEffect(() => {
+    urls.forEach((url, i) => {
+      const image = new Image();
+      image.onerror = () => setFailed((f) => ({ ...f, [i]: true }));
+      image.src = url;
+    });
+  }, [urls]);
+
+  useEffect(() => {
+    const onKey = (e) => {
+      if (e.key === 'Escape') onClose();
+      if (e.key === 'ArrowRight') setIndex((i) => (i + 1) % urls.length);
+      if (e.key === 'ArrowLeft') setIndex((i) => (i - 1 + urls.length) % urls.length);
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [urls.length, onClose]);
+
+  return (
+    <div className="adm-overlay" onClick={onClose}>
+      <div className="adm-modal adm-preview" onClick={(e) => e.stopPropagation()}>
+        <div className="adm-modal-head">
+          <h3>圖片預覽：{title}</h3>
+          <button onClick={onClose} className="adm-close" aria-label="關閉">
+            ×
+          </button>
+        </div>
+        <div className="adm-modal-body">
+          <div className="adm-preview-stage">
+            {failed[index] ? (
+              <div className="adm-preview-error">
+                無法載入此圖片，請確認路徑是否正確
+                <span className="mono">{current}</span>
+              </div>
+            ) : (
+              <img
+                key={current}
+                src={current}
+                alt={`圖片 ${index + 1}`}
+                onError={() => setFailed((f) => ({ ...f, [index]: true }))}
+              />
+            )}
+          </div>
+          <div className="adm-preview-caption">
+            {index === 0 ? '主圖' : `圖片 ${index + 1}`}（{index + 1} / {urls.length}）
+            <span className="mono">{current}</span>
+          </div>
+          {urls.length > 1 && (
+            <div className="adm-preview-strip">
+              {urls.map((url, i) => (
+                <button
+                  key={i}
+                  type="button"
+                  className={`adm-preview-thumb ${i === index ? 'is-active' : ''}`}
+                  onClick={() => setIndex(i)}
+                >
+                  {failed[i] ? '!' : <img src={url} alt="" />}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 /* ---------------- 商品管理：所有商品 ---------------- */
 export function AdminProductsPage() {
   return <AdminProducts embedded />;
@@ -38,6 +112,8 @@ export function UnlistedProductsPage() {
   // 每列的售價、商品系列輸入，key 為品號
   const [drafts, setDrafts] = useState({});
   const [publishing, setPublishing] = useState('');
+  // 圖片預覽：{ title, urls, startIndex }
+  const [preview, setPreview] = useState(null);
 
   const load = async () => {
     setLoading(true);
@@ -87,6 +163,21 @@ export function UnlistedProductsPage() {
   const addImageField = (item) => updateDraft(item, 'imageUrls', [...draftOf(item).imageUrls, '']);
   const removeImageField = (item, index) =>
     updateDraft(item, 'imageUrls', draftOf(item).imageUrls.filter((_, i) => i !== index));
+
+  // 只預覽有填路徑的欄位；index 為點選的欄位位置
+  const openPreview = (item, index = 0) => {
+    const urls = draftOf(item).imageUrls.map((url) => url.trim());
+    const filled = urls.filter(Boolean);
+    if (filled.length === 0) {
+      alert('請先填入圖片路徑或網址');
+      return;
+    }
+    setPreview({
+      title: [item.productName, item.model, item.color].filter(Boolean).join(' '),
+      urls: filled,
+      startIndex: Math.max(0, urls.slice(0, index).filter(Boolean).length)
+    });
+  };
 
   const publish = async (item) => {
     const draft = draftOf(item);
@@ -194,7 +285,11 @@ export function UnlistedProductsPage() {
                           <div className="adm-image-fields">
                             {draft.imageUrls.map((url, index) => (
                               <div key={index} className="adm-image-field">
-                                <span className="adm-image-thumb">
+                                <span
+                                  className={`adm-image-thumb ${url.trim() ? 'is-clickable' : ''}`}
+                                  title={url.trim() ? '點擊放大預覽' : ''}
+                                  onClick={() => url.trim() && openPreview(item, index)}
+                                >
                                   {url.trim() ? (
                                     <img src={url.trim()} alt="" onError={(e) => (e.currentTarget.style.visibility = 'hidden')} onLoad={(e) => (e.currentTarget.style.visibility = 'visible')} />
                                   ) : (
@@ -220,9 +315,19 @@ export function UnlistedProductsPage() {
                                 )}
                               </div>
                             ))}
-                            <button type="button" className="adm-image-add" onClick={() => addImageField(item)}>
-                              ＋ 新增圖片欄位
-                            </button>
+                            <div className="adm-image-tools">
+                              <button type="button" className="adm-image-add" onClick={() => addImageField(item)}>
+                                ＋ 新增圖片欄位
+                              </button>
+                              <button
+                                type="button"
+                                className="adm-image-add"
+                                disabled={!draft.imageUrls.some((url) => url.trim())}
+                                onClick={() => openPreview(item)}
+                              >
+                                預覽圖片
+                              </button>
+                            </div>
                           </div>
                         </td>
                         <td>
@@ -259,6 +364,14 @@ export function UnlistedProductsPage() {
           </div>
         </section>
       </main>
+      {preview && (
+        <ImagePreviewModal
+          title={preview.title}
+          urls={preview.urls}
+          startIndex={preview.startIndex}
+          onClose={() => setPreview(null)}
+        />
+      )}
     </>
   );
 }

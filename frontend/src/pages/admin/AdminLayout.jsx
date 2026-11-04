@@ -177,6 +177,44 @@ const layoutStyles = `
 .adm-image-remove:hover { background: var(--adm-danger-soft); color: var(--adm-danger); }
 .adm-image-add { align-self: flex-start; padding: 2px 4px; border: none; background: transparent; color: var(--adm-muted); font-size: 12px; font-weight: 700; }
 .adm-image-add:hover { color: var(--adm-navy); }
+.adm-image-add:disabled { color: var(--adm-faint); cursor: not-allowed; }
+.adm-image-tools { display: flex; gap: 12px; }
+.adm-image-thumb.is-clickable { cursor: zoom-in; }
+.adm-image-thumb.is-clickable:hover { border-color: var(--adm-navy); }
+
+/* 圖片預覽視窗 */
+.adm-preview { max-width: 760px; }
+.adm-preview-stage {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: min(60vh, 520px);
+  border-radius: 10px;
+  border: 1px solid var(--adm-border);
+  background: var(--adm-soft);
+  overflow: hidden;
+}
+.adm-preview-stage img { max-width: 100%; max-height: 100%; object-fit: contain; }
+.adm-preview-error { display: flex; flex-direction: column; gap: 6px; align-items: center; padding: 20px; color: var(--adm-danger); font-weight: 700; text-align: center; }
+.adm-preview-error .mono, .adm-preview-caption .mono { color: var(--adm-muted); font-weight: 400; font-size: 12px; word-break: break-all; }
+.adm-preview-caption { display: flex; flex-direction: column; gap: 2px; color: var(--adm-navy); font-weight: 700; font-size: 13px; }
+.adm-preview-strip { display: flex; gap: 8px; flex-wrap: wrap; }
+.adm-preview-thumb {
+  width: 64px;
+  height: 64px;
+  padding: 0;
+  border-radius: 8px;
+  border: 2px solid var(--adm-border);
+  background: var(--adm-soft);
+  color: var(--adm-danger);
+  font-weight: 800;
+  overflow: hidden;
+}
+.adm-preview-thumb img { width: 100%; height: 100%; object-fit: cover; }
+.adm-preview-thumb.is-active { border-color: var(--adm-navy); }
+
+/* 單據表單：關聯單據欄位下方提示 */
+.adm-form-grid .adm-hint, .adm-detail-grid .adm-hint { display: block; margin-top: 4px; font-size: 12px; }
 .adm-notice { padding: 10px 14px; border-radius: 8px; background: #eaf7ef; color: #247341; font-weight: 700; }
 .adm-error { padding: 10px 14px; border-radius: 8px; background: var(--adm-danger-soft); color: var(--adm-danger); font-weight: 700; }
 
