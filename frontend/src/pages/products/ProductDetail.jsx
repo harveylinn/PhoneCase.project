@@ -128,12 +128,12 @@ export default function ProductDetail() {
       : `${selectedVariant.brand} ${selectedVariant.model}`;
   }, [selectedVariant]);
 
-  if (error) return <main className="page-shell"><div className="state-card">{error}<br /><Link to="/">返回商品列表</Link></div></main>;
+  if (error) return <main className="page-shell"><div className="state-card">{error}<br /><Link to="/products">返回商品列表</Link></div></main>;
   if (!product || !selectedVariant) return <main className="page-shell"><div className="state-card">正在載入商品…</div></main>;
 
   return (
     <main className="page-shell detail-page">
-      <div className="breadcrumb"><Link to="/">商品列表</Link><span>›</span>商品詳細</div>
+      <div className="breadcrumb"><Link to="/products">商品列表</Link><span>›</span>商品詳細</div>
       <article className="product-detail">
         <section className="detail-media">
           <div className="detail-image-frame">
@@ -180,7 +180,7 @@ export default function ProductDetail() {
           >
              {addingToCart ? '加入中...' : '加入購物車'}
           </button>
-          <Link className="button button-outline" to="/">返回商品列表</Link>
+          <Link className="button button-outline" to="/products">返回商品列表</Link>
         </section>
       </article>
     </main>

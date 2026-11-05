@@ -33,7 +33,9 @@ export default function Header() {
   function submitSearch(event) {
     event.preventDefault();
     const query = searchTerm.trim();
-    navigate(query ? `/?q=${encodeURIComponent(query)}` : '/');
+    navigate(
+      query ? `/products?q=${encodeURIComponent(query)}` : '/products'
+    );
     setIsSearchOpen(false);
   }
   const { currentMember, status } = useAuth();
@@ -84,19 +86,10 @@ export default function Header() {
         }}
       >
 
-        <Link to="/">商品專區</Link>
-
-        <a href="#design">設計理念</a>
-
-        <a href="#story">品牌故事</a>
-
-        <Link to="/orderlist">
-          我的訂單
-        </Link>
-
+        <Link to="/">首頁</Link>
+        <Link to="/products">商品專區</Link>
         {/* 購物車圖示與數量交給獨立元件 */}
         <CartNavLink />
-
         {status === 'checking' && (
           <span>身分確認中…</span>
         )}
