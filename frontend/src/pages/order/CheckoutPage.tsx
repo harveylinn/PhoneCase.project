@@ -1,8 +1,13 @@
-import { useState } from 'react'
+import { useEffect, useLayoutEffect, useRef, useState } from 'react'
+import { Link, useLocation } from 'react-router-dom'
 import type { Order, OrderStatus } from './OrderListPage'
 import { createOrder } from '../../api/orderApi'
 import type { CartItem } from '../cart/CartItem'
-import { getGuestCart, saveGuestCart } from '../../utils/cartStorage'
+import { useAuth } from '../../auth/useAuth'
+import { getMemberCart } from '../../services/cartApi'
+import { mapMemberCartItems } from '../cart/cartMapper'
+import type { ProductData } from '../cart/cartMapper'
+import type { CheckoutSelection } from '../../types/CheckoutSelection'
 import { NANTUN_STORES } from './nantunStores'
 import type { NantunStore, StoreChain } from './nantunStores'
 import './CheckoutPage.css'
@@ -23,6 +28,30 @@ const TAICHUNG_DISTRICTS = [
 
 type Props = {
   onCreateOrder: (order: Order) => void
+}
+
+function isCheckoutSelection(value: unknown): value is CheckoutSelection {
+  if (value === null || typeof value !== 'object') return false
+  const selection = value as Partial<CheckoutSelection>
+  if (
+    selection.source !== 'member-cart' ||
+    typeof selection.memberId !== 'number' ||
+    !Number.isSafeInteger(selection.memberId) || selection.memberId <= 0 ||
+    !Array.isArray(selection.items) ||
+    selection.items.length === 0 || selection.items.length > 50
+  ) return false
+
+  const variantIds = new Set<number>()
+  return selection.items.every((item) => {
+    if (
+      item === null || typeof item !== 'object' ||
+      !Number.isSafeInteger(item.variantId) || item.variantId <= 0 ||
+      !Number.isInteger(item.quantity) || item.quantity < 1 || item.quantity > 99 ||
+      variantIds.has(item.variantId)
+    ) return false
+    variantIds.add(item.variantId)
+    return true
+  })
 }
 
 // ========================================
@@ -52,6 +81,18 @@ function convertOrderStatus(status: string): OrderStatus {
 }
 
 function CheckoutPage({ onCreateOrder }: Props) {
+  const location = useLocation()
+  const { status, currentMember } = useAuth()
+  const memberId = currentMember?.id
+  const authToken = localStorage.getItem('token')
+  const selection = isCheckoutSelection(location.state) ? location.state : null
+  const currentCheckout = useRef({ memberId, status, state: location.state })
+  useLayoutEffect(() => {
+    currentCheckout.current = { memberId, status, state: location.state }
+    return () => {
+      currentCheckout.current = { memberId: undefined, status: 'guest', state: null }
+    }
+  }, [memberId, status, location.state])
 
   // ========================================
   // 收件人資料
@@ -72,12 +113,77 @@ function CheckoutPage({ onCreateOrder }: Props) {
     useState<'CREDIT_CARD' | 'COD'>('CREDIT_CARD')
 
   // ========================================
-  // 從訪客購物車讀取已勾選商品
+  // 接收購物車勾選內容，向後端讀取目前會員的商品與價格
   // ========================================
 
-  const [selectedItems] = useState<CartItem[]>(
-    () => getGuestCart().filter((item) => item.selected)
-  )
+  const [checkout, setCheckout] = useState<{
+    selection: CheckoutSelection
+    authToken: string
+    items: CartItem[]
+    error?: string
+  } | null>(null)
+  const selectionError = status === 'checking' ? ''
+    : status !== 'authenticated' || memberId == null
+      ? '請登入會員後，從購物車重新前往結帳'
+      : !selection ? '請先從購物車勾選商品，再前往結帳'
+        : selection.memberId !== memberId
+          ? '登入會員已變更，請回購物車重新選擇商品'
+          : !authToken ? '登入已失效，請重新登入後前往購物車' : ''
+  const hasCurrentCheckout = status === 'authenticated' &&
+    selection?.memberId === memberId && checkout?.selection === selection &&
+    checkout.authToken === authToken
+  const checkoutError = selectionError || (hasCurrentCheckout ? checkout?.error : '')
+  const loadingItems = !checkoutError && !hasCurrentCheckout
+  const checkoutReady = hasCurrentCheckout && !checkoutError
+  const selectedItems = checkoutReady ? checkout.items : []
+
+  useEffect(() => {
+    if (status !== 'authenticated' || memberId == null ||
+      !selection || selection.memberId !== memberId || !authToken) return
+
+    let active = true
+    const controller = new AbortController()
+    async function loadCheckout(checkoutSelection: CheckoutSelection, authToken: string) {
+      try {
+        const memberItems = await getMemberCart(authToken)
+        const selectedCartItems = checkoutSelection.items.map((item) => {
+          const cartItem = memberItems.find((cartItem) =>
+            cartItem.memberId === memberId && cartItem.variantId === item.variantId
+          )
+          if (!cartItem || cartItem.quantity !== item.quantity) {
+            throw new Error('購物車商品或數量已變更，請回購物車重新確認')
+          }
+          return cartItem
+        })
+        if (!active) return
+
+        const response = await fetch('/api/products/available', {
+          signal: controller.signal
+        })
+        if (!response.ok) throw new Error('商品資料讀取失敗，請回購物車重試')
+        const products: ProductData[] = await response.json()
+        const items = mapMemberCartItems(selectedCartItems, products)
+        if (items.length !== checkoutSelection.items.length) {
+          throw new Error('部分商品目前無法結帳，請回購物車重新確認')
+        }
+        if (active) setCheckout({ selection: checkoutSelection, authToken, items })
+      } catch (error) {
+        if (active && !controller.signal.aborted) {
+          setCheckout({
+            selection: checkoutSelection,
+            authToken,
+            items: [],
+            error: error instanceof Error ? error.message : '讀取結帳商品失敗'
+          })
+        }
+      }
+    }
+    void loadCheckout(selection, authToken)
+    return () => {
+      active = false
+      controller.abort()
+    }
+  }, [selection, status, memberId, authToken])
 
   const productSubtotal = selectedItems.reduce(
     (sum, item) => sum + item.price * item.quantity,
@@ -141,6 +247,16 @@ function CheckoutPage({ onCreateOrder }: Props) {
       return
     }
 
+    if (!checkoutReady || selectedItems.length === 0) {
+      alert('請回購物車重新確認結帳商品')
+      return
+    }
+    const token = localStorage.getItem('token')
+    if (!token || token !== checkout?.authToken) {
+      alert('登入狀態已變更，請回購物車重新確認')
+      return
+    }
+
     // 1. 檢查收件人姓名
     if (!receiverName.trim()) {
       alert('請輸入收件人姓名')
@@ -175,11 +291,7 @@ function CheckoutPage({ onCreateOrder }: Props) {
     // 5. 準備送給 Java 後端的資料
     // ========================================
 
-    const orderItems = getGuestCart().filter((item) => item.selected)
-    if (orderItems.length === 0) {
-      alert('購物車沒有已勾選的商品，請先回購物車選擇商品')
-      return
-    }
+    const orderItems = selectedItems
 
     const orderData = {
 
@@ -239,6 +351,14 @@ function CheckoutPage({ onCreateOrder }: Props) {
       if (!result.success) {
         throw new Error(result.message || '訂單建立失敗')
       }
+
+      // 請求期間切換會員或結帳內容時，不在新畫面顯示舊訂單。
+      if (
+        currentCheckout.current.status !== 'authenticated' ||
+        currentCheckout.current.memberId !== memberId ||
+        currentCheckout.current.state !== selection ||
+        localStorage.getItem('token') !== token
+      ) return
 
       // ========================================
       // 7. 使用後端回傳的訂單資料
@@ -311,19 +431,8 @@ function CheckoutPage({ onCreateOrder }: Props) {
 
       }
 
-      // 訂單成功後只移除本次已購買的規格，保留未勾選商品。
-      const purchasedVariantIds = new Set(
-        orderItems.map((item) => item.variantId)
-      )
-      try {
-        saveGuestCart(
-          getGuestCart().filter(
-            (item) => !purchasedVariantIds.has(item.variantId)
-          )
-        )
-      } catch (cartError) {
-        console.error('訂單已建立，但更新購物車失敗：', cartError)
-      }
+      // 後端已在建立訂單的交易內移除已購項目，通知頁首重新查詢會員購物車。
+      window.dispatchEvent(new Event('memberCartUpdated'))
 
       // ========================================
       // 8. 更新 React 畫面
@@ -357,6 +466,18 @@ function CheckoutPage({ onCreateOrder }: Props) {
   // ========================================
   // React 結帳頁面
   // ========================================
+
+  if (!checkoutReady) {
+    return (
+      <div className="checkout-page">
+        <h1>確認訂單</h1>
+        <p role={checkoutError ? 'alert' : 'status'}>
+          {checkoutError || (loadingItems ? '正在讀取結帳商品…' : '正在確認結帳資料…')}
+        </p>
+        {checkoutError && <Link to="/cart">返回購物車</Link>}
+      </div>
+    )
+  }
 
   return (
 
