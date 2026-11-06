@@ -102,10 +102,6 @@ export default function Header() {
           </Link>
         )}
 
-        <Link className="nav-placeholder" to="/admin">
-          後台管理
-        </Link>
-
       </nav>
     </header>
   );

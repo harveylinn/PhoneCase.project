@@ -13,6 +13,7 @@ function isMember(value: unknown): value is MemberInfo {
   return isObject(value) && typeof value.id === 'number'
     && typeof value.account === 'string' && typeof value.name === 'string'
     && typeof value.email === 'string'
+    && typeof value.role === 'string'
     && (typeof value.phone === 'string' || value.phone === null)
     && (typeof value.defaultAddress === 'string' || value.defaultAddress === null)
     && (typeof value.createdAt === 'string' || value.createdAt === null)
