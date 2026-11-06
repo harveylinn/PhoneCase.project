@@ -1,6 +1,8 @@
 package com.phonecase.backend.order.service;
 
 import com.phonecase.backend.dto.CreateOrderRequest;
+import com.phonecase.backend.cart.entity.CartItem;
+import com.phonecase.backend.cart.repository.CartItemRepository;
 import com.phonecase.backend.entity.Product;
 import com.phonecase.backend.entity.ProductVariant;
 import com.phonecase.backend.order.entity.OrderEntity;
@@ -8,6 +10,7 @@ import com.phonecase.backend.order.entity.OrderItemEntity;
 import com.phonecase.backend.order.repository.OrderItemRepository;
 import com.phonecase.backend.order.repository.OrderRepository;
 import com.phonecase.backend.repository.ProductVariantRepository;
+import jakarta.persistence.EntityManager;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -26,15 +29,21 @@ public class OrderService {
     private final OrderRepository orderRepository;
     private final OrderItemRepository orderItemRepository;
     private final ProductVariantRepository productVariantRepository;
+    private final CartItemRepository cartItemRepository;
+    private final EntityManager entityManager;
 
     public OrderService(
             OrderRepository orderRepository,
             OrderItemRepository orderItemRepository,
-            ProductVariantRepository productVariantRepository
+            ProductVariantRepository productVariantRepository,
+            CartItemRepository cartItemRepository,
+            EntityManager entityManager
     ) {
         this.orderRepository = orderRepository;
         this.orderItemRepository = orderItemRepository;
         this.productVariantRepository = productVariantRepository;
+        this.cartItemRepository = cartItemRepository;
+        this.entityManager = entityManager;
     }
 
     private record PricedOrderItem(
@@ -58,7 +67,7 @@ public class OrderService {
             Long memberId
     ) {
 
-        if (memberId == null) {
+        if (memberId == null || memberId <= 0) {
             throw new ResponseStatusException(
                     HttpStatus.UNAUTHORIZED,
                     "請先登入會員"
@@ -128,10 +137,14 @@ public class OrderService {
             badRequest("單筆訂單商品種類不可超過 50 種");
         }
 
+        // 與購物車新增、合併及修改共用會員鎖，避免核對後又被其他分頁變更。
+        lockMemberCart(memberId);
+
         // 只接受規格 ID 與數量；價格、庫存、名稱和上架狀態都以資料庫為準。
         BigDecimal itemSubtotal = BigDecimal.ZERO;
         Set<Long> seenVariantIds = new HashSet<>();
         List<PricedOrderItem> pricedItems = new ArrayList<>();
+        List<CartItem> purchasedCartItems = new ArrayList<>();
 
         for (CreateOrderRequest.OrderItemRequest item : items) {
             if (item == null || item.variantId() == null ||
@@ -148,6 +161,20 @@ public class OrderService {
                     item.quantity() > 99) {
                 badRequest("商品數量必須介於 1 到 99");
             }
+
+            CartItem cartItem = cartItemRepository
+                    .findByMemberIdAndVariantId(memberId, item.variantId())
+                    .orElseThrow(() -> new ResponseStatusException(
+                            HttpStatus.CONFLICT,
+                            "購物車商品已變更，請返回購物車重新確認"
+                    ));
+            if (!item.quantity().equals(cartItem.getQuantity())) {
+                throw new ResponseStatusException(
+                        HttpStatus.CONFLICT,
+                        "購物車商品數量已變更，請返回購物車重新確認"
+                );
+            }
+            purchasedCartItems.add(cartItem);
 
             ProductVariant variant = productVariantRepository
                     .findById(item.variantId())
@@ -264,7 +291,27 @@ public class OrderService {
             orderItemRepository.save(orderItem);
         }
 
+        // 建立訂單與移除已購項目共用交易，任一步驟失敗皆回復；未勾選項目保留。
+        cartItemRepository.deleteAll(purchasedCartItems);
+        cartItemRepository.flush();
+
         return savedOrder;
+    }
+
+    private void lockMemberCart(Long memberId) {
+        entityManager.createNativeQuery(
+                        "INSERT INTO cart_merge_member_locks (member_id) " +
+                                "VALUES (:memberId) " +
+                                "ON DUPLICATE KEY UPDATE member_id = member_id"
+                )
+                .setParameter("memberId", memberId)
+                .executeUpdate();
+        entityManager.createNativeQuery(
+                        "SELECT member_id FROM cart_merge_member_locks " +
+                                "WHERE member_id = :memberId FOR UPDATE"
+                )
+                .setParameter("memberId", memberId)
+                .getSingleResult();
     }
 
     private boolean isBlank(String text) {
