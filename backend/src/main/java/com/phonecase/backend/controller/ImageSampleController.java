@@ -3,6 +3,7 @@ package com.phonecase.backend.controller;
 import com.phonecase.backend.entity.ImageSample;
 import com.phonecase.backend.dto.ImageSampleAnalysisResponse;
 import com.phonecase.backend.service.ImageSampleService;
+import com.phonecase.backend.member.security.AdminOnly;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
 import org.springframework.web.bind.annotation.*;
@@ -20,17 +21,20 @@ public class ImageSampleController {
     }
 
     @GetMapping
+    @AdminOnly
     public List<ImageSample> findAll(
             @RequestParam(required = false) String reviewStatus) {
         return service.findAll(reviewStatus);
     }
 
     @GetMapping("/{id}")
+    @AdminOnly
     public ImageSample findById(@PathVariable Long id) {
         return service.findById(id);
     }
 
     @PostMapping
+    @AdminOnly
     public ImageSample create(@Valid @RequestBody ImageSample sample) {
         return service.create(sample);
     }
@@ -39,6 +43,7 @@ public class ImageSampleController {
      * 後台人工審核圖片樣本。
      */
     @PatchMapping("/{id}/review")
+    @AdminOnly
     public ImageSample updateReview(
             @PathVariable Long id,
             @RequestBody ReviewRequest request) {
@@ -47,6 +52,7 @@ public class ImageSampleController {
     }
 
     @PatchMapping("/{id}/description")
+    @AdminOnly
     public ImageSample updateDescription(
             @PathVariable Long id,
             @RequestBody DescriptionRequest request) {
@@ -54,11 +60,13 @@ public class ImageSampleController {
     }
 
     @PostMapping("/{id}/analyze")
+    @AdminOnly
     public ImageSampleAnalysisResponse analyzeImage(@PathVariable Long id) {
         return service.analyzeImage(id);
     }
 
     @PatchMapping("/{id}/product")
+    @AdminOnly
     public ImageSample confirmProduct(
             @PathVariable Long id,
             @RequestBody ProductRequest request) {
@@ -66,6 +74,7 @@ public class ImageSampleController {
     }
 
     @DeleteMapping("/{id}")
+    @AdminOnly
     public void delete(@PathVariable Long id) {
         service.delete(id);
     }

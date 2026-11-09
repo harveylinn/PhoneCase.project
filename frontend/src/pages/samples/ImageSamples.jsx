@@ -10,6 +10,18 @@ const emptyForm = {
     productId: '',
 };
 
+function adminFetch(url, options = {}) {
+    const token = localStorage.getItem('token');
+    return fetch(url, {
+        ...options,
+        headers: {
+            'Content-Type': 'application/json',
+            ...(token ? {Authorization: `Bearer ${token}`} : {}),
+            ...options.headers,
+        },
+    });
+}
+
 export default function ImageSamples() {
     const [samples, setSamples] = useState([]);
     const [form, setForm] = useState(emptyForm);
@@ -24,7 +36,7 @@ export default function ImageSamples() {
     async function loadSamples() {
         setLoading(true);
         try {
-            const response = await fetch('/api/image-samples');
+            const response = await adminFetch('/api/image-samples');
             if (!response.ok) throw new Error('無法讀取圖片樣本');
             setSamples(await response.json());
         } catch (error) {
@@ -54,9 +66,8 @@ export default function ImageSamples() {
                 || !/^\/[^/]+\/image\/upload\/.+/.test(url.pathname)) {
                 throw new Error('請貼上 Cloudinary 的 HTTPS 圖片網址');
             }
-            const response = await fetch('/api/image-samples', {
+            const response = await adminFetch('/api/image-samples', {
                 method: 'POST',
-                headers: {'Content-Type': 'application/json'},
                 body: JSON.stringify({
                     ...form,
                     imageUrl,
@@ -78,9 +89,8 @@ export default function ImageSamples() {
     }
 
     async function reviewSample(id, reviewStatus) {
-        const response = await fetch(`/api/image-samples/${id}/review`, {
+        const response = await adminFetch(`/api/image-samples/${id}/review`, {
             method: 'PATCH',
-            headers: {'Content-Type': 'application/json'},
             body: JSON.stringify({reviewStatus, reviewerNote: ''}),
         });
         if (response.ok) await loadSamples();
@@ -89,7 +99,7 @@ export default function ImageSamples() {
 
     async function deleteSample(id) {
         if (!window.confirm('確定要刪除這筆圖片樣本嗎？')) return;
-        const response = await fetch(`/api/image-samples/${id}`, {method: 'DELETE'});
+        const response = await adminFetch(`/api/image-samples/${id}`, {method: 'DELETE'});
         if (response.ok) await loadSamples();
         else setMessage('刪除樣本失敗');
     }
@@ -98,7 +108,7 @@ export default function ImageSamples() {
         setAnalyzingId(id);
         setMessage('AI 正在分析圖片…');
         try {
-            const response = await fetch(`/api/image-samples/${id}/analyze`, {
+            const response = await adminFetch(`/api/image-samples/${id}/analyze`, {
                 method: 'POST',
             });
             if (!response.ok) {
@@ -120,9 +130,8 @@ export default function ImageSamples() {
     }
 
     async function confirmProduct(sampleId, productId, variantId) {
-        const response = await fetch(`/api/image-samples/${sampleId}/product`, {
+        const response = await adminFetch(`/api/image-samples/${sampleId}/product`, {
             method: 'PATCH',
-            headers: {'Content-Type': 'application/json'},
             body: JSON.stringify({productId, variantId}),
         });
         if (response.ok) {
@@ -139,9 +148,8 @@ export default function ImageSamples() {
     }
 
     async function saveDescription(id) {
-        const response = await fetch(`/api/image-samples/${id}/description`, {
+        const response = await adminFetch(`/api/image-samples/${id}/description`, {
             method: 'PATCH',
-            headers: {'Content-Type': 'application/json'},
             body: JSON.stringify({aiDescription: descriptionDraft.trim()}),
         });
         if (!response.ok) {

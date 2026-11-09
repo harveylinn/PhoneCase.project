@@ -1,8 +1,8 @@
-import {useState} from 'react';
+import {useEffect, useState} from 'react';
 import {Link} from 'react-router-dom';
 import {searchProductsWithAi} from '../services/aiSearchApi.js';
 import {addToGuestCart} from '../utils/cartStorage';
-import {addSupportMessage, createSupportConversation} from '../services/supportApi.js';
+import {addSupportMessage, createSupportConversation, listSupportMessages} from '../services/supportApi.js';
 
 export default function AiChatWidget() {
     const [open, setOpen] = useState(false);
@@ -12,6 +12,40 @@ export default function AiChatWidget() {
     const [imageFile, setImageFile] = useState(null);
     const [imagePreview, setImagePreview] = useState('');
     const [supportConversationId, setSupportConversationId] = useState(null);
+
+    useEffect(() => {
+        if (!open || !supportConversationId) return undefined;
+
+        let active = true;
+        const loadStaffReplies = async () => {
+            try {
+                const conversationMessages = await listSupportMessages(supportConversationId);
+                if (!active || !Array.isArray(conversationMessages)) return;
+                const staffReplies = conversationMessages
+                    .filter(item => item.senderType === 'STAFF')
+                    .map(item => ({
+                        role: 'assistant',
+                        content: item.message,
+                        supportMessageId: item.id,
+                    }));
+                if (staffReplies.length) {
+                    setMessages(current => {
+                        const existingIds = new Set(current.map(item => item.supportMessageId).filter(Boolean));
+                        return [...current, ...staffReplies.filter(item => !existingIds.has(item.supportMessageId))];
+                    });
+                }
+            } catch {
+                // 短暫網路錯誤時保留聊天畫面，下次輪詢再讀取。
+            }
+        };
+
+        loadStaffReplies();
+        const timer = window.setInterval(loadStaffReplies, 4000);
+        return () => {
+            active = false;
+            window.clearInterval(timer);
+        };
+    }, [open, supportConversationId]);
 
     const quickQuestions = [
         '我想找適合我的手機殼',

@@ -24,32 +24,31 @@ public class SupportService {
 
     @Transactional
     public SupportConversation createConversation(CreateSupportConversationRequest request) {
-        if (request == null || (isBlank(request.guestId()) && isBlank(request.message()))) {
-            throw new IllegalArgumentException("請提供客服問題或訪客識別碼");
+        if (request == null || isBlank(request.guestId())) {
+            throw new IllegalArgumentException("缺少客服案件識別碼");
         }
         SupportConversation conversation = new SupportConversation();
         conversation.setGuestId(request.guestId());
         SupportConversation saved = conversationRepository.save(conversation);
         if (!isBlank(request.message())) {
-            addMessage(saved.getId(), new CreateSupportMessageRequest(request.message()));
+            saveMessage(saved.getId(), new CreateSupportMessageRequest(request.message(), request.guestId()), "CUSTOMER");
         }
         return saved;
     }
 
     @Transactional
     public SupportMessage addMessage(Long conversationId, CreateSupportMessageRequest request) {
-        return addMessage(conversationId, request, "CUSTOMER");
+        SupportConversation conversation = requireGuestConversation(conversationId, request == null ? null : request.guestId());
+        return saveMessage(conversation.getId(), request, "CUSTOMER");
     }
 
     @Transactional
     public SupportMessage addStaffMessage(Long conversationId, CreateSupportMessageRequest request) {
-        return addMessage(conversationId, request, "STAFF");
+        requireConversation(conversationId);
+        return saveMessage(conversationId, request, "STAFF");
     }
 
-    private SupportMessage addMessage(Long conversationId, CreateSupportMessageRequest request, String senderType) {
-        if (!conversationRepository.existsById(conversationId)) {
-            throw new IllegalArgumentException("找不到客服案件");
-        }
+    private SupportMessage saveMessage(Long conversationId, CreateSupportMessageRequest request, String senderType) {
         if (request == null || isBlank(request.message())) {
             throw new IllegalArgumentException("客服訊息不可為空白");
         }
@@ -60,14 +59,17 @@ public class SupportService {
         return messageRepository.save(message);
     }
 
+    public List<SupportMessage> listGuestMessages(Long conversationId, String guestId) {
+        requireGuestConversation(conversationId, guestId);
+        return messageRepository.findByConversationIdOrderByCreatedAtAsc(conversationId);
+    }
+
     public List<SupportConversation> listConversations() {
         return conversationRepository.findAll();
     }
 
     public List<SupportMessage> listMessages(Long conversationId) {
-        if (!conversationRepository.existsById(conversationId)) {
-            throw new IllegalArgumentException("找不到客服案件");
-        }
+        requireConversation(conversationId);
         return messageRepository.findByConversationIdOrderByCreatedAtAsc(conversationId);
     }
 
@@ -84,5 +86,23 @@ public class SupportService {
 
     private boolean isBlank(String value) {
         return value == null || value.isBlank();
+    }
+
+    private SupportConversation requireGuestConversation(Long conversationId, String guestId) {
+        if (isBlank(guestId)) {
+            throw new org.springframework.web.server.ResponseStatusException(
+                    org.springframework.http.HttpStatus.UNAUTHORIZED, "缺少客服案件識別碼");
+        }
+        SupportConversation conversation = requireConversation(conversationId);
+        if (conversation.getGuestId() == null || !conversation.getGuestId().equals(guestId)) {
+            throw new org.springframework.web.server.ResponseStatusException(
+                    org.springframework.http.HttpStatus.FORBIDDEN, "無權存取此客服案件");
+        }
+        return conversation;
+    }
+
+    private SupportConversation requireConversation(Long conversationId) {
+        return conversationRepository.findById(conversationId)
+                .orElseThrow(() -> new IllegalArgumentException("找不到客服案件"));
     }
 }

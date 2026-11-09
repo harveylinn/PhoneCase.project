@@ -30,6 +30,11 @@ export function createSupportConversation(message = '') {
 export function addSupportMessage(conversationId, message) {
     return request(`/api/support/conversations/${conversationId}/messages`, {
         method: 'POST',
-        body: JSON.stringify({message}),
+        body: JSON.stringify({message, guestId: getGuestId()}),
     });
+}
+
+export function listSupportMessages(conversationId) {
+    const guestId = encodeURIComponent(getGuestId());
+    return request(`/api/support/conversations/${conversationId}/customer-messages?guestId=${guestId}`);
 }
