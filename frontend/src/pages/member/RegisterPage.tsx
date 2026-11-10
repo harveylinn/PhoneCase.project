@@ -400,10 +400,7 @@ export default function RegisterPage() {
           </p>
         </section>
       </main>
-      <footer className="site-footer">
-        <p>&copy; 2026 PhoneCase. 保留所有權利。</p>
-        <span>MADE FOR YOUR EVERYDAY</span>
-      </footer>
+     
     </div>
   );
 }
