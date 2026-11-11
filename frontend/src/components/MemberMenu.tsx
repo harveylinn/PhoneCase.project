@@ -5,14 +5,15 @@ import { useAuth } from '../auth/useAuth';
 import './MemberMenu.css';
 
 export default function MemberMenu() {
-  const { currentMember, logout } = useAuth();
+  const { currentMember, status, logout } = useAuth();
   const location = useLocation();
   if (!currentMember) return null;
+  const isAdmin = status === 'authenticated' && currentMember.role === 'ADMIN';
   // 路由切換時重新建立選單，避免前一頁的展開狀態殘留。
-  return <MemberDropdown key={location.key} name={currentMember.name} logout={logout} />;
+  return <MemberDropdown key={location.key} name={currentMember.name} logout={logout} isAdmin={isAdmin} />;
 }
 
-function MemberDropdown({ name, logout }: { name: string; logout: () => void }) {
+function MemberDropdown({ name, logout, isAdmin }: { name: string; logout: () => void; isAdmin: boolean }) {
   const [open, setOpen] = useState(false);
   const [panelLeft, setPanelLeft] = useState(0);
   const root = useRef<HTMLDivElement>(null);
@@ -65,6 +66,9 @@ function MemberDropdown({ name, logout }: { name: string; logout: () => void }) 
       <div className="member-menu__links">
         <NavLink className="member-menu__item" to="/profile" end onClick={() => setOpen(false)}>個人資料</NavLink>
         <NavLink className="member-menu__item" to="/orderlist" end onClick={() => setOpen(false)}>我的訂單</NavLink>
+        {isAdmin && (
+          <NavLink className="member-menu__item" to="/admin" onClick={() => setOpen(false)}>後台管理</NavLink>
+        )}
       </div>
       <div className="member-menu__footer">
         <button className="member-menu__item member-menu__logout" type="button"
