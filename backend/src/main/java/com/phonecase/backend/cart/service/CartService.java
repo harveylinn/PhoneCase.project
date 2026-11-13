@@ -1,9 +1,9 @@
 package com.phonecase.backend.cart.service;
 
 import com.phonecase.backend.cart.entity.CartItem;
-import com.phonecase.backend.entity.ProductVariant;
+import com.phonecase.backend.product.entity.ProductVariant;
 import com.phonecase.backend.cart.repository.CartItemRepository;
-import com.phonecase.backend.repository.ProductVariantRepository;
+import com.phonecase.backend.product.repository.ProductVariantRepository;
 import com.phonecase.backend.cart.exception.CartItemNotFoundException;
 import com.phonecase.backend.cart.dto.MergeCartRequest;
 import com.phonecase.backend.cart.entity.CartMergeRecord;
