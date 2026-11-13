@@ -1,5 +1,4 @@
 import { Link, Route, Routes, useLocation } from 'react-router-dom';
-import { useEffect, useState } from 'react';
 import ProductList from './pages/products/ProductList.jsx';
 import ProductDetail from './pages/products/ProductDetail.jsx';
 import AdminProducts from './pages/products/AdminProducts.jsx';
@@ -10,69 +9,38 @@ import CartPage from './pages/cart/CartPage';
 import RegisterPage from './pages/member/RegisterPage';
 import LoginPage from './pages/member/LoginPage';
 import ProfilePage from './pages/member/ProfilePage';
-import { useAuth } from './auth/useAuth';
 import MemberRoute from './auth/MemberRoute';
-import MemberMenu from './components/MemberMenu';
-import { getLoginUrl } from './utils/authRedirect';
 import Admin from './pages/admin/admin.jsx';
 import SupportAdmin from './pages/admin/SupportAdmin.jsx';
+import AdminLayout from './pages/admin/AdminLayout.jsx';
+import {
+  AdminMembersPage,
+  AdminOrdersPage,
+  AdminProductsPage,
+  UnlistedProductsPage
+} from './pages/admin/AdminPages.jsx';
 import CheckOutPage from './pages/order/CheckoutPage.tsx'
-import { getGuestCartCount } from './utils/cartStorage';
 import OrderModule from './pages/order/OrderModule';
+import Header from './components/Header';
+import HomePage from './pages/home/HomePage.jsx';
+import Footer from './components/Footer.jsx';
 
-
-// 首頁欄
-function Header() {
-  const location = useLocation();
-  const { currentMember, status } = useAuth();
-  const [cartCount, setCartCount] = useState(getGuestCartCount);
-
-  useEffect(() => {
-    const updateCartCount = () => {
-      setCartCount(getGuestCartCount());
-    };
-
-    window.addEventListener('cartUpdated', updateCartCount);
-    window.addEventListener('storage', updateCartCount);
-
-    return () => {
-      window.removeEventListener('cartUpdated', updateCartCount);
-      window.removeEventListener('storage', updateCartCount);
-    };
-  }, []);
-
-  return (
-    <header className="site-header">
-      <Link className="brand" to="/">CASELAB</Link>
-
-      <nav className="header-nav" style={{ flexWrap: 'wrap', alignItems: 'center' }}>
-        <Link to="/">商品專區</Link>
-        <Link to="/admin/samples">圖片樣本庫</Link>
-        <a href="#design">設計理念</a>
-        <a href="#story">品牌故事</a>
-        <Link to="/cart" className="header-cart-link">購物車 ({cartCount})</Link>
-        {status === 'checking' && <span>身分確認中…</span>}
-        {currentMember ? <MemberMenu /> : <>
-          <Link to={getLoginUrl(location)}>登入/註冊</Link>
-        </>}
-      </nav>
-    </header>
-  );
-}
 
 // 分頁
 export default function App() {
   const location = useLocation();
   const isAdminRoute = location.pathname === '/admin'
-    || location.pathname.startsWith('/admin-products')
-    || location.pathname.startsWith('/admin/samples')
-    || location.pathname.startsWith('/admin/support');
+    || location.pathname.startsWith('/admin/')
+    || location.pathname.startsWith('/admin-products');
+  // 後台版面（/admin、商品、訂單、會員、圖片樣本庫）使用共用側邊欄，不顯示商城頁首
+  const isAdminLayout = /^\/admin(\/(products|orders|members|samples)(\/.*)?)?\/?$/.test(location.pathname);
 
   return (
     <>
-      <Header />
+      {!isAdminLayout && <Header />}
       <Routes>
-        <Route path="/" element={<ProductList />} />
+        <Route path="/" element={<HomePage />} />
+        <Route path="/products" element={<ProductList />} />
         <Route path="/products/:id" element={<ProductDetail />} />
         <Route path="/admin-products" element={<AdminProducts />} />
 
@@ -86,12 +54,23 @@ export default function App() {
         <Route path="/orderdetail" element={<MemberRoute><OrderModule initialPage="list" /></MemberRoute>} />
         <Route path="/orderlist" element={<MemberRoute><OrderModule initialPage="list" /></MemberRoute>} />
 
-        <Route path="/admin" element={<Admin />} />
+        <Route path="/admin" element={<AdminLayout />}>
+          <Route index element={<Admin />} />
+          <Route path="products" element={<AdminProductsPage />} />
+          <Route path="products/unlisted" element={<UnlistedProductsPage />} />
+          <Route path="orders" element={<AdminOrdersPage key="all" filter="all" />} />
+          <Route path="orders/unpaid" element={<AdminOrdersPage key="unpaid" filter="unpaid" />} />
+          <Route path="orders/unshipped" element={<AdminOrdersPage key="unshipped" filter="unshipped" />} />
+          <Route path="orders/unpicked" element={<AdminOrdersPage key="unpicked" filter="unpicked" />} />
+          <Route path="members" element={<AdminMembersPage />} />
+          <Route path="samples" element={<ImageSamples />} />
+        </Route>
         <Route path="/admin-products/variants" element={<VariantsCatalog />} />
-        <Route path="/admin/samples" element={<ImageSamples />} />
         <Route path="/admin/support" element={<SupportAdmin />} />
         <Route path="*" element={<ProductList />} />
       </Routes>
+      {/* 商城共用 Footer：後台不顯示 */}
+      {!isAdminRoute && <Footer />}
       {!isAdminRoute && <AiChatWidget />}
     </>
   );

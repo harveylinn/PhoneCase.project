@@ -1,0 +1,95 @@
+/* ==============================
+   CASELAB 共用 Footer
+   ============================== */
+
+.site-footer {
+    width: 100%;
+    max-width: 1400px;
+
+    margin: auto auto 0;
+
+    background: rgba(255, 255, 255, 0.94);
+    color: #142c51;
+
+    border: 1px solid #e5eaf0;
+    border-radius: 0;
+    overflow: hidden;
+}
+
+.site-footer-inner {
+    width: 100%;
+    min-height: 88px;
+    padding: 18px 28px;
+
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 24px;
+}
+
+/* 品牌名稱 */
+.site-footer-brand {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+}
+
+.site-footer-brand strong {
+    font-size: 21px;
+    letter-spacing: 2px;
+    color: #142c51;
+}
+
+.site-footer-brand span {
+    color: #75849a;
+    font-size: 10px;
+    letter-spacing: 1px;
+}
+
+/* 導覽連結 */
+.site-footer-nav {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 24px;
+}
+
+.site-footer-nav a {
+    color: #142c51;
+    text-decoration: none;
+    font-size: 13px;
+    transition: color 0.2s;
+}
+
+.site-footer-nav a:hover {
+    color: #ff605d;
+}
+
+/* 版權文字 */
+.site-footer-copyright {
+    color: #75849a;
+    font-size: 11px;
+    white-space: nowrap;
+}
+
+/* ==============================
+   RWD：平板與手機
+   ============================== */
+
+@media (max-width: 768px) {
+
+    .site-footer-inner {
+        padding: 22px 16px;
+        flex-direction: column;
+        text-align: center;
+        gap: 14px;
+    }
+
+    .site-footer-brand {
+        align-items: center;
+    }
+
+    .site-footer-nav {
+        justify-content: center;
+        gap: 18px;
+    }
+}

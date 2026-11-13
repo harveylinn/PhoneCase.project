@@ -139,10 +139,7 @@ export default function LoginPage() {
           </div>
         </section>
       </main>
-      <footer className="site-footer">
-        <p>&copy; 2026 PhoneCase. 保留所有權利。</p>
-        <span>YOUR CASE. YOUR STYLE.</span>
-      </footer>
+     
     </div>
   );
 }

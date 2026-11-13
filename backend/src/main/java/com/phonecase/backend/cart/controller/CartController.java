@@ -4,6 +4,7 @@ import com.phonecase.backend.cart.entity.CartItem;
 import com.phonecase.backend.cart.service.CartService;
 import com.phonecase.backend.cart.dto.AddCartItemRequest;
 import com.phonecase.backend.cart.dto.UpdateCartItemRequest;
+import com.phonecase.backend.cart.dto.MergeCartRequest;
 import com.phonecase.backend.member.security.CheckJwt;
 
 import org.springframework.web.bind.annotation.GetMapping;
@@ -120,4 +121,19 @@ public class CartController {
         cartService.removeItem(memberId, cartItemId);
     }
 
+    //訪客購物車合併會員購物車
+    @CheckJwt
+    @PostMapping("/merge")
+    public List<CartItem> mergeGuestCart(
+            @RequestBody MergeCartRequest body,
+            HttpServletRequest request
+    ) {
+        // 從 JWT 驗證結果取得會員身分
+        Long memberId = (Long) request.getAttribute(
+                "authenticatedMemberId"
+        );
+
+        // 呼叫 Service 執行交易式合併
+        return cartService.mergeGuestCart(memberId, body);
+    }
 }

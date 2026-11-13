@@ -3,6 +3,7 @@ export interface MemberInfo {
     account: string;
     name: string;
     email: string;
+    role: string;
     phone: string | null;
     defaultAddress: string | null;
     createdAt: string | null;

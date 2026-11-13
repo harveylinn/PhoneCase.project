@@ -11,6 +11,9 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Objects;
 import java.util.Comparator;
+import java.util.Map;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 @Service
 public class ProductRecommendationService {
@@ -37,16 +40,23 @@ public class ProductRecommendationService {
             return List.of();
         }
 
-        return products.stream()
+        List<Product> searchableProducts = products.stream()
                 .filter(product -> product.getVariants() != null)
+                .toList();
+        List<ProductVariant> variants = searchableProducts.stream()
+                .flatMap(product -> product.getVariants().stream())
+                .filter(variant -> "上架".equals(variant.getStatus()))
+                .filter(variant -> variant.getStock() != null && variant.getStock() > 0)
+                .filter(variant -> matches(variant, correctedCriteria))
+                .toList();
+        Map<Long, Long> trustedCounts = trustedSampleCounts(variants);
+        return searchableProducts.stream()
                 .flatMap(product -> product.getVariants().stream()
-                        .filter(variant -> "上架".equals(variant.getStatus()))
-                        .filter(variant -> variant.getStock() != null
-                                && variant.getStock() > 0)
-                        .filter(variant -> matches(variant, correctedCriteria))
-                        .sorted(Comparator.comparingInt(
-                                (ProductVariant variant) -> score(variant, correctedCriteria)
-                        ).reversed())
+                        .filter(variants::contains)
+                        .sorted(Comparator.comparingInt((ProductVariant variant) ->
+                                score(variant, correctedCriteria,
+                                        trustedCounts.getOrDefault(variant.getId(), 0L).intValue()))
+                                .reversed())
                         .map(variant -> toRecommendation(product, variant)))
                 .limit(3)
                 .toList();
@@ -70,26 +80,58 @@ public class ProductRecommendationService {
         List<Product> products = productService.getAvailableProducts();
         AiVisionResult correctedCriteria = correctCriteria(criteria, question, products);
 
-        return products.stream()
+        List<Product> searchableProducts = products.stream()
                 .filter(product -> product.getVariants() != null)
+                .toList();
+        List<ProductVariant> variants = searchableProducts.stream()
+                .flatMap(product -> product.getVariants().stream())
+                .filter(variant -> "上架".equals(variant.getStatus()))
+                .filter(variant -> variant.getStock() != null && variant.getStock() > 0)
+                // 已辨識出的品牌與型號是候選的必要條件，避免 Samsung 圖片列出 Apple 商品。
+                .filter(variant -> matchesIdentifiedDevice(variant, correctedCriteria))
+                .filter(variant -> score(variant, correctedCriteria, 0) > 0)
+                .toList();
+        Map<Long, Long> trustedCounts = trustedSampleCounts(variants);
+        return searchableProducts.stream()
                 .flatMap(product -> product.getVariants().stream()
-                        .filter(variant -> "上架".equals(variant.getStatus()))
-                        .filter(variant -> variant.getStock() != null
-                                && variant.getStock() > 0)
-                        // 已辨識出的品牌與型號是候選的必要條件，避免 Samsung 圖片列出 Apple 商品。
-                        .filter(variant -> matchesIdentifiedDevice(variant, correctedCriteria))
-                        .filter(variant -> score(variant, correctedCriteria) > 0)
-                        .sorted(Comparator.comparingInt(
-                                (ProductVariant variant) -> score(variant, correctedCriteria)
-                        ).reversed())
+                        .filter(variants::contains)
+                        .sorted(Comparator.comparingInt((ProductVariant variant) ->
+                                score(variant, correctedCriteria,
+                                        trustedCounts.getOrDefault(variant.getId(), 0L).intValue()))
+                                .reversed())
                         .map(variant -> toRecommendation(product, variant)))
                 .limit(3)
                 .toList();
     }
 
     private boolean matchesIdentifiedDevice(ProductVariant variant, AiVisionResult criteria) {
-        return contains(variant.getBrand(), criteria.brand())
+        return matchesIdentifiedBrand(variant.getBrand(), criteria.brand())
                 && contains(variant.getModel(), criteria.model());
+    }
+
+    /** 品牌一旦有辨識結果就嚴格限制同品牌，避免把其他品牌當成候選。 */
+    private boolean matchesIdentifiedBrand(String candidateBrand, String identifiedBrand) {
+        if (!hasValue(identifiedBrand)) {
+            return true;
+        }
+        String expected = canonicalBrand(identifiedBrand);
+        String actual = canonicalBrand(candidateBrand);
+        return expected != null && expected.equals(actual);
+    }
+
+    /** 將常見品牌寫法統一，其他未知品牌則採大小寫不敏感的完整名稱比對。 */
+    private String canonicalBrand(String brand) {
+        if (brand == null || brand.isBlank()) {
+            return null;
+        }
+        String normalized = brand.trim().toLowerCase(Locale.ROOT)
+                .replaceAll("\\s+", " ");
+        if (normalized.contains("samsung") || normalized.contains("三星")) return "samsung";
+        if (normalized.contains("apple") || normalized.contains("iphone")) return "apple";
+        if (normalized.contains("google") || normalized.contains("pixel")) return "google";
+        if (normalized.contains("xiaomi") || normalized.contains("redmi")
+                || normalized.contains("小米")) return "xiaomi";
+        return normalized;
     }
 
     private AiVisionResult correctCriteria(
@@ -312,7 +354,7 @@ public class ProductRecommendationService {
                 && contains(variant.getTags(), criteria.styleTag());
     }
 
-    private int score(ProductVariant variant, AiVisionResult criteria) {
+    private int score(ProductVariant variant, AiVisionResult criteria, int trustedSamples) {
         int attributeScore = 0;
         attributeScore += exactScore(variant.getBrand(), criteria.brand(), 3);
         attributeScore += exactScore(variant.getModel(), criteria.model(), 4);
@@ -321,19 +363,21 @@ public class ProductRecommendationService {
         if (attributeScore == 0) {
             return 0;
         }
-        return attributeScore + trustedSampleScore(variant.getId());
+        return attributeScore + Math.min(trustedSamples, 3);
     }
 
-    /**
-     * 已通過審核且人工關聯到此 variant 的樣本，代表這個品項有較可靠的圖片資料。
-     * 只用來處理候選同分時的排序，不會取代品牌、型號與標籤的實際比對。
-     */
-    private int trustedSampleScore(Long variantId) {
-        if (variantId == null) {
-            return 0;
+    /** 一次批次取得通過審核樣本數，排序時不逐品項查詢資料庫。 */
+    private Map<Long, Long> trustedSampleCounts(List<ProductVariant> variants) {
+        Set<Long> variantIds = variants.stream()
+                .map(ProductVariant::getId)
+                .filter(Objects::nonNull)
+                .collect(Collectors.toSet());
+        if (variantIds.isEmpty()) {
+            return Map.of();
         }
-        long count = imageSampleRepository.countByReviewStatusAndVariantId("通過", variantId);
-        return (int) Math.min(count, 3);
+        return imageSampleRepository.countByReviewStatusAndVariantIds("通過", variantIds)
+                .stream()
+                .collect(Collectors.toMap(row -> (Long) row[0], row -> (Long) row[1]));
     }
 
     private int exactScore(String source, String keyword, int points) {

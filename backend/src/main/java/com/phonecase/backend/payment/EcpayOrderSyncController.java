@@ -96,39 +96,18 @@ public class EcpayOrderSyncController {
     }
 
     // ====================================
-    // 2. 根據 PC5 等交易編號找訂單
+    // 2. 根據綠界交易編號找訂單
     // ====================================
 
     private OrderEntity findOrder(
             String tradeNo,
             HttpServletRequest request
     ) {
-        if (!tradeNo.matches("PC[0-9A-Z]+")) {
-            throw new ResponseStatusException(
-                    HttpStatus.BAD_REQUEST,
-                    "交易編號格式錯誤"
-            );
-        }
-
         Long orderId;
 
         try {
-            orderId = Long.parseLong(
-                    tradeNo.substring(2), 36
-            );
-        } catch (NumberFormatException e) {
-            throw new ResponseStatusException(
-                    HttpStatus.BAD_REQUEST,
-                    "交易編號錯誤"
-            );
-        }
-
-        if (orderId <= 0 ||
-                !tradeNo.equals(
-                        "PC" + Long.toString(
-                                orderId, 36
-                        ).toUpperCase(Locale.ROOT)
-                )) {
+            orderId = EcpayTradeNumber.parseOrderId(tradeNo);
+        } catch (IllegalArgumentException e) {
             throw new ResponseStatusException(
                     HttpStatus.BAD_REQUEST,
                     "交易編號錯誤"

@@ -9,7 +9,6 @@ import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.nio.charset.StandardCharsets;
 import java.util.LinkedHashMap;
-import java.util.Locale;
 import java.util.Map;
 import java.util.stream.Collectors;
 
@@ -59,10 +58,8 @@ public class LocalEcpayNotifyTester {
             merchantId = "2000132";
         }
 
-        // 與 EcpayPaymentController 使用相同的編號規則
-        String tradeNo =
-            "PC" + Long.toString(orderId, 36)
-                       .toUpperCase(Locale.ROOT);
+        // Create a valid order-linked trade number for the local notify test.
+        String tradeNo = EcpayTradeNumber.create(orderId);
 
         // 建立測試通知資料
         Map<String, String> params =

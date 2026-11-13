@@ -8,6 +8,8 @@ function getGuestId() {
     return guestId;
 }
 
+const conversationKey = 'phonecase_support_conversation_id';
+
 async function request(url, options) {
     const response = await fetch(url, {
         headers: {'Content-Type': 'application/json'},
@@ -27,14 +29,32 @@ export function createSupportConversation(message = '') {
     });
 }
 
-export function addSupportMessage(conversationId, message) {
+export function addSupportMessage(conversationId, message, attachmentDataUrl = null) {
     return request(`/api/support/conversations/${conversationId}/messages`, {
         method: 'POST',
-        body: JSON.stringify({message, guestId: getGuestId()}),
+        body: JSON.stringify({message, guestId: getGuestId(), attachmentDataUrl}),
     });
+}
+
+export function closeSupportConversation(conversationId) {
+    const guestId = encodeURIComponent(getGuestId());
+    return request(`/api/support/conversations/${conversationId}/customer-close?guestId=${guestId}`, {method: 'POST'});
+}
+
+export function clearSavedSupportConversationId() {
+    window.localStorage.removeItem(conversationKey);
 }
 
 export function listSupportMessages(conversationId) {
     const guestId = encodeURIComponent(getGuestId());
     return request(`/api/support/conversations/${conversationId}/customer-messages?guestId=${guestId}`);
+}
+
+export function getSavedSupportConversationId() {
+    const value = window.localStorage.getItem(conversationKey);
+    return value ? Number(value) : null;
+}
+
+export function saveSupportConversationId(conversationId) {
+    window.localStorage.setItem(conversationKey, String(conversationId));
 }

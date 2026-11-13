@@ -4,6 +4,9 @@ import { getProduct } from '../../services/productApi.js';
 import { styleLabel } from '../../components/ProductCard.jsx';
 // 匯入組員寫好的購物車共用函式
 import { addToGuestCart } from '../../utils/cartStorage';
+//會員加入購物車
+import { useAuth } from '../../auth/useAuth';
+import { addMemberCartItem } from '../../services/cartApi';
 
 export default function ProductDetail() {
   const { id } = useParams();
@@ -14,6 +17,9 @@ export default function ProductDetail() {
   const [selectedBrand, setSelectedBrand] = useState('');
   const [modelKeyword, setModelKeyword] = useState('');
   const [imageIndex, setImageIndex] = useState(0);
+  //會員加入購物車
+  const { status, currentMember } = useAuth();
+  const [addingToCart, setAddingToCart] = useState(false);
 
   useEffect(() => {
     getProduct(id).then(setProduct).catch(error => setError(error.message));
@@ -29,53 +35,82 @@ export default function ProductDetail() {
   const selectedImage = images[imageIndex] ?? images[0];
 
   // 將使用者目前選擇的商品加入購物車
-  const addToCart = () => {
 
-    // 先確認商品資料與規格都有成功載入
+  const addToCart = async () => {
+    // 1. 防止重複點擊
+    if (addingToCart) return;
+
+    // 2. 尚未確認登入狀態，不允許新增
+    if (status === 'checking' || status === 'error') {
+      alert('目前無法確認登入狀態，請稍後再試');
+      return;
+    }
+
+    // 3. 驗證商品資料
     if (!product || !selectedVariant) {
       alert('請先選擇商品規格');
       return;
     }
 
-    // 從 API 資料取得規格 ID 和價格
     const currentVariantId = Number(selectedVariant.id);
     const currentPrice = Number(selectedVariant.price);
 
-    // 避免錯誤的規格 ID 或價格被加入購物車
     if (
-        !Number.isSafeInteger(currentVariantId) ||
-        currentVariantId <= 0 ||
-        !Number.isFinite(currentPrice) ||
-        currentPrice < 0
+      !Number.isSafeInteger(currentVariantId) ||
+      currentVariantId <= 0 ||
+      !Number.isFinite(currentPrice) ||
+      currentPrice < 0
     ) {
       alert('商品資料異常，無法加入購物車');
       return;
     }
 
-    // 呼叫組員寫好的 addToGuestCart
-    // 這裡的資料都來自商品 API，不是寫死的
+    setAddingToCart(true);
+
     try {
-      addToGuestCart({
-        variantId: currentVariantId,
-        name: product.name,
-        brand: selectedVariant.brand,
-        model: selectedVariant.model,
-        color: selectedVariant.color,
-        price: currentPrice,
+      // 4. 會員：直接寫入 Spring Boot / MySQL
+      if (status === 'authenticated') {
+        if (currentMember?.id == null) {
+          throw new Error('找不到會員身分');
+        }
 
-        // 取得目前所選規格的第一張圖片
-        imageUrl: selectedVariant.images?.[0]?.imageUrl ?? ''
-      });
+        const token = localStorage.getItem('token');
 
-      // 成功呼叫購物車函式後顯示提示
+        if (!token) {
+          throw new Error('找不到會員登入 Token');
+        }
+
+        await addMemberCartItem(token, currentVariantId, 1);
+
+        // 後端新增成功後，通知 Navbar 重新查詢
+        window.dispatchEvent(new Event('memberCartUpdated'));
+
+      } else if (status === 'guest') {
+        // 5. 訪客：維持原本 localStorage 流程
+        addToGuestCart({
+          variantId: currentVariantId,
+          name: product.name,
+          brand: selectedVariant.brand,
+          model: selectedVariant.model,
+          color: selectedVariant.color,
+          price: currentPrice,
+          imageUrl: selectedVariant.images?.[0]?.imageUrl ?? ''
+        });
+      } else {
+        return;
+      }
+
+      // 6. 顯示結果
       alert('已加入購物車');
 
     } catch (error) {
-      // 發生儲存錯誤時，提示使用者
       console.error('加入購物車失敗：', error);
       alert('加入購物車失敗，請稍後再試');
+    } finally {
+      setAddingToCart(false);
     }
   };
+
 
 
   useEffect(() => {
@@ -93,12 +128,12 @@ export default function ProductDetail() {
       : `${selectedVariant.brand} ${selectedVariant.model}`;
   }, [selectedVariant]);
 
-  if (error) return <main className="page-shell"><div className="state-card">{error}<br /><Link to="/">返回商品列表</Link></div></main>;
+  if (error) return <main className="page-shell"><div className="state-card">{error}<br /><Link to="/products">返回商品列表</Link></div></main>;
   if (!product || !selectedVariant) return <main className="page-shell"><div className="state-card">正在載入商品…</div></main>;
 
   return (
     <main className="page-shell detail-page">
-      <div className="breadcrumb"><Link to="/">商品列表</Link><span>›</span>商品詳細</div>
+      <div className="breadcrumb"><Link to="/products">商品列表</Link><span>›</span>商品詳細</div>
       <article className="product-detail">
         <section className="detail-media">
           <div className="detail-image-frame">
@@ -138,13 +173,14 @@ export default function ProductDetail() {
           <div className="detail-benefits"><div><strong>日常防護</strong><span>安心保護手機外觀</span></div><div><strong>精準開孔</strong><span>貼合手機按鍵與鏡頭</span></div><div><strong>舒適手感</strong><span>適合長時間使用</span></div></div>
           <div className="detail-note"><strong>商品提醒</strong><p>圖片為商品款式示意，實際規格依所選手機型號與顏色為準。</p></div>
           <button
-              type="button"
-              className="button button-primary"
-              onClick={addToCart}
+            type="button"
+            className="button button-primary"
+            onClick={addToCart}
+            disabled={addingToCart}
           >
-            加入購物車
+             {addingToCart ? '加入中...' : '加入購物車'}
           </button>
-          <Link className="button button-outline" to="/">返回商品列表</Link>
+          <Link className="button button-outline" to="/products">返回商品列表</Link>
         </section>
       </article>
     </main>
