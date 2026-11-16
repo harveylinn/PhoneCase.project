@@ -1,0 +1,102 @@
+package com.phonecase.backend.product.controller;
+
+import com.phonecase.backend.product.entity.ImageSample;
+import com.phonecase.backend.product.dto.ImageSampleAnalysisResponse;
+import com.phonecase.backend.product.dto.AiProductRecommendation;
+import com.phonecase.backend.product.service.ImageSampleService;
+import com.phonecase.backend.member.security.AdminOnly;
+import jakarta.validation.Valid;
+import jakarta.validation.constraints.NotBlank;
+import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
+
+@RestController
+@RequestMapping("/api/image-samples")
+public class ImageSampleController {
+
+    private final ImageSampleService service;
+
+    public ImageSampleController(ImageSampleService service) {
+        this.service = service;
+    }
+
+    @GetMapping
+    @AdminOnly
+    public List<ImageSample> findAll(
+            @RequestParam(required = false) String reviewStatus) {
+        return service.findAll(reviewStatus);
+    }
+
+    @GetMapping("/{id}")
+    @AdminOnly
+    public ImageSample findById(@PathVariable Long id) {
+        return service.findById(id);
+    }
+
+    @PostMapping
+    @AdminOnly
+    public ImageSample create(@Valid @RequestBody ImageSample sample) {
+        return service.create(sample);
+    }
+
+    /**
+     * 後台人工審核圖片樣本。
+     */
+    @PatchMapping("/{id}/review")
+    @AdminOnly
+    public ImageSample updateReview(
+            @PathVariable Long id,
+            @RequestBody ReviewRequest request) {
+        return service.updateReview(
+                id, request.reviewStatus(), request.reviewerNote());
+    }
+
+    @PatchMapping("/{id}/description")
+    @AdminOnly
+    public ImageSample updateDescription(
+            @PathVariable Long id,
+            @RequestBody DescriptionRequest request) {
+        return service.updateDescription(id, request.aiDescription());
+    }
+
+    @PostMapping("/{id}/analyze")
+    @AdminOnly
+    public ImageSampleAnalysisResponse analyzeImage(@PathVariable Long id) {
+        return service.analyzeImage(id);
+    }
+
+    @AdminOnly
+    @PostMapping("/{id}/candidates")
+    public List<AiProductRecommendation> findCandidatesByCorrection(
+            @PathVariable Long id, @RequestBody CandidateCorrectionRequest request) {
+        return service.findCandidatesByCorrection(
+                id, request.brand(), request.model(), request.color(), request.styleTag());
+    }
+
+    @PatchMapping("/{id}/product")
+    @AdminOnly
+    public ImageSample confirmProduct(
+            @PathVariable Long id,
+            @RequestBody ProductRequest request) {
+        return service.confirmProduct(id, request.productId(), request.variantId());
+    }
+
+    @DeleteMapping("/{id}")
+    @AdminOnly
+    public void delete(@PathVariable Long id) {
+        service.delete(id);
+    }
+
+    public record ReviewRequest(
+            @NotBlank String reviewStatus,
+            String reviewerNote
+    ) {}
+
+    public record DescriptionRequest(String aiDescription) {}
+
+    public record ProductRequest(Long productId, Long variantId) {}
+
+    public record CandidateCorrectionRequest(
+            String brand, String model, String color, String styleTag) {}
+}
